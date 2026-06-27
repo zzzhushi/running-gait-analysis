@@ -1,0 +1,11 @@
+# These are ONLY needed to extract pose from real video (extractor/extract_pose.py).
+#
+# The GaitLab app itself — server.py, the gaitlab analysis engine, the browser UI,
+# and the test suite — runs on a bare Python install with NO third-party packages.
+#
+#   pip install -r requirements.txt
+#
+rtmlib>=0.0.13       # lightweight RTMPose runner (no mmcv/mmpose/mmdet)
+onnxruntime>=1.16    # CPU inference backend for rtmlib
+opencv-python>=4.8   # video decoding
+numpy>=1.24          # pulled in by the above; pinned for clarity

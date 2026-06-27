@@ -1,0 +1,14 @@
+# Local data (SQLite DB + any stored media)
+/data/
+
+# Pose extraction outputs
+*.pose.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
