@@ -179,8 +179,11 @@ def _generate_rear(view, fps, duration, cadence, width, height, asymmetry, noise
             lateral = 0.02 * H * math.sin(phase)
             knee = (hip[0] + lateral * 0.5, hip[1] + thigh * (1 - 0.04 * lift))
             ankle = (hip[0] + lateral, hip[1] + (thigh + shank) * (1 - 0.16 * lift))
-            heel = (ankle[0], ankle[1] + 0.03 * H)
-            toe = (ankle[0], ankle[1] + 0.06 * H)
+            # rear-foot roll-in (pronation): heel sits lateral of the ankle; more on the right
+            toward_mid = 1.0 if ankle[0] < body_x else -1.0
+            evert = (0.005 * H * (1 + 0.6 * asymmetry)) if side == "r" else (0.003 * H)
+            heel = (ankle[0] - toward_mid * evert, ankle[1] + 0.03 * H)
+            toe = (ankle[0] - toward_mid * evert, ankle[1] + 0.06 * H)
             _set(fr, f"{side}_knee", knee[0], knee[1])
             _set(fr, f"{side}_ankle", ankle[0], ankle[1])
             _set(fr, f"{side}_heel", heel[0], heel[1])
@@ -206,9 +209,11 @@ def _generate_rear(view, fps, duration, cadence, width, height, asymmetry, noise
 
 
 def demo_runs():
-    """A small set of labeled demo sequences for seeding an empty library."""
+    """Labeled demo sequences (label, sequence, calibration) for seeding an empty library."""
     return [
-        ("Treadmill — side (clean)", generate("side-left", cadence=178, asymmetry=0.05, seed=1)),
-        ("Treadmill — side (overstride)", generate("side-left", cadence=158, asymmetry=0.18, seed=2)),
-        ("Treadmill — rear (hip drop)", generate("rear", cadence=170, asymmetry=0.5, seed=3)),
+        ("Treadmill — side (clean)", generate("side-left", cadence=188, asymmetry=0.05, seed=1),
+         {"sex": "female", "height_cm": 158, "leg_length_cm": 76, "speed_kmh": 12.5}),
+        ("Treadmill — side (overstride)", generate("side-left", cadence=158, asymmetry=0.18, seed=2), None),
+        ("Treadmill — rear (hip drop)", generate("rear", cadence=170, asymmetry=0.5, seed=3),
+         {"sex": "female", "height_cm": 158}),
     ]

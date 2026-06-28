@@ -24,7 +24,8 @@ def _val(values: Dict, key: str) -> float:
 
 
 def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
-          foi: Dict) -> Tuple[List[dict], float, str]:
+          foi: Dict, targets: Dict = None) -> Tuple[List[dict], float, str]:
+    targets = targets or TARGETS
     items: List[dict] = []
 
     def add(sev, title, detail, cue, drill, metric=None, frame=None):
@@ -38,7 +39,7 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
 
     if is_side:
         cad = _val(values, "cadence")
-        st = TARGETS["cadence"].status(cad)
+        st = targets["cadence"].status(cad)
         if st != "good" and cad == cad:
             if cad < 170:
                 add("high" if st == "bad" else "med",
@@ -50,7 +51,7 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                     "cadence")
 
         over = _val(values, "overstride")
-        st = TARGETS["overstride"].status(over)
+        st = targets["overstride"].status(over)
         if st != "good" and over == over:
             add("high" if st == "bad" else "med",
                 "You're overstriding",
@@ -61,7 +62,7 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                 "overstride", foi.get("l_strike"))
 
         trunk = _val(values, "trunk_lean")
-        st = TARGETS["trunk_lean"].status(trunk)
+        st = targets["trunk_lean"].status(trunk)
         if trunk == trunk and trunk < 5:
             add("low", "Run a touch more forward",
                 f"Your trunk is fairly upright ({trunk:.0f} deg). A small forward lean from the ankles helps "
@@ -77,7 +78,7 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                 "trunk_lean")
 
         kf = _val(values, "knee_flexion_midstance")
-        st = TARGETS["knee_flexion_midstance"].status(kf)
+        st = targets["knee_flexion_midstance"].status(kf)
         if st == "bad" and kf == kf:
             add("med", "Stiff landing — let the knee bend",
                 f"Your knee only bends ~{kf:.0f} deg at midstance. A stiffer leg absorbs less shock, so more "
@@ -87,7 +88,7 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                 "knee_flexion_midstance", foi.get("l_midstance"))
 
         ct = _val(values, "contact_time")
-        st = TARGETS["contact_time"].status(ct)
+        st = targets["contact_time"].status(ct)
         if st != "good" and ct == ct:
             add("low", "Long ground contact",
                 f"You're spending ~{ct:.0f} ms on the ground per step. Quicker, springier contacts tend to be "
@@ -96,8 +97,20 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                 "Pogo hops and ankle-stiffness skips, 3x10, twice a week.",
                 "contact_time")
 
+        he = _val(values, "hip_extension")
+        st = targets["hip_extension"].status(he)
+        if st != "good" and he == he:
+            add("med" if st == "bad" else "low",
+                "Limited hip extension",
+                f"Your thigh drives only about {he:.0f}° behind you at push-off. Limited hip extension "
+                "usually traces to tight hip flexors or under-active glutes, and it nudges you toward "
+                "reaching out in front for stride length (overstriding) instead.",
+                "Push the ground back behind you and stay tall through the hips.",
+                "Hip-flexor mobility + glute activation: hip extensions, bridges, bounding strides.",
+                "hip_extension", foi.get("l_toeoff"))
+
         vo = _val(values, "vertical_oscillation")
-        st = TARGETS["vertical_oscillation"].status(vo)
+        st = targets["vertical_oscillation"].status(vo)
         if st == "bad" and vo == vo:
             add("low", "You're bouncing",
                 f"Your hips travel up and down ~{vo:.0f}% of a leg-length each stride. Vertical bounce is energy "
@@ -116,7 +129,7 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                 "foot_strike_angle", foi.get("l_strike"))
     else:
         pd = _val(values, "pelvic_drop")
-        st = TARGETS["pelvic_drop"].status(pd)
+        st = targets["pelvic_drop"].status(pd)
         if st != "good" and pd == pd:
             add("high" if st == "bad" else "med",
                 "Hip drop (weak stabilizers)",
@@ -143,6 +156,16 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                 "Anti-rotation core work (Pallof press) + the hip drills above.",
                 "lateral_trunk_sway")
 
+        pr = _val(values, "pronation")
+        st = targets["pronation"].status(pr)
+        if st != "good" and pr == pr:
+            add("low", "Possible overpronation (estimate)",
+                f"The rear-foot appears to roll inward ~{pr:.0f}° at contact. This is a low-confidence 2-D "
+                "rear-view estimate, so treat it as a prompt to look closer rather than a verdict.",
+                "Check the wear pattern on your shoes; a stability shoe may help if it's pronounced.",
+                "Calf and foot strength (heel raises, short-foot drills); review footwear with a fitter.",
+                "pronation", foi.get("max_pelvic_drop"))
+
     # --- asymmetry findings ---
     for a in asym[:3]:
         if a["status"] == "good":
@@ -166,19 +189,20 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
     order = {"high": 0, "med": 1, "low": 2, "good": 3}
     items.sort(key=lambda i: order[i["severity"]])
 
-    score, grade = _score(values, per_side, asym, view)
+    score, grade = _score(values, per_side, asym, view, targets)
     return items, score, grade
 
 
-def _score(values: Dict, per_side: Dict, asym: List[dict], view: str) -> Tuple[float, str]:
+def _score(values: Dict, per_side: Dict, asym: List[dict], view: str, targets: Dict = None) -> Tuple[float, str]:
+    targets = targets or TARGETS
     if view in ("side-left", "side-right"):
         keys = ["cadence", "trunk_lean", "knee_flexion_midstance", "overstride",
-                "vertical_oscillation", "contact_time"]
+                "vertical_oscillation", "contact_time", "hip_extension"]
     else:
-        keys = ["cadence", "pelvic_drop", "step_width", "lateral_trunk_sway"]
+        keys = ["cadence", "pelvic_drop", "step_width", "lateral_trunk_sway", "pronation"]
     scores = []
     for k in keys:
-        t = TARGETS.get(k)
+        t = targets.get(k)
         v = values.get(k)
         if t and isinstance(v, (int, float)) and v == v:
             scores.append(t.score(v))

@@ -44,14 +44,28 @@ Filming tips: one runner filling the frame, camera level and steady (a tripod is
 Side view shows overstride / trunk lean / knee drive; rear view shows hip drop /
 crossover. 120–240 fps slow-mo sharpens ground-contact timing.
 
+**Optional extras**
+- *MediaPipe instead of RTMPose* (swappable source): `pip install mediapipe opencv-python`
+  then `python3 extractor/extract_pose_mediapipe.py myrun.mp4 --view side-left` — same output format.
+- *Plain-English coach summary*: install [Ollama](https://ollama.com) and run `ollama run llama3.2`;
+  a button on the report rephrases the findings via that local model. Fully optional — the
+  rule-based feedback stays the source of truth and nothing leaves your machine.
+
 ## What it measures
 
-Cadence · trunk lean · knee flexion (contact & midstance) · foot-strike pattern ·
-overstride · vertical oscillation · ground contact time *(side)* — pelvic drop · step
-width / crossover · lateral trunk sway *(rear)* — plus **left/right asymmetry** on every
-bilateral metric and an overall score/grade. Each finding comes with a plain-language
-explanation, a one-line cue, and a corrective drill. See
-[`docs/PRD.md`](docs/PRD.md) for the full catalog, targets, and roadmap.
+Cadence · trunk lean · knee flexion · overstride · **hip extension** · foot-strike pattern ·
+vertical oscillation · ground contact time (+ **L/R balance**) *(side)* — pelvic drop ·
+**pronation estimate** · step width / crossover · lateral trunk sway *(rear)* — plus
+**left/right asymmetry** on every bilateral metric and an overall score/grade. Add your
+height and/or treadmill speed and it also reports **vertical oscillation in cm, vertical
+ratio, and stride length**. Each finding comes with a plain-language explanation, a
+one-line cue, and a corrective drill. See [`docs/PRD.md`](docs/PRD.md) for the full catalog.
+
+**Personalized to you:** add your sex, leg length, height, and pace and the norms adapt —
+e.g. a shorter runner gets a higher cadence target instead of the tall-runner-biased
+"180" default. Every run also produces a **corrective-exercise plan** (with dosing and
+progressions), runs **capture-quality checks** on your footage, and can be **compared
+before/after** to see exactly what moved toward target.
 
 ## How it works
 

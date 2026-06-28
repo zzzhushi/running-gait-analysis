@@ -8,6 +8,10 @@ export default function upload(app) {
   const viewSel = el("select", {}, ["side-left", "side-right", "rear", "front"]
     .map((v) => el("option", { value: v }, v)));
   const labelInput = el("input", { type: "text", placeholder: "e.g. Tuesday tempo — side" });
+  const heightInput = el("input", { type: "number", placeholder: "optional, e.g. 178", min: "100", max: "230" });
+  const speedInput = el("input", { type: "number", placeholder: "optional, e.g. 12.5", step: "0.1", min: "0" });
+  const sexSel = el("select", {}, [["", "—"], ["female", "Female"], ["male", "Male"]].map(([v, t]) => el("option", { value: v }, t)));
+  const legInput = el("input", { type: "number", placeholder: "optional, e.g. 82", min: "50", max: "120" });
 
   const poseInput = el("input", { type: "file", accept: ".json,application/json", style: "display:none" });
   const videoInput = el("input", { type: "file", accept: "video/*", style: "display:none" });
@@ -52,7 +56,13 @@ export default function upload(app) {
     poseData.view = viewSel.value;
     analyzeBtn.textContent = "Analyzing…"; analyzeBtn.disabled = true;
     try {
-      const { id } = await api.analyzePose(poseData, labelInput.value || "");
+      const profile = {};
+      if (sexSel.value) profile.sex = sexSel.value;
+      if (heightInput.value) profile.height_cm = parseFloat(heightInput.value);
+      if (legInput.value) profile.leg_length_cm = parseFloat(legInput.value);
+      if (speedInput.value) profile.speed_kmh = parseFloat(speedInput.value);
+      const { id } = await api.analyzePose(poseData, labelInput.value || "",
+        Object.keys(profile).length ? profile : null);
       if (videoUrl) api.setVideoUrl(id, videoUrl);
       location.hash = "#/report/" + id;
     } catch (e) {
@@ -71,6 +81,10 @@ export default function upload(app) {
     el("div", { style: "display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px" }, [
       el("div", { class: "field" }, [el("label", {}, "View"), viewSel]),
       el("div", { class: "field" }, [el("label", {}, "Label"), labelInput]),
+      el("div", { class: "field" }, [el("label", {}, "Sex — optional, personalizes injury-risk norms"), sexSel]),
+      el("div", { class: "field" }, [el("label", {}, "Leg length (cm) — optional, personalizes cadence & scale"), legInput]),
+      el("div", { class: "field" }, [el("label", {}, "Your height (cm) — optional, enables cm & vertical ratio"), heightInput]),
+      el("div", { class: "field" }, [el("label", {}, "Treadmill speed (km/h) — optional, enables stride length"), speedInput]),
     ]),
     el("div", { style: "margin:6px 0 22px" }, [analyzeBtn]),
     el("div", { class: "tips" }, [

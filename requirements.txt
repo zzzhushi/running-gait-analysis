@@ -9,3 +9,7 @@ rtmlib>=0.0.13       # lightweight RTMPose runner (no mmcv/mmpose/mmdet)
 onnxruntime>=1.16    # CPU inference backend for rtmlib
 opencv-python>=4.8   # video decoding
 numpy>=1.24          # pulled in by the above; pinned for clarity
+
+# Optional alternative extractor (extractor/extract_pose_mediapipe.py):
+#   pip install mediapipe opencv-python
+# Optional plain-English summaries: install Ollama (ollama.com), `ollama run llama3.2`.

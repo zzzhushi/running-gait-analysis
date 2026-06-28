@@ -56,8 +56,8 @@ def db() -> sqlite3.Connection:
     return conn
 
 
-def store_run(label: str, seq: PoseSequence) -> dict:
-    result = analyze(seq, label=label).to_dict()
+def store_run(label: str, seq: PoseSequence, profile=None) -> dict:
+    result = analyze(seq, label=label, profile=profile).to_dict()
     s = result["summary"]
     rid = uuid.uuid4().hex[:12]
     with db() as conn:
@@ -97,8 +97,8 @@ def seed_if_empty(force: bool = False) -> None:
             conn.execute("DELETE FROM runs")
             count = 0
     if count == 0:
-        for label, seq in synthetic.demo_runs():
-            store_run(label, seq)
+        for label, seq, cal in synthetic.demo_runs():
+            store_run(label, seq, cal)
 
 
 # ---------------------------------------------------------------------- handler
@@ -159,7 +159,14 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/analyze":
                 body = self._read_body()
                 seq = PoseSequence.from_pose_dict(body["pose"])
-                self._json(store_run(body.get("label", ""), seq))
+                self._json(store_run(body.get("label", ""), seq, body.get("profile") or body.get("calibration")))
+            elif path.startswith("/api/narrative/"):
+                run = get_run(path.rsplit("/", 1)[-1])
+                if not run:
+                    self._json({"error": "run not found"}, 404)
+                else:
+                    from gaitlab import narrative
+                    self._json(narrative.generate(run))
             elif path == "/api/seed":
                 seed_if_empty(force=True)
                 self._json(list_runs())

@@ -101,5 +101,70 @@ class TestAsymmetryAndAnalyze(unittest.TestCase):
         self.assertIn("cadence", titles.lower())
 
 
+class TestM5Metrics(unittest.TestCase):
+    def test_hip_extension_present_and_plausible(self):
+        seq = synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=11)
+        he = compute_metrics(seq)["values"]["hip_extension"]
+        self.assertTrue(5 < he < 45, he)
+
+    def test_pronation_rear_asymmetric(self):
+        seq = synthetic.generate("rear", fps=60, duration=6, cadence=170, asymmetry=0.6, seed=12)
+        ps = compute_metrics(seq)["per_side"]
+        self.assertGreater(abs(ps["r"]["pronation"]), abs(ps["l"]["pronation"]))
+
+    def test_calibration_adds_absolutes(self):
+        seq = synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=13)
+        base = compute_metrics(seq)["values"]
+        self.assertNotIn("vertical_oscillation_cm", base)
+        cal = compute_metrics(seq, calibration={"height_cm": 175, "speed_kmh": 12})["values"]
+        self.assertIn("vertical_oscillation_cm", cal)
+        self.assertIn("vertical_ratio", cal)
+        self.assertTrue(0.5 < cal["stride_length"] < 4.0, cal.get("stride_length"))
+
+    def test_calibration_flows_through_analyze(self):
+        seq = synthetic.generate("side-left", fps=60, duration=5, cadence=170, seed=14)
+        result = analyze(seq, profile={"height_cm": 180, "speed_kmh": 11}).to_dict()
+        keys = [c["key"] for c in result["metrics"]]
+        self.assertIn("hip_extension", keys)
+        self.assertIn("vertical_oscillation_cm", keys)
+        self.assertIn("stride_length", keys)
+        self.assertEqual(result["summary"]["profile"]["height_cm"], 180)
+        import json
+        json.dumps(result, allow_nan=False)
+
+
+class TestM6(unittest.TestCase):
+    def test_personalized_cadence_higher_for_short_runner(self):
+        from gaitlab.targets import personalize
+        short = personalize({"height_cm": 155})["cadence"].good
+        tall = personalize({"height_cm": 188})["cadence"].good
+        self.assertGreater(sum(short) / 2, sum(tall) / 2)
+
+    def test_female_pelvic_drop_band_wider(self):
+        from gaitlab.targets import personalize, TARGETS
+        self.assertGreater(personalize({"sex": "female"})["pelvic_drop"].good[1],
+                           TARGETS["pelvic_drop"].good[1])
+
+    def test_plan_built_from_findings(self):
+        seq = synthetic.generate("side-left", fps=60, duration=6, cadence=150, asymmetry=0.25, seed=21)
+        plan = analyze(seq).to_dict()["plan"]
+        self.assertTrue(plan)
+        self.assertIn("name", plan[0]["exercises"][0])
+        self.assertIn("dose", plan[0]["exercises"][0])
+
+    def test_quality_checks_present_and_short_clip_flagged(self):
+        good = analyze(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=22)).to_dict()
+        self.assertTrue(all("level" in c and "message" in c for c in good["quality"]))
+        short = analyze(synthetic.generate("side-left", fps=60, duration=1.0, cadence=176, seed=23)).to_dict()
+        self.assertIn("Short clip", " ".join(c["message"] for c in short["quality"]))
+
+    def test_leg_length_calibration(self):
+        r = analyze(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=24),
+                    profile={"leg_length_cm": 78, "speed_kmh": 12}).to_dict()
+        keys = [c["key"] for c in r["metrics"]]
+        self.assertIn("vertical_oscillation_cm", keys)
+        self.assertIn("stride_length", keys)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

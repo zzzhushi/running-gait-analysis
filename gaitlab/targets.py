@@ -9,7 +9,7 @@ thresholds can be tuned without touching the metric or feedback code.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional, Tuple
 
 GOOD, WARN, BAD = "good", "warn", "bad"
@@ -105,6 +105,19 @@ TARGETS = {
         good=(None, 250), warn=(None, 300),
         note="Efficient runners spend ~200-250 ms on the ground per step. Long contact = less reactive.",
     ),
+    "hip_extension": Target(
+        "hip_extension", "Hip extension (peak)", "deg",
+        good=(10, None), warn=(5, None),
+        note="How far the thigh drives behind you at push-off. Limited extension often means tight hip "
+             "flexors or under-active glutes — and a tendency to overstride to compensate.",
+        higher_is_better=True,
+    ),
+    "pronation": Target(
+        "pronation", "Pronation (estimate)", "deg",
+        good=(None, 8), warn=(None, 12),
+        note="Estimated rear-foot roll-in at contact. This is a low-confidence 2-D rear-view estimate — "
+             "treat it as a flag to check your shoe wear and ankle, not a measurement.",
+    ),
     "step_width": Target(
         "step_width", "Step width / crossover", "%leg",
         good=(2, 14), warn=(0, 22),
@@ -125,3 +138,39 @@ TARGETS = {
 
 def target_for(key: str) -> Optional[Target]:
     return TARGETS.get(key)
+
+
+def personalize(profile: Optional[dict]) -> dict:
+    """Return a copy of TARGETS adjusted for the runner's profile.
+
+    - Cadence band is centered on the runner's stature (leg length preferred, else height)
+      and nudged up with speed — because shorter runners and faster paces both raise the
+      naturally-efficient cadence. The default 170-185 is biased toward tall runners.
+    - Pelvic-drop band is widened slightly for female runners, who normatively show a bit
+      more pelvic motion (wider pelvis / larger Q-angle).
+    """
+    t = dict(TARGETS)
+    if not profile:
+        return t
+    sex = (profile.get("sex") or "").lower()
+    height = profile.get("height_cm")
+    leg = profile.get("leg_length_cm")
+    speed = profile.get("speed_kmh")
+
+    h = (leg / 0.48) if leg else height
+    if h:
+        center = 188.0 - 0.615 * (float(h) - 157.0)   # ~157cm -> 188, ~183cm -> 172
+        if speed:
+            center += 1.2 * (float(speed) - 10.0)      # faster pace -> higher cadence
+        center = max(160.0, min(200.0, center))
+        note = (f"Personalized to your stature{' and speed' if speed else ''}: you're likely most "
+                f"efficient near {center:.0f} steps/min. Shorter runners and faster paces sit higher "
+                "than the old '180' rule of thumb.")
+        t["cadence"] = replace(TARGETS["cadence"], good=(round(center - 7), round(center + 7)),
+                               warn=(round(center - 14), round(center + 14)), note=note)
+    if sex == "female":
+        base = TARGETS["pelvic_drop"]
+        t["pelvic_drop"] = replace(base, good=(None, 7), warn=(None, 11),
+                                   note=base.note + " (Range set for female norms, which typically "
+                                        "show a little more pelvic motion.)")
+    return t

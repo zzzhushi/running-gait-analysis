@@ -7,14 +7,15 @@ async function j(res) {
 
 export const listRuns = () => fetch("/api/runs").then(j);
 export const getRun = (id) => fetch("/api/runs/" + id).then((r) => (r.ok ? r.json() : null));
-export const analyzePose = (pose, label) =>
+export const analyzePose = (pose, label, profile) =>
   fetch("/api/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pose, label }),
+    body: JSON.stringify({ pose, label, profile }),
   }).then(j);
 export const deleteRun = (id) => fetch("/api/runs/" + id, { method: "DELETE" }).then(j);
 export const reseed = () => fetch("/api/seed", { method: "POST" }).then(j);
+export const narrative = (id) => fetch("/api/narrative/" + id, { method: "POST" }).then(j);
 
 // Video blobs are not persisted server-side in v1; keep them in-memory per run id
 // so the player can overlay on the real footage during this session.

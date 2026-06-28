@@ -13,7 +13,10 @@ ASYM_METRICS = [
     ("overstride", "Overstride", "%leg", "higher_worse"),
     ("foot_strike_angle", "Foot-strike angle", "deg", "neutral"),
     ("contact_time_ms", "Ground contact time", "ms", "higher_worse"),
+    ("hip_extension", "Hip extension", "deg", "higher_better"),
+    ("stride_length", "Stride length", "m", "higher_better"),
     ("pelvic_drop", "Pelvic drop", "deg", "higher_worse"),
+    ("pronation", "Pronation (est.)", "deg", "higher_worse"),
 ]
 
 

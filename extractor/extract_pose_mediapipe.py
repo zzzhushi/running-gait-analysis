@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""OPTIONAL alternative extractor: pose from video using MediaPipe BlazePose.
+
+This exists to demonstrate the **swappable pose source** — it emits the exact same
+normalized JSON as the RTMPose extractor, so the GaitLab engine/UI consume it
+identically. RTMPose (extract_pose.py) is the default (sharper foot keypoints); this is
+a lighter, install-once alternative.
+
+    pip install mediapipe opencv-python
+    python extractor/extract_pose_mediapipe.py myrun.mp4 --view side-left -o myrun.pose.json
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from gaitlab.schema import KEYPOINTS, SCHEMA_VERSION  # noqa: E402
+
+# MediaPipe BlazePose 33-landmark indices -> canonical names. BlazePose has no neck /
+# pelvis / small-toe, so neck & mid_hip are derived and small toes are left absent.
+BLAZEPOSE = {
+    "nose": 0,
+    "l_shoulder": 11, "r_shoulder": 12, "l_elbow": 13, "r_elbow": 14, "l_wrist": 15, "r_wrist": 16,
+    "l_hip": 23, "r_hip": 24, "l_knee": 25, "r_knee": 26, "l_ankle": 27, "r_ankle": 28,
+    "l_heel": 29, "r_heel": 30, "l_big_toe": 31, "r_big_toe": 32,
+}
+
+
+def to_canonical(lm, w: int, h: int):
+    def P(i):
+        return [lm[i].x * w, lm[i].y * h, float(getattr(lm[i], "visibility", 1.0))]
+
+    frame = []
+    for name in KEYPOINTS:
+        if name in BLAZEPOSE:
+            frame.append(P(BLAZEPOSE[name]))
+        elif name == "neck":
+            a, b = P(11), P(12)
+            frame.append([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, min(a[2], b[2])])
+        elif name == "mid_hip":
+            a, b = P(23), P(24)
+            frame.append([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, min(a[2], b[2])])
+        else:
+            frame.append([0.0, 0.0, 0.0])
+    return frame
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Extract MediaPipe BlazePose landmarks to gaitlab pose JSON.")
+    ap.add_argument("video")
+    ap.add_argument("--view", default="side-left", choices=["side-left", "side-right", "rear", "front"])
+    ap.add_argument("-o", "--output", default=None)
+    ap.add_argument("--every", type=int, default=1)
+    ap.add_argument("--max-seconds", type=float, default=None)
+    args = ap.parse_args()
+
+    try:
+        import cv2
+        import mediapipe as mp
+    except ImportError:
+        sys.exit("Needs MediaPipe. Run:\n  pip install mediapipe opencv-python")
+
+    cap = cv2.VideoCapture(args.video)
+    if not cap.isOpened():
+        sys.exit("could not open video: " + args.video)
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    pose = mp.solutions.pose.Pose(model_complexity=2, min_detection_confidence=0.5)
+    print(f"Running MediaPipe BlazePose on {args.video} ({width}x{height} @ {fps:.0f}fps)…", file=sys.stderr)
+
+    frames = []
+    read_i = 0
+    max_frames = int(args.max_seconds * fps) if args.max_seconds else None
+    while True:
+        ok, img = cap.read()
+        if not ok:
+            break
+        if read_i % args.every == 0:
+            res = pose.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            if res.pose_landmarks:
+                frames.append(to_canonical(res.pose_landmarks.landmark, width, height))
+            else:
+                frames.append([[0.0, 0.0, 0.0] for _ in KEYPOINTS])
+            if len(frames) % 15 == 0:
+                print(f"\r  {len(frames)} frames analyzed…", end="", file=sys.stderr)
+        read_i += 1
+        if max_frames and read_i >= max_frames:
+            break
+    cap.release()
+
+    out = {
+        "schema": SCHEMA_VERSION, "source": "mediapipe-blazepose", "view": args.view,
+        "fps": fps / args.every, "width": width, "height": height,
+        "keypoint_names": list(KEYPOINTS),
+        "frames": [[[round(v, 3) for v in p] for p in fr] for fr in frames],
+    }
+    path = args.output or (os.path.splitext(args.video)[0] + ".pose.json")
+    with open(path, "w") as fh:
+        json.dump(out, fh)
+    print(f"\nWrote {len(frames)} frames -> {path}", file=sys.stderr)
+    print(path)
+
+
+if __name__ == "__main__":
+    main()
