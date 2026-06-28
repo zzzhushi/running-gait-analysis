@@ -44,6 +44,23 @@ Filming tips: one runner filling the frame, camera level and steady (a tripod is
 Side view shows overstride / trunk lean / knee drive; rear view shows hip drop /
 crossover. 120–240 fps slow-mo sharpens ground-contact timing.
 
+**Validate the pipeline on a new clip** (quick sanity check before opening the browser):
+
+```bash
+# Minimal
+python3 validate_run.py myrun.mp4 --view side-left
+
+# With your profile (personalizes norms + unlocks extra metrics)
+python3 validate_run.py myrun.mp4 --view side-left \
+    --height 158 --leg 76 --speed 12.5 --sex female
+
+# Keep the pose JSON to upload in the browser too
+python3 validate_run.py myrun.mp4 --view side-left --keep-json
+```
+
+Prints keypoint confidence, strike counts, metric plausibility, asymmetry flags, and a
+pass/fail verdict in ~30 seconds — before touching the browser.
+
 **Optional extras**
 - *MediaPipe instead of RTMPose* (swappable source): `pip install mediapipe opencv-python`
   then `python3 extractor/extract_pose_mediapipe.py myrun.mp4 --view side-left` — same output format.
@@ -56,8 +73,9 @@ crossover. 120–240 fps slow-mo sharpens ground-contact timing.
 Cadence · trunk lean · knee flexion · overstride · **hip extension** · **knee drive** ·
 **arm posture/swing** · **duty factor** · foot-strike pattern · vertical oscillation ·
 ground contact time (+ **L/R balance**) *(side)* — pelvic drop · **pronation estimate** ·
-step width / crossover · lateral trunk sway · **arm crossover** *(rear)* — plus
-**left/right asymmetry** on every bilateral metric and an overall score/grade. Add your
+step width / crossover · lateral trunk sway · **arm crossover** *(rear)* — plus tracked
+informationals (heel recovery, step/stride length, flight time, trunk–pelvis rotation) and
+**left/right asymmetry** on every bilateral metric, with an overall score/grade. Add your
 height and/or treadmill speed and it also reports **vertical oscillation in cm, vertical
 ratio, and stride length**. Each finding comes with a plain-language explanation, a
 one-line cue, and a corrective drill. See [`docs/PRD.md`](docs/PRD.md) for the full catalog.

@@ -182,6 +182,18 @@ class TestM7Metrics(unittest.TestCase):
         v = compute_metrics(synthetic.generate("rear", fps=60, duration=6, cadence=170, seed=33))["values"]
         self.assertFalse(v["arm_crossover"])
 
+    def test_remaining_p2_metrics(self):
+        v = compute_metrics(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=41))["values"]
+        self.assertIn("heel_recovery", v)
+        self.assertIn("flight_time", v)
+        rv = compute_metrics(synthetic.generate("rear", fps=60, duration=6, cadence=170, seed=42))["values"]
+        self.assertIn("trunk_pelvis_rotation", rv)
+        sl = analyze(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=43),
+                     profile={"speed_kmh": 12}).to_dict()
+        keys = [c["key"] for c in sl["metrics"]]
+        for k in ("step_length", "heel_recovery", "flight_time"):
+            self.assertIn(k, keys)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

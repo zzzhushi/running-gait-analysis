@@ -111,9 +111,10 @@ motion). Real leg length, when given, also sets the pixel↔cm scale directly. E
 yields a **corrective-exercise plan** (dose + progression) and runs through **capture-quality
 checks**; two runs can be compared **before/after** with toward-target improvement coloring.
 
-### P2 — partly done
-*Done:* arm/elbow posture & swing, knee drive, duty factor, arm crossover.
-*Remaining:* heel recovery height · per-side step length · trunk–pelvis counter-rotation · flight time.
+### P2 — done
+Graded: arm/elbow posture & swing, knee drive, duty factor, arm crossover.
+Informational (tracked + symmetry + trends, no hard target): heel recovery, per-side step
+length, flight time, trunk–pelvis counter-rotation (low-confidence 2-D proxy).
 
 ### P3 — research
 Leg/vertical stiffness · braking-force proxy · 3-D (RTMPose3D / multi-view).
@@ -199,9 +200,10 @@ persisted to a local SQLite file.
   pelvic-drop band by sex) with sex/leg-length profile inputs; a corrective-exercise
   library (dose + progression) built from each run's findings; capture-quality checks;
   before/after comparison with toward-target improvement coloring.
-- **M7 (partial):** P2 metrics (knee drive, arm posture/swing, duty factor, arm crossover)
-  + multi-view (side + rear) fusion — **done**. Deferred until a real clip / hardware is
-  available: validating on real video, per-side step length, and optional IMU/load (kinetics).
+- **M7 (mostly done):** full P2 metric set (knee drive, arm posture/swing, duty factor, arm
+  crossover, heel recovery, per-side step length, flight time, trunk–pelvis rotation) +
+  multi-view (side + rear) fusion. Deferred until a real clip / hardware is available:
+  validating on real video and optional IMU/load (kinetics — the part 2-D can't give).
 
 ## 13. Open questions
 

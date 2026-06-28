@@ -16,7 +16,9 @@ ASYM_METRICS = [
     ("hip_extension", "Hip extension", "deg", "higher_better"),
     ("knee_drive", "Knee drive", "deg", "higher_better"),
     ("arm_swing", "Arm swing", "%leg", "neutral"),
+    ("heel_recovery", "Heel recovery", "%leg", "neutral"),
     ("stride_length", "Stride length", "m", "higher_better"),
+    ("step_length", "Step length", "m", "higher_better"),
     ("pelvic_drop", "Pelvic drop", "deg", "higher_worse"),
     ("pronation", "Pronation (est.)", "deg", "higher_worse"),
 ]

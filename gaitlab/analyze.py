@@ -27,6 +27,8 @@ SIDE_CARDS = [
     ("duty_factor", "duty_factor"),
     ("elbow_angle", "elbow_angle"),
     ("arm_swing", None),
+    ("heel_recovery", "heel_recovery"),
+    ("flight_time", None),
     ("foot_strike_angle", None),
 ]
 REAR_CARDS = [
@@ -35,6 +37,7 @@ REAR_CARDS = [
     ("pronation", "pronation"),
     ("step_width", None),
     ("lateral_trunk_sway", None),
+    ("trunk_pelvis_rotation", None),
 ]
 
 
@@ -61,8 +64,13 @@ def _card(key: str, values: Dict, per_side_key: Optional[str], per_side: Dict, t
                     "it's the overstride that matters.",
         }
     elif t is None:
-        units = {"arm_swing": "%leg"}
-        notes = {"arm_swing": "Fore-aft arm drive. Aim for relaxed, even swing front-to-back (not across the body)."}
+        units = {"arm_swing": "%leg", "heel_recovery": "%leg", "flight_time": "ms", "trunk_pelvis_rotation": "deg"}
+        notes = {
+            "arm_swing": "Fore-aft arm drive. Aim for relaxed, even swing front-to-back (not across the body).",
+            "heel_recovery": "How much the heel picks up in swing (proxy). More recovery = a shorter, springier swing leg.",
+            "flight_time": "Time both feet are off the ground per step (fps-limited estimate).",
+            "trunk_pelvis_rotation": "Shoulder-vs-pelvis counter-rotation — a low-confidence 2-D rear-view proxy.",
+        }
         card = {
             "key": key, "label": key.replace("_", " ").title(), "unit": units.get(key, ""),
             "value": v, "status": "info", "note": notes.get(key, ""),
@@ -139,6 +147,10 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
         ps = {"l": per_side.get("l", {}).get("stride_length"), "r": per_side.get("r", {}).get("stride_length")}
         cards.append(_info_card("stride_length", "Stride length", "m", values["stride_length"],
                                 "From treadmill speed × stride time.", per_side=ps))
+    if values.get("step_length") is not None:
+        ps = {"l": per_side.get("l", {}).get("step_length"), "r": per_side.get("r", {}).get("step_length")}
+        cards.append(_info_card("step_length", "Step length", "m", values["step_length"],
+                                "Distance per step (speed × step time).", per_side=ps))
 
     events_dict = {
         "strikes": ev.strikes,

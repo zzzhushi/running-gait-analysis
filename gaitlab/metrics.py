@@ -111,6 +111,18 @@ def _pronation(seq: PoseSequence, ev: GaitEvents, side: str) -> float:
     return _median(vals)
 
 
+def _step_times(ev: GaitEvents, side: str, fps: float) -> List[float]:
+    """Step times for one side: from the preceding opposite-foot strike to each strike."""
+    other = "r" if side == "l" else "l"
+    s_side, s_other = ev.strikes[side], ev.strikes[other]
+    out = []
+    for s in s_side:
+        prev = [o for o in s_other if o < s]
+        if prev:
+            out.append((s - prev[-1]) / fps)
+    return out
+
+
 def compute(seq: PoseSequence, events: Optional[GaitEvents] = None,
             calibration: Optional[Dict] = None) -> Dict:
     ev = events or detect_events(seq)
@@ -195,6 +207,19 @@ def _compute_side(seq, ev: GaitEvents, leg: float, cal: Dict, res: Dict) -> None
         if ct_s and stt and stt > 0:
             per_side[side]["duty_factor"] = ct_s / stt * 100.0
 
+        # P2 (remaining): heel recovery (vertical heel pickup in swing), per-side step length
+        heel_y = geo.moving_average(seq.series_y(f"{side}_heel"), 3)
+        hr = []
+        for i in range(len(ss) - 1):
+            seg = [v for v in heel_y[ss[i]:ss[i + 1]] if v == v]
+            if len(seg) > 1:
+                hr.append(max(seg) - min(seg))
+        per_side[side]["heel_recovery"] = (_median(hr) / leg * 100.0) if hr else float("nan")
+        if cal["speed_mps"]:
+            steps = _step_times(ev, side, seq.fps)
+            if steps:
+                per_side[side]["step_length"] = cal["speed_mps"] * _median(steps)
+
         if cal["speed_mps"] and side in ev.stride_time:
             per_side[side]["stride_length"] = cal["speed_mps"] * ev.stride_time[side]
 
@@ -220,6 +245,15 @@ def _compute_side(seq, ev: GaitEvents, leg: float, cal: Dict, res: Dict) -> None
     df = [x for x in df if isinstance(x, (int, float))]
     if df:
         res["values"]["duty_factor"] = max(df)
+    res["values"]["heel_recovery"] = _median([per_side["l"].get("heel_recovery"), per_side["r"].get("heel_recovery")])
+    ct_vals = [per_side[s].get("contact_time_ms") for s in ("l", "r")]
+    ct_vals = [c for c in ct_vals if isinstance(c, (int, float)) and c == c]
+    if ev.cadence_spm == ev.cadence_spm and ev.cadence_spm > 0 and ct_vals:
+        res["values"]["flight_time"] = max(0.0, 60000.0 / ev.cadence_spm - sum(ct_vals) / len(ct_vals))
+    sl_steps = [x for x in (per_side["l"].get("step_length"), per_side["r"].get("step_length"))
+                if isinstance(x, (int, float))]
+    if sl_steps:
+        res["values"]["step_length"] = _median(sl_steps)
 
     # calibration-derived absolutes
     if cal["px_per_cm"]:
@@ -281,6 +315,19 @@ def _compute_rear(seq, ev: GaitEvents, leg: float, cal: Dict, res: Dict) -> None
                 if (seq.xy(f, "l_wrist")[0] - seq.xy(f, "mid_hip")[0]) > 0
                 or (seq.xy(f, "r_wrist")[0] - seq.xy(f, "mid_hip")[0]) < 0)
     res["values"]["arm_crossover"] = cross > n * 0.25
+    # trunk-pelvis counter-rotation proxy (shoulder line vs hip line; low confidence in 2-D)
+    sh_ang = geo.moving_average(
+        [geo.angle_to_horizontal(seq.xy(f, "l_shoulder"), seq.xy(f, "r_shoulder")) for f in range(n)], 5)
+    res["values"]["trunk_pelvis_rotation"] = geo.peak_to_peak([sh_ang[f] - tilt[f] for f in range(n)])
+    if cal["speed_mps"]:
+        for side in ("l", "r"):
+            steps = _step_times(ev, side, seq.fps)
+            if steps:
+                per_side[side]["step_length"] = cal["speed_mps"] * _median(steps)
+        st_sl = [x for x in (per_side["l"].get("step_length"), per_side["r"].get("step_length"))
+                 if isinstance(x, (int, float))]
+        if st_sl:
+            res["values"]["step_length"] = _median(st_sl)
     if cal["speed_mps"]:
         sl = [per_side[s].get("stride_length") for s in ("l", "r")]
         res["values"]["stride_length"] = _median([x for x in sl if x is not None])
