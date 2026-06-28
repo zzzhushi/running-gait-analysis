@@ -5,8 +5,8 @@
 mechanics, finds left/right asymmetries, and gives coach-style feedback — all on your
 own machine, with no account, no upload, and no API keys.
 
-- **Status:** v1 implemented (this repo). The synthetic demo runs prove the full pipeline end-to-end.
-- **Last updated:** 2026-06-26
+- **Status:** v1 implemented (this repo). Full P0–P2 metric set complete. Pending: real-video validation.
+- **Last updated:** 2026-06-27
 
 ---
 
@@ -200,13 +200,15 @@ persisted to a local SQLite file.
   pelvic-drop band by sex) with sex/leg-length profile inputs; a corrective-exercise
   library (dose + progression) built from each run's findings; capture-quality checks;
   before/after comparison with toward-target improvement coloring.
-- **M7 (mostly done):** full P2 metric set (knee drive, arm posture/swing, duty factor, arm
+- **M7 (done):** full P2 metric set (knee drive, arm posture/swing, duty factor, arm
   crossover, heel recovery, per-side step length, flight time, trunk–pelvis rotation) +
-  multi-view (side + rear) fusion. Deferred until a real clip / hardware is available:
-  validating on real video and optional IMU/load (kinetics — the part 2-D can't give).
+  multi-view (side + rear) fusion (`#/combine` screen). 26 engine tests pass. Pipeline
+  validation script (`validate_run.py`) added for real-video sanity checks.
+- **Next:** real-video validation (use `python3 validate_run.py myrun.mp4 --view side-left`).
+  Optional future work: IMU/load (kinetics — the part 2-D can't give), 3-D via RTMPose3D.
 
 ## 13. Open questions
 
 - Worth persisting the video to disk (local media folder) for re-viewing past runs?
 - Add a guided capture checklist / auto-quality check (camera level, runner in frame)?
-- Multi-view fusion (side + rear of the same session) into a single report?
+- ~~Multi-view fusion (side + rear of the same session) into a single report?~~ Done (M7).

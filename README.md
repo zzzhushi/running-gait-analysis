@@ -120,7 +120,12 @@ docs/PRD.md         product requirements + analysis catalog
 
 ## Status & limitations
 
-v1 is implemented and the full pipeline is verified end-to-end on the synthetic runs.
+All planned metrics (P0–P2) are implemented and the full pipeline is verified end-to-end
+on synthetic runs. **Still needed: validation on a real video clip** (the extractor→engine
+data path is unit-tested, but real-world skeleton tracking and angle agreement with a
+hand-measured frame haven't been confirmed yet — use `validate_run.py` for that).
+
 It's a training aid, not a medical device. Single-camera 2-D: side-view metrics are
 strong; rear-view (pelvic drop, crossover) is good but sensitive to camera tilt — keep
-the camera level. Ground-contact timing is bounded by frame rate. See the PRD for details.
+the camera level. Ground-contact timing is bounded by frame rate. See [`docs/PRD.md`](docs/PRD.md)
+and [`docs/references.md`](docs/references.md) for details and evidence sources.
