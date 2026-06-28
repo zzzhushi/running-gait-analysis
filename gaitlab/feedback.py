@@ -109,6 +109,33 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                 "Hip-flexor mobility + glute activation: hip extensions, bridges, bounding strides.",
                 "hip_extension", foi.get("l_toeoff"))
 
+        kd = _val(values, "knee_drive")
+        if targets["knee_drive"].status(kd) != "good" and kd == kd:
+            add("low", "Limited knee drive",
+                f"Your thigh swings forward only ~{kd:.0f}° in recovery. More knee drive sets up a longer, "
+                "springier stride and helps you hold pace.",
+                "Drive the knee forward and up a touch as the foot leaves the ground.",
+                "A-skips and high-knee marching, building to bounding.",
+                "knee_drive")
+
+        ea = _val(values, "elbow_angle")
+        if ea == ea and ea > 110:
+            add("low", "Relax and bend your arms",
+                f"Your elbows are quite straight (~{ea:.0f}°). Long, straight arms waste energy and tend to "
+                "swing across your body.",
+                "Bend the elbows to about 90° and swing front-to-back, hands relaxed.",
+                "Arm-swing drill: 3×20s driving the elbows back, not across.",
+                "elbow_angle")
+
+        dfv = _val(values, "duty_factor")
+        if targets["duty_factor"].status(dfv) == "bad" and dfv == dfv:
+            add("low", "Long duty factor",
+                f"Your foot is on the ground for ~{dfv:.0f}% of each stride. A shorter, springier contact tends "
+                "to be faster and more economical.",
+                "Quicker, lighter contacts — think 'off the ground fast'.",
+                "Pogo hops and short hill sprints for reactive strength.",
+                "duty_factor")
+
         vo = _val(values, "vertical_oscillation")
         st = targets["vertical_oscillation"].status(vo)
         if st == "bad" and vo == vo:
@@ -166,12 +193,20 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                 "Calf and foot strength (heel raises, short-foot drills); review footwear with a fitter.",
                 "pronation", foi.get("max_pelvic_drop"))
 
+        if values.get("arm_crossover"):
+            add("low", "Arms crossing your midline",
+                "Your hands swing across the centre-line of your body. Cross-body arm swing drives a little "
+                "rotation that your trunk and hips then have to cancel out.",
+                "Swing the arms front-to-back like pistons; thumbs graze the hips.",
+                "Mirror arm-swing drill — keep the hands from crossing your zipper line.",
+                "arm_crossover")
+
     # --- asymmetry findings ---
     for a in asym[:3]:
         if a["status"] == "good":
             continue
         sev = "high" if a["status"] == "bad" else "med"
-        add(sev, f"Left/right imbalance: {a['label'].split(' (')[0]}",
+        add(sev, f"Left/right imbalance: {a['label']}",
             f"{a['label']} differs {a['diff_pct']:.0f}% between sides "
             f"(L {a['left']:.0f} vs R {a['right']:.0f} {a['unit']}), with the {a['worse_side']} side standing out. "
             "Imbalances over ~10% are worth addressing before they cause one-sided overuse.",
@@ -197,7 +232,8 @@ def _score(values: Dict, per_side: Dict, asym: List[dict], view: str, targets: D
     targets = targets or TARGETS
     if view in ("side-left", "side-right"):
         keys = ["cadence", "trunk_lean", "knee_flexion_midstance", "overstride",
-                "vertical_oscillation", "contact_time", "hip_extension"]
+                "vertical_oscillation", "contact_time", "hip_extension", "knee_drive",
+                "elbow_angle", "duty_factor"]
     else:
         keys = ["cadence", "pelvic_drop", "step_width", "lateral_trunk_sway", "pronation"]
     scores = []

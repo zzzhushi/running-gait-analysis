@@ -86,6 +86,26 @@ EXERCISES = {
         {"name": "Side planks", "why": "Lateral stability feeding into the hips.",
          "dose": "3×30s/side", "progression": "Add reaches."},
     ],
+    "knee_drive": [
+        {"name": "A-skips", "why": "Grooves an active forward-up knee drive.",
+         "dose": "3×20m", "progression": "A-skips → bounding."},
+        {"name": "High-knee marching", "why": "Strength and pattern for the knee lift.",
+         "dose": "3×20m", "progression": "Add a run-out at the end."},
+    ],
+    "elbow_angle": [
+        {"name": "Arm-swing drill", "why": "Trains a relaxed ~90° elbow swinging front-to-back.",
+         "dose": "3×20s, tall and relaxed", "progression": "Carry the cue into easy runs."},
+    ],
+    "duty_factor": [
+        {"name": "Pogo hops", "why": "Reactive strength to shorten ground contact.",
+         "dose": "3×10", "progression": "Single-leg / depth pogos."},
+        {"name": "Short hill sprints", "why": "Power and a springier contact.",
+         "dose": "6×10s steep hill, walk back", "progression": "Add reps over weeks."},
+    ],
+    "arm_crossover": [
+        {"name": "Mirror arm-swing drill", "why": "Stops cross-body swing that adds rotation.",
+         "dose": "3×20s, hands not crossing the midline", "progression": "Carry the cue into runs."},
+    ],
     "asymmetry": [
         {"name": "Single-leg strength (weaker side)", "why": "Closes a left/right gap by training the lagging side.",
          "dose": "Extra 1–2 sets on the weaker side (squats, calf raises, hip-hikes)",

@@ -14,6 +14,8 @@ ASYM_METRICS = [
     ("foot_strike_angle", "Foot-strike angle", "deg", "neutral"),
     ("contact_time_ms", "Ground contact time", "ms", "higher_worse"),
     ("hip_extension", "Hip extension", "deg", "higher_better"),
+    ("knee_drive", "Knee drive", "deg", "higher_better"),
+    ("arm_swing", "Arm swing", "%leg", "neutral"),
     ("stride_length", "Stride length", "m", "higher_better"),
     ("pelvic_drop", "Pelvic drop", "deg", "higher_worse"),
     ("pronation", "Pronation (est.)", "deg", "higher_worse"),

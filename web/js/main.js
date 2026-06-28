@@ -3,12 +3,14 @@ import upload from "./screens/upload.js";
 import report from "./screens/report.js";
 import analyze from "./screens/analyze.js";
 import trends from "./screens/trends.js";
+import combine from "./screens/combine.js";
 import { el } from "./format.js";
 
 const ROUTES = [
   [/^#\/library$/, library, []],
   [/^#\/upload$/, upload, []],
   [/^#\/trends$/, trends, []],
+  [/^#\/combine$/, combine, []],
   [/^#\/report\/(\w+)$/, report, ["id"]],
   [/^#\/analyze\/(\w+)$/, analyze, ["id"]],
 ];

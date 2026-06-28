@@ -118,6 +118,22 @@ TARGETS = {
         note="Estimated rear-foot roll-in at contact. This is a low-confidence 2-D rear-view estimate — "
              "treat it as a flag to check your shoe wear and ankle, not a measurement.",
     ),
+    "knee_drive": Target(
+        "knee_drive", "Knee drive (peak)", "deg",
+        good=(20, None), warn=(10, None),
+        note="How far the thigh swings forward in recovery. More knee drive feeds a longer, springier stride.",
+        higher_is_better=True,
+    ),
+    "elbow_angle": Target(
+        "elbow_angle", "Elbow angle", "deg",
+        good=(75, 105), warn=(60, 120),
+        note="A relaxed ~90° elbow. Very straight arms waste energy and tend to swing across the body.",
+    ),
+    "duty_factor": Target(
+        "duty_factor", "Duty factor", "%",
+        good=(None, 40), warn=(None, 48),
+        note="Share of the stride your foot is on the ground. Lower is springier/faster (fps-limited estimate).",
+    ),
     "step_width": Target(
         "step_width", "Step width / crossover", "%leg",
         good=(2, 14), warn=(0, 22),

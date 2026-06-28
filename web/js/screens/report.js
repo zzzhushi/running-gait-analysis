@@ -66,7 +66,7 @@ export default async function report(app, params) {
   ]));
 }
 
-function metricCard(m) {
+export function metricCard(m) {
   const card = el("div", { class: "metric " + (m.status || "info") }, [
     el("div", { class: "m-label" }, m.label),
   ]);
@@ -90,7 +90,7 @@ function metricCard(m) {
   return card;
 }
 
-function asymRow(a) {
+export function asymRow(a) {
   const max = Math.max(Math.abs(a.left), Math.abs(a.right)) || 1;
   const lw = (Math.abs(a.left) / max) * 100, rw = (Math.abs(a.right) / max) * 100;
   return el("div", { class: "asym-row" }, [
@@ -111,7 +111,7 @@ function asymRow(a) {
   ]);
 }
 
-function findingCard(f, id) {
+export function findingCard(f, id) {
   return el("div", { class: "finding-card " + f.severity }, [
     el("div", { class: "sevbar" }),
     el("div", {}, [
@@ -129,7 +129,7 @@ function findingCard(f, id) {
   ]);
 }
 
-function profileStr(p) {
+export function profileStr(p) {
   if (!p) return "";
   const parts = [];
   if (p.sex) parts.push(p.sex);
@@ -139,13 +139,13 @@ function profileStr(p) {
   return parts.length ? " · personalized (" + parts.join(", ") + ")" : "";
 }
 
-function qItem(level, msg) {
+export function qItem(level, msg) {
   const color = level === "warn" ? "var(--warn)" : level === "ok" ? "var(--good)" : "var(--muted)";
   const icon = level === "warn" ? "⚠" : level === "ok" ? "✓" : "ℹ";
   return el("div", { style: `font-size:13px;color:${color};padding:3px 0` }, `${icon}  ${msg}`);
 }
 
-function qualityPanel(checks) {
+export function qualityPanel(checks) {
   if (!checks || !checks.length) return null;
   const warns = checks.filter((c) => c.level === "warn");
   const rows = [];
@@ -161,7 +161,7 @@ function qualityPanel(checks) {
   ]);
 }
 
-function planSection(plan) {
+export function planSection(plan) {
   if (!plan || !plan.length) return null;
   const wrap = el("div", {}, [
     el("h3", { class: "sectitle" }, "Corrective plan"),

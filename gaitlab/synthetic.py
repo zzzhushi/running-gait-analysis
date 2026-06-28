@@ -121,8 +121,8 @@ def _generate_side(view, fps, duration, cadence, width, height, asymmetry, noise
             sh = (neck[0], neck[1] + 0.02 * H)
             elbow = (sh[0] + upper_arm * math.sin(arm_angle),
                      sh[1] + upper_arm * math.cos(arm_angle))
-            wrist = (elbow[0] + fore_arm * math.sin(arm_angle + math.radians(35)),
-                     elbow[1] + fore_arm * math.cos(arm_angle + math.radians(35)))
+            wrist = (elbow[0] + fore_arm * math.sin(arm_angle + math.radians(85)),
+                     elbow[1] + fore_arm * math.cos(arm_angle + math.radians(85)))
             _set(fr, f"{side}_shoulder", sh[0], sh[1])
             _set(fr, f"{side}_elbow", elbow[0], elbow[1])
             _set(fr, f"{side}_wrist", wrist[0], wrist[1])

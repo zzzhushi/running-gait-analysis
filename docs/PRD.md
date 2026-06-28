@@ -94,6 +94,10 @@ normalized by leg length ("% leg") so they need no calibration; angles need none
 | Pronation (estimate) | rear | < 8° | low-confidence 2-D rear-foot roll-in flag *(P1)* |
 | Step width / crossover | rear | 2–14% leg | crossover narrows base, stresses ITB/knee |
 | Lateral trunk sway | rear | < 8% leg | often follows hip drop / weak core |
+| Knee drive (peak) | side | > 20° | forward thigh swing feeds a longer, springier stride *(P2)* |
+| Elbow angle / arm swing | side | ~75–105° | relaxed ~90° arms, even front-to-back swing *(P2)* |
+| Duty factor | side | < 40% | share of stride on the ground; lower = springier *(P2)* |
+| Arm crossover | rear | none | hands crossing the midline add rotation *(P2)* |
 | **L/R asymmetry** (all bilateral metrics) | both | < 5% | > 10% worth addressing |
 
 **With optional calibration** (enter height and/or treadmill speed): vertical oscillation
@@ -107,9 +111,9 @@ motion). Real leg length, when given, also sets the pixel↔cm scale directly. E
 yields a **corrective-exercise plan** (dose + progression) and runs through **capture-quality
 checks**; two runs can be compared **before/after** with toward-target improvement coloring.
 
-### P2 — later
-Arm/elbow swing & symmetry · knee drive + heel recovery height · step length per side ·
-trunk–pelvis counter-rotation · duty factor · flight time.
+### P2 — partly done
+*Done:* arm/elbow posture & swing, knee drive, duty factor, arm crossover.
+*Remaining:* heel recovery height · per-side step length · trunk–pelvis counter-rotation · flight time.
 
 ### P3 — research
 Leg/vertical stiffness · braking-force proxy · 3-D (RTMPose3D / multi-view).
@@ -130,7 +134,9 @@ Implemented as a single-page app served at `localhost`.
    values); a mirrored-bar asymmetry panel; prioritized coach findings (explanation +
    cue + drill), each deep-linking to the illustrating frame in the player.
 5. **Trends** — per-metric line charts across sessions with target bands; pick two runs
-   to compare side-by-side in a delta table.
+   to compare in a delta table with toward-target improvement coloring.
+6. **Combined** — pick a side run + a rear run of the same session and merge them into one
+   report (sagittal + frontal metrics, unified symmetry, findings, and corrective plan).
 
 ## 8. Architecture & data model
 
@@ -193,8 +199,9 @@ persisted to a local SQLite file.
   pelvic-drop band by sex) with sex/leg-length profile inputs; a corrective-exercise
   library (dose + progression) built from each run's findings; capture-quality checks;
   before/after comparison with toward-target improvement coloring.
-- **M7 (next):** validate on real video; P2 metrics (arm swing, knee drive, per-side step
-  length, duty factor); multi-view (side + rear) fusion; optional IMU/load (kinetics).
+- **M7 (partial):** P2 metrics (knee drive, arm posture/swing, duty factor, arm crossover)
+  + multi-view (side + rear) fusion — **done**. Deferred until a real clip / hardware is
+  available: validating on real video, per-side step length, and optional IMU/load (kinetics).
 
 ## 13. Open questions
 

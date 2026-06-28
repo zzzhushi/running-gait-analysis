@@ -21,8 +21,12 @@ SIDE_CARDS = [
     ("knee_flexion_midstance", "knee_flexion_midstance"),
     ("overstride", "overstride"),
     ("hip_extension", "hip_extension"),
+    ("knee_drive", "knee_drive"),
     ("vertical_oscillation", None),
     ("contact_time", "contact_time_ms"),
+    ("duty_factor", "duty_factor"),
+    ("elbow_angle", "elbow_angle"),
+    ("arm_swing", None),
     ("foot_strike_angle", None),
 ]
 REAR_CARDS = [
@@ -57,9 +61,11 @@ def _card(key: str, values: Dict, per_side_key: Optional[str], per_side: Dict, t
                     "it's the overstride that matters.",
         }
     elif t is None:
+        units = {"arm_swing": "%leg"}
+        notes = {"arm_swing": "Fore-aft arm drive. Aim for relaxed, even swing front-to-back (not across the body)."}
         card = {
-            "key": key, "label": key.replace("_", " ").title(), "unit": "",
-            "value": v, "status": "info", "note": "",
+            "key": key, "label": key.replace("_", " ").title(), "unit": units.get(key, ""),
+            "value": v, "status": "info", "note": notes.get(key, ""),
         }
     else:
         card = {

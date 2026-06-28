@@ -23,7 +23,7 @@ from .schema import PoseSequence
 
 
 def _median(xs: List[float]) -> float:
-    xs = [x for x in xs if x == x]
+    xs = [x for x in xs if isinstance(x, (int, float)) and x == x]
     return median(xs) if xs else float("nan")
 
 
@@ -176,6 +176,25 @@ def _compute_side(seq, ev: GaitEvents, leg: float, cal: Dict, res: Dict) -> None
             if side in ev.contact_time else float("nan")
         per_side[side]["hip_extension"] = _peak_hip_extension(seq, ev, side, facing)
 
+        # P2: knee drive (peak forward thigh in swing), arm posture & swing, duty factor
+        thigh_fwd = geo.moving_average(
+            [geo.signed_lean(seq.xy(f, f"{side}_hip"), seq.xy(f, f"{side}_knee"), facing) for f in range(n)], 5)
+        kd = []
+        ss = ev.strikes[side]
+        for i in range(len(ss) - 1):
+            seg = [v for v in thigh_fwd[ss[i]:ss[i + 1]] if v == v]
+            if seg:
+                kd.append(max(seg))
+        per_side[side]["knee_drive"] = _median(kd) if kd else geo.peak_to_peak(thigh_fwd)
+        per_side[side]["elbow_angle"] = _median(
+            [geo.angle_3pt(seq.xy(f, f"{side}_shoulder"), seq.xy(f, f"{side}_elbow"), seq.xy(f, f"{side}_wrist"))
+             for f in range(n)])
+        wrist_rel = [(seq.xy(f, f"{side}_wrist")[0] - seq.xy(f, f"{side}_shoulder")[0]) * facing for f in range(n)]
+        per_side[side]["arm_swing"] = geo.peak_to_peak(wrist_rel) / leg * 100.0
+        ct_s, stt = ev.contact_time.get(side), ev.stride_time.get(side)
+        if ct_s and stt and stt > 0:
+            per_side[side]["duty_factor"] = ct_s / stt * 100.0
+
         if cal["speed_mps"] and side in ev.stride_time:
             per_side[side]["stride_length"] = cal["speed_mps"] * ev.stride_time[side]
 
@@ -194,6 +213,13 @@ def _compute_side(seq, ev: GaitEvents, leg: float, cal: Dict, res: Dict) -> None
     res["values"]["contact_time"] = _worst_high(per_side["l"]["contact_time_ms"], per_side["r"]["contact_time_ms"])
     res["values"]["foot_strike_angle"] = _median([per_side["l"]["foot_strike_angle"], per_side["r"]["foot_strike_angle"]])
     res["values"]["hip_extension"] = _worst_low(per_side["l"]["hip_extension"], per_side["r"]["hip_extension"])
+    res["values"]["knee_drive"] = _worst_low(per_side["l"].get("knee_drive"), per_side["r"].get("knee_drive"))
+    res["values"]["elbow_angle"] = _median([per_side["l"].get("elbow_angle"), per_side["r"].get("elbow_angle")])
+    res["values"]["arm_swing"] = _median([per_side["l"].get("arm_swing"), per_side["r"].get("arm_swing")])
+    df = [per_side[s].get("duty_factor") for s in ("l", "r")]
+    df = [x for x in df if isinstance(x, (int, float))]
+    if df:
+        res["values"]["duty_factor"] = max(df)
 
     # calibration-derived absolutes
     if cal["px_per_cm"]:
@@ -250,6 +276,11 @@ def _compute_rear(seq, ev: GaitEvents, leg: float, cal: Dict, res: Dict) -> None
     res["values"]["step_width"] = _median(seps) if seps else float("nan")
     res["values"]["crossover"] = crossover
     res["values"]["lateral_trunk_sway"] = geo.peak_to_peak(neck_x) / leg * 100.0
+    # arms swinging across the body midline (P2)
+    cross = sum(1 for f in range(n)
+                if (seq.xy(f, "l_wrist")[0] - seq.xy(f, "mid_hip")[0]) > 0
+                or (seq.xy(f, "r_wrist")[0] - seq.xy(f, "mid_hip")[0]) < 0)
+    res["values"]["arm_crossover"] = cross > n * 0.25
     if cal["speed_mps"]:
         sl = [per_side[s].get("stride_length") for s in ("l", "r")]
         res["values"]["stride_length"] = _median([x for x in sl if x is not None])
@@ -264,10 +295,10 @@ def abs_or_nan(v: float) -> float:
 
 
 def _worst_high(a: float, b: float) -> float:
-    vals = [v for v in (a, b) if v == v]
+    vals = [v for v in (a, b) if isinstance(v, (int, float)) and v == v]
     return max(vals) if vals else float("nan")
 
 
 def _worst_low(a: float, b: float) -> float:
-    vals = [v for v in (a, b) if v == v]
+    vals = [v for v in (a, b) if isinstance(v, (int, float)) and v == v]
     return min(vals) if vals else float("nan")

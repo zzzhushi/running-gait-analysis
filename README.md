@@ -53,9 +53,10 @@ crossover. 120–240 fps slow-mo sharpens ground-contact timing.
 
 ## What it measures
 
-Cadence · trunk lean · knee flexion · overstride · **hip extension** · foot-strike pattern ·
-vertical oscillation · ground contact time (+ **L/R balance**) *(side)* — pelvic drop ·
-**pronation estimate** · step width / crossover · lateral trunk sway *(rear)* — plus
+Cadence · trunk lean · knee flexion · overstride · **hip extension** · **knee drive** ·
+**arm posture/swing** · **duty factor** · foot-strike pattern · vertical oscillation ·
+ground contact time (+ **L/R balance**) *(side)* — pelvic drop · **pronation estimate** ·
+step width / crossover · lateral trunk sway · **arm crossover** *(rear)* — plus
 **left/right asymmetry** on every bilateral metric and an overall score/grade. Add your
 height and/or treadmill speed and it also reports **vertical oscillation in cm, vertical
 ratio, and stride length**. Each finding comes with a plain-language explanation, a
@@ -65,7 +66,8 @@ one-line cue, and a corrective drill. See [`docs/PRD.md`](docs/PRD.md) for the f
 e.g. a shorter runner gets a higher cadence target instead of the tall-runner-biased
 "180" default. Every run also produces a **corrective-exercise plan** (with dosing and
 progressions), runs **capture-quality checks** on your footage, and can be **compared
-before/after** to see exactly what moved toward target.
+before/after** to see exactly what moved toward target. Filmed both angles? **Combine** a
+side and a rear run into one merged report (sagittal + frontal in one place).
 
 ## How it works
 

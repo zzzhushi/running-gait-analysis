@@ -166,5 +166,22 @@ class TestM6(unittest.TestCase):
         self.assertIn("stride_length", keys)
 
 
+class TestM7Metrics(unittest.TestCase):
+    def test_knee_drive_and_arms_side(self):
+        v = compute_metrics(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=31))["values"]
+        self.assertTrue(10 < v["knee_drive"] < 50, v["knee_drive"])
+        self.assertTrue(70 < v["elbow_angle"] < 120, v["elbow_angle"])
+        self.assertIn("duty_factor", v)
+
+    def test_p2_cards_present(self):
+        keys = [c["key"] for c in analyze(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=32)).to_dict()["metrics"]]
+        for k in ("knee_drive", "elbow_angle", "arm_swing", "duty_factor"):
+            self.assertIn(k, keys)
+
+    def test_arm_crossover_not_false_positive(self):
+        v = compute_metrics(synthetic.generate("rear", fps=60, duration=6, cadence=170, seed=33))["values"]
+        self.assertFalse(v["arm_crossover"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
