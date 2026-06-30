@@ -43,7 +43,7 @@ function chart(title, svg) {
 }
 function runSelect(runs) {
   return el("select", { style: "max-width:280px" },
-    runs.map((r) => el("option", { value: r.id }, (r.label || viewLabel(r.view) + " run") + " · " + r.grade)));
+    runs.map((r) => el("option", { value: r.id }, (r.label || viewLabel(r.view) + " run") + " · " + fmt(r.score, 0))));
 }
 function improvementDir(good) {
   if (!good) return null;

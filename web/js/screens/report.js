@@ -1,5 +1,5 @@
 import * as api from "../api.js";
-import { el, fmt, gradeClass, viewLabel } from "../format.js";
+import { el, fmt, scoreClass, viewLabel } from "../format.js";
 
 const SEV = { high: "High", med: "Medium", low: "Minor", good: "Good" };
 
@@ -15,10 +15,10 @@ export default async function report(app, params) {
   ]));
 
   app.append(el("div", { class: "scorecard" }, [
-    el("div", { class: "big " + gradeClass(s.grade) }, s.grade),
+    el("div", { class: "big " + scoreClass(s.overall_score) }, fmt(s.overall_score, 0)),
     el("div", { class: "sc-meta" }, [
       el("h2", {}, s.label || viewLabel(s.view) + " run"),
-      el("p", {}, `${viewLabel(s.view)} view · ${fmt(s.cadence, 0)} spm · ${fmt(s.duration, 1)}s · score ${fmt(s.overall_score, 0)}/100 · ${s.n_findings} finding${s.n_findings === 1 ? "" : "s"}${profileStr(s.profile)}`),
+      el("p", {}, `${viewLabel(s.view)} view · ${fmt(s.cadence, 0)} spm · ${fmt(s.duration, 1)}s · ${s.n_findings} finding${s.n_findings === 1 ? "" : "s"}${profileStr(s.profile)}`),
     ]),
     el("div", { style: "margin-left:auto" }, [
       el("a", { class: "btn btn-accent", href: "#/analyze/" + id }, "▶ Open player"),

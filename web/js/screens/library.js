@@ -1,5 +1,5 @@
 import * as api from "../api.js";
-import { el, fmt, gradeClass, timeAgo, viewLabel } from "../format.js";
+import { el, fmt, scoreClass, timeAgo, viewLabel } from "../format.js";
 import { sparkline } from "../charts.js";
 import { SkeletonRenderer } from "../overlay.js";
 
@@ -31,7 +31,7 @@ export default async function library(app) {
       el("div", { style: "color:var(--muted);font-size:12px;margin-bottom:4px" }, "Overall score trend"),
       el("div", { html: sparkline(chrono.map((r) => r.score), { w: 240, h: 40, color: "#2fbf71" }) }),
     ]),
-    el("div", { style: "color:var(--muted);font-size:13px" }, `Latest: grade ${runs[0].grade} (${fmt(runs[0].score, 0)}/100)`),
+    el("div", { style: "color:var(--muted);font-size:13px" }, `Latest: ${fmt(runs[0].score, 0)}/100`),
   ]));
 
   const grid = el("div", { class: "grid" });
@@ -48,7 +48,7 @@ export default async function library(app) {
             el("div", { class: "label" }, r.label || viewLabel(r.view) + " run"),
             el("div", { class: "meta" }, `${viewLabel(r.view)} · ${fmt(r.cadence, 0)} spm · ${timeAgo(r.created_at)}`),
           ]),
-          el("div", { class: "score-badge " + gradeClass(r.grade) }, r.grade),
+          el("div", { class: "score-badge " + scoreClass(r.score) }, fmt(r.score, 0)),
         ]),
         el("div", { class: "finding" },
           r.n_findings ? `${r.n_findings} thing${r.n_findings > 1 ? "s" : ""} to work on` : "No major flags"),

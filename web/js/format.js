@@ -24,6 +24,7 @@ export const fmt = (v, dp = 0) =>
   v == null || Number.isNaN(v) ? "—" : Number(v).toFixed(dp);
 
 export const gradeClass = (g) => "s-" + String(g || "e").toLowerCase();
+export const scoreClass = (s) => { const n = Number(s) || 0; return n >= 85 ? "s-a" : n >= 72 ? "s-b" : n >= 58 ? "s-c" : n >= 42 ? "s-d" : "s-e"; };
 
 export const STATUS_COLOR = {
   good: "var(--good)", warn: "var(--warn)", bad: "var(--bad)", info: "var(--accent)",

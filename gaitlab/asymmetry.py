@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .targets import TARGETS
 
@@ -41,8 +41,9 @@ def _worse_side(l: float, r: float, direction: str) -> str:
     return "left" if abs(l) > abs(r) else "right"
 
 
-def compute(per_side: Dict[str, Dict[str, float]]) -> List[dict]:
-    t = TARGETS["asymmetry"]
+def compute(per_side: Dict[str, Dict[str, float]], targets: Optional[Dict] = None) -> List[dict]:
+    _targets = targets or TARGETS
+    t = _targets["asymmetry"]
     out: List[dict] = []
     if not per_side or "l" not in per_side or "r" not in per_side:
         return out
@@ -52,6 +53,14 @@ def compute(per_side: Dict[str, Dict[str, float]]) -> List[dict]:
         if l is None or r is None or l != l or r != r:
             continue
         d = diff_pct(l, r)
+        status = t.status(d)
+        # diff_pct explodes when values are near zero (e.g. L=0° R=3° → 200%).
+        # Suppress the flag when both sides are individually within the good target band:
+        # if both values are healthy, a % difference between them isn't clinically meaningful.
+        indiv_t = _targets.get(key)
+        if indiv_t is not None and status != "good":
+            if indiv_t.status(l) == "good" and indiv_t.status(r) == "good":
+                status = "good"
         out.append({
             "key": key,
             "label": label,
@@ -59,7 +68,7 @@ def compute(per_side: Dict[str, Dict[str, float]]) -> List[dict]:
             "left": round(l, 2),
             "right": round(r, 2),
             "diff_pct": round(d, 1),
-            "status": t.status(d),
+            "status": status,
             "worse_side": _worse_side(l, r, direction),
         })
     out.sort(key=lambda a: a["diff_pct"], reverse=True)

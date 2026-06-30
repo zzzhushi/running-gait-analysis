@@ -130,7 +130,7 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
     m = metrics_mod.compute(seq, ev, cal)
     values = m["values"]
     per_side = m.get("per_side", {})
-    asym = asym_mod.compute(per_side)
+    asym = asym_mod.compute(per_side, targets)
     items, score, grade = fb.build(values, per_side, asym, seq.view, m["frames_of_interest"], targets)
 
     cards_spec = SIDE_CARDS if seq.is_side() else REAR_CARDS

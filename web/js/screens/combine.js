@@ -1,5 +1,5 @@
 import * as api from "../api.js";
-import { el, fmt, gradeClass } from "../format.js";
+import { el, fmt, scoreClass } from "../format.js";
 import { metricCard, asymRow, findingCard, planSection, qualityPanel } from "./report.js";
 
 // Multi-view fusion: merge a side run (sagittal) and a rear run (frontal) of the same
@@ -39,16 +39,15 @@ export default async function combine(app) {
 
 function sel(runs, fallback) {
   return el("select", { style: "max-width:260px" },
-    runs.map((r) => el("option", { value: r.id }, (r.label || fallback) + " · " + r.grade)));
+    runs.map((r) => el("option", { value: r.id }, (r.label || fallback) + " · " + fmt(r.score, 0))));
 }
 
 function renderCombined(side, rear, sideId, rearId) {
   const score = (side.summary.overall_score + rear.summary.overall_score) / 2;
-  const grade = score >= 85 ? "A" : score >= 72 ? "B" : score >= 58 ? "C" : score >= 42 ? "D" : "E";
   const wrap = el("div", {});
 
   wrap.append(el("div", { class: "scorecard" }, [
-    el("div", { class: "big " + gradeClass(grade) }, grade),
+    el("div", { class: "big " + scoreClass(score) }, fmt(score, 0)),
     el("div", { class: "sc-meta" }, [
       el("h2", {}, "Combined — side + rear"),
       el("p", {}, `${fmt(side.summary.cadence, 0)} spm · combined score ${fmt(score, 0)}/100 · sagittal + frontal`),
