@@ -14,10 +14,14 @@ The RTMPose video extractor (extractor/extract_pose.py) is the only part that ne
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import mimetypes
 import os
 import sqlite3
+import subprocess
+import sys
+import threading
 import uuid
 import webbrowser
 from datetime import datetime, timezone
@@ -32,6 +36,20 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(ROOT, "web")
 DATA_DIR = os.path.join(ROOT, "data")
 DB_PATH = os.path.join(DATA_DIR, "gaitlab.db")
+VIDEO_DIR = os.path.join(DATA_DIR, "video")
+POSE_DIR = os.path.join(DATA_DIR, "pose")
+EXTRACTOR = os.path.join(ROOT, "extractor", "extract_pose.py")
+INGEST_TIMEOUT = 600  # seconds
+
+_extract_locks: dict[str, threading.Lock] = {}
+_extract_locks_mu = threading.Lock()
+
+
+def _get_extract_lock(pose_path: str) -> threading.Lock:
+    with _extract_locks_mu:
+        if pose_path not in _extract_locks:
+            _extract_locks[pose_path] = threading.Lock()
+        return _extract_locks[pose_path]
 
 
 # --------------------------------------------------------------------------- DB
@@ -101,6 +119,72 @@ def seed_if_empty(force: bool = False) -> None:
             store_run(label, seq, cal)
 
 
+def list_videos() -> list:
+    os.makedirs(VIDEO_DIR, exist_ok=True)
+    items = []
+    for f in os.listdir(VIDEO_DIR):
+        full = os.path.join(VIDEO_DIR, f)
+        if not os.path.isfile(full):
+            continue
+        stem = os.path.splitext(f)[0]
+        mtime = os.path.getmtime(full)
+        pose_path = os.path.join(POSE_DIR, stem + ".pose.json")
+        items.append({
+            "stem": stem,
+            "filename": f,
+            "mtime": datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat(timespec="seconds"),
+            "cached": os.path.isfile(pose_path),
+        })
+    items.sort(key=lambda x: x["mtime"], reverse=True)
+    return items
+
+
+def ingest_video(video_stem: str, view: str, force: bool = False,
+                 label: str = "", profile=None) -> dict:
+    from gaitlab.schema import VIEWS
+    safe_stem = os.path.basename(video_stem)
+    if not safe_stem or safe_stem != video_stem:
+        raise ValueError(f"invalid video stem: {video_stem!r}")
+    if view not in VIEWS:
+        raise ValueError(f"view must be one of {VIEWS}")
+
+    os.makedirs(VIDEO_DIR, exist_ok=True)
+    candidates = [
+        f for f in glob.glob(os.path.join(VIDEO_DIR, safe_stem + ".*"))
+        if os.path.normpath(f).startswith(os.path.normpath(VIDEO_DIR) + os.sep)
+    ]
+    if not candidates:
+        raise FileNotFoundError(f"no video file for {safe_stem!r} in {VIDEO_DIR}")
+    video_path = candidates[0]
+
+    os.makedirs(POSE_DIR, exist_ok=True)
+    pose_path = os.path.join(POSE_DIR, safe_stem + ".pose.json")
+
+    extractor_log = ""
+    lock = _get_extract_lock(pose_path)
+    with lock:
+        cached = os.path.isfile(pose_path) and not force
+        if not cached:
+            r = subprocess.run(
+                [sys.executable, EXTRACTOR, video_path,
+                 "--view", view, "--accurate", "-o", pose_path],
+                capture_output=True, text=True, timeout=INGEST_TIMEOUT,
+            )
+            extractor_log = r.stderr.strip()
+            if r.returncode != 0:
+                raise RuntimeError(f"extractor failed: {r.stderr.strip()}")
+
+    with open(pose_path) as fh:
+        pose_dict = json.load(fh)
+    pose_dict["view"] = view
+    seq = PoseSequence.from_pose_dict(pose_dict)
+    stored = store_run(label, seq, profile)
+    stored["cached"] = cached
+    stored["video_stem"] = safe_stem
+    stored["extractor_log"] = extractor_log
+    return stored
+
+
 # ---------------------------------------------------------------------- handler
 class Handler(BaseHTTPRequestHandler):
     server_version = "GaitLab/0.1"
@@ -122,6 +206,17 @@ class Handler(BaseHTTPRequestHandler):
         if not length:
             return {}
         return json.loads(self.rfile.read(length).decode("utf-8"))
+
+    def _serve_static_abs(self, full_path: str):
+        ctype = mimetypes.guess_type(full_path)[0] or "application/octet-stream"
+        with open(full_path, "rb") as fh:
+            data = fh.read()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _serve_static(self, path: str):
         rel = path.lstrip("/") or "index.html"
@@ -148,6 +243,18 @@ class Handler(BaseHTTPRequestHandler):
             elif path.startswith("/api/runs/"):
                 run = get_run(path.rsplit("/", 1)[-1])
                 self._json(run, 200 if run else 404)
+            elif path == "/api/videos":
+                self._json(list_videos())
+            elif path.startswith("/api/video/"):
+                stem = os.path.basename(path[len("/api/video/"):])
+                candidates = [
+                    f for f in glob.glob(os.path.join(VIDEO_DIR, stem + ".*"))
+                    if os.path.normpath(f).startswith(os.path.normpath(VIDEO_DIR) + os.sep)
+                ]
+                if not candidates:
+                    self.send_error(404)
+                else:
+                    self._serve_static_abs(candidates[0])
             else:
                 self._serve_static(path)
         except Exception as e:  # noqa: BLE001
@@ -170,6 +277,24 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/seed":
                 seed_if_empty(force=True)
                 self._json(list_runs())
+            elif path == "/api/ingest":
+                body = self._read_body()
+                try:
+                    self._json(ingest_video(
+                        video_stem=body.get("video", ""),
+                        view=body.get("view", ""),
+                        force=bool(body.get("force", False)),
+                        label=body.get("label", ""),
+                        profile=body.get("profile") or None,
+                    ))
+                except ValueError as e:
+                    self._json({"error": str(e)}, 400)
+                except FileNotFoundError as e:
+                    self._json({"error": str(e)}, 404)
+                except subprocess.TimeoutExpired:
+                    self._json({"error": f"extraction timed out after {INGEST_TIMEOUT}s"}, 504)
+                except RuntimeError as e:
+                    self._json({"error": str(e)}, 500)
             else:
                 self.send_error(404)
         except Exception as e:  # noqa: BLE001

@@ -5,11 +5,19 @@ This is the ONE piece of GaitLab that needs third-party packages:
 
     pip install rtmlib onnxruntime opencv-python
 
-It runs RTMPose locally (CPU is fine) and writes a pose .json in the gaitlab
-normalized format. The GaitLab app (server.py + browser UI) then analyzes that
-file — it needs no model and no extra installs.
+It runs RTMPose locally (CPU is fine) and writes a pose .json to data/pose/.
+The GaitLab app (server.py + browser UI) then analyzes that file — it needs no
+model and no extra installs.
 
-    python extractor/extract_pose.py myrun.mp4 --view side-left -o myrun.pose.json
+Simple usage (video already in data/video/):
+
+    python extractor/extract_pose.py sample_run --view rear
+    # reads  data/video/sample_run.mov  (or .mp4, etc.)
+    # writes data/pose/sample_run.pose.json
+
+Or with an explicit path and custom output:
+
+    python extractor/extract_pose.py /path/to/myrun.mp4 --view side-left -o myrun.pose.json
 
 The pose source is swappable: anything that emits this same JSON (e.g. a MediaPipe
 extractor) can feed the identical analysis engine.
@@ -137,11 +145,27 @@ def to_canonical(kp, sc, idxmap):
     return frame
 
 
+def _resolve_video(given: str) -> str:
+    """Return an absolute video path, searching data/video/ if the given path doesn't exist."""
+    if os.path.isfile(given):
+        return given
+    # Try resolving relative to the project data/video/ directory.
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    video_dir = os.path.join(project_root, "data", "video")
+    # Accept stem or full filename (e.g. "sample_run" or "sample_run.mov").
+    stem = os.path.splitext(os.path.basename(given))[0]
+    for entry in sorted(os.listdir(video_dir)) if os.path.isdir(video_dir) else []:
+        if os.path.splitext(entry)[0] == stem:
+            return os.path.join(video_dir, entry)
+    sys.exit(f"video not found: {given!r}\n  (also searched {video_dir})")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Extract RTMPose landmarks to gaitlab pose JSON.")
-    ap.add_argument("video", help="path to the running video")
+    ap.add_argument("video", help="video filename in data/video/ (stem or full name), or an explicit path")
     ap.add_argument("--view", default="side-left", choices=["side-left", "side-right", "rear", "front"])
-    ap.add_argument("-o", "--output", default=None, help="output .json (default: <video>.pose.json)")
+    ap.add_argument("-o", "--output", default=None,
+                    help="output .json path (default: data/pose/<stem>.pose.json)")
     ap.add_argument("--model", default="body26", choices=["body26", "wholebody"])
     ap.add_argument("--mode", default="balanced", choices=["performance", "lightweight", "balanced"],
                     help="rtmlib speed/accuracy preset (default: balanced)")
@@ -153,24 +177,26 @@ def main():
     ap.add_argument("--max-seconds", type=float, default=None, help="stop after N seconds of video")
     args = ap.parse_args()
 
+    video_path = _resolve_video(args.video)
+
     try:
         import cv2
     except ImportError:
         sys.exit("opencv is not installed. Run:\n  pip install rtmlib onnxruntime opencv-python")
 
-    cap = cv2.VideoCapture(args.video)
+    cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        sys.exit("could not open video: " + args.video)
+        sys.exit("could not open video: " + video_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     mode = "performance" if args.accurate else args.mode
     model, idxmap, source = build_model(args.model, mode)
-    print(f"Running {source} ({mode}) on {args.video} ({width}x{height} @ {fps:.0f}fps)…", file=sys.stderr)
+    print(f"Running {source} ({mode}) on {video_path} ({width}x{height} @ {fps:.0f}fps)…", file=sys.stderr)
 
     # Authoritative per-frame presentation timestamps from the container (robust to VFR).
-    probe_ts = None if args.no_ffprobe else probe_timestamps(args.video)
+    probe_ts = None if args.no_ffprobe else probe_timestamps(video_path)
 
     frames = []
     pos_msec = []   # OpenCV's per-frame timestamp (s) — fallback if ffprobe unavailable
@@ -213,7 +239,14 @@ def main():
     }
     if timestamps is not None:
         out["timestamps"] = [round(t, 4) for t in timestamps]
-    path = args.output or (os.path.splitext(args.video)[0] + ".pose.json")
+    if args.output:
+        path = args.output
+    else:
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        pose_dir = os.path.join(project_root, "data", "pose")
+        os.makedirs(pose_dir, exist_ok=True)
+        stem = os.path.splitext(os.path.basename(video_path))[0]
+        path = os.path.join(pose_dir, stem + ".pose.json")
     with open(path, "w") as fh:
         json.dump(out, fh)
     print(f"\nWrote {len(frames)} frames -> {path}", file=sys.stderr)

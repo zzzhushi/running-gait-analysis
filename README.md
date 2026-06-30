@@ -30,15 +30,32 @@ python3 -m unittest discover -s tests
 
 ## Analyze your own video
 
-Only this step needs third-party packages (RTMPose via `rtmlib`, CPU is fine):
+### Via the app (recommended)
+
+1. Drop your video file into `data/video/` (`.mov`, `.mp4`, etc.)
+2. Start the server: `python3 server.py`
+3. Click **New analysis**
+4. Enter a **label**, pick the **video** from the dropdown, and choose the **view** (`side-left`, `rear`, etc.)
+5. Click **Extract & Analyze** — the server runs RTMPose and opens the report automatically
+
+The video stays on your machine. The first run extracts the pose (30s–5min depending on length); repeat analyses of the same video reuse the cached pose file instantly. Check the "Force re-extract" box to regenerate it.
+
+> **Requires RTMPose:** first-time extraction needs `pip install -r requirements.txt`
+> (only for the extractor — the server and engine run on bare Python).
+
+### Via the CLI (advanced / headless)
 
 ```bash
 pip install -r requirements.txt
-python3 extractor/extract_pose.py myrun.mp4 --view side-left -o myrun.pose.json
+
+# Simple: video in data/video/, output goes to data/pose/ automatically
+python3 extractor/extract_pose.py sample_run --view rear
+
+# Explicit paths
+python3 extractor/extract_pose.py /path/to/myrun.mp4 --view side-left -o myrun.pose.json
 ```
 
-Then in the app: **New analysis → choose the pose JSON** (optionally attach the video to
-overlay onto) → **Analyze**. Your video never leaves your machine.
+The CLI is useful for scripting batch extractions or validating a clip before opening the browser.
 
 **Filming tips**
 
@@ -71,15 +88,12 @@ frames) but consistent rail overlap on the hip or wrist will noticeably degrade 
 **Validate the pipeline on a new clip** (quick sanity check before opening the browser):
 
 ```bash
-# Minimal
-python3 validate_run.py myrun.mp4 --view side-left
+# Minimal (video in data/video/)
+python3 validate_run.py sample_run --view side-left
 
-# With your profile (personalizes norms + unlocks extra metrics)
-python3 validate_run.py myrun.mp4 --view side-left \
+# Explicit path, with runner profile
+python3 validate_run.py /path/to/myrun.mp4 --view side-left \
     --height 158 --leg 76 --speed 12.5 --sex female
-
-# Keep the pose JSON to upload in the browser too
-python3 validate_run.py myrun.mp4 --view side-left --keep-json
 ```
 
 Prints keypoint confidence, strike counts, metric plausibility, asymmetry flags, and a
@@ -87,7 +101,7 @@ pass/fail verdict in ~30 seconds — before touching the browser.
 
 **Optional extras**
 - *MediaPipe instead of RTMPose* (swappable source): `pip install mediapipe opencv-python`
-  then `python3 extractor/extract_pose_mediapipe.py myrun.mp4 --view side-left` — same output format.
+  then `python3 extractor/extract_pose_mediapipe.py sample_run --view side-left` — same output format, same `data/pose/` output.
 - *Plain-English coach summary*: install [Ollama](https://ollama.com) and run `ollama run llama3.2`;
   a button on the report rephrases the findings via that local model. Fully optional — the
   rule-based feedback stays the source of truth and nothing leaves your machine.
@@ -114,9 +128,12 @@ side and a rear run into one merged report (sagittal + frontal in one place).
 ## How it works
 
 ```
-video ─▶ extract_pose.py (RTMPose)   →   normalized pose JSON
+data/video/myrun.mov
+      │
+      ▼  POST /api/ingest  (server spawns extract_pose.py)
+extract_pose.py (RTMPose)  →  data/pose/myrun.pose.json  (cached)
                                               │
-   POST /api/analyze  ─▶  gaitlab engine  ─▶  AnalysisResult  ─▶  SQLite (local)
+   gaitlab engine  ─▶  AnalysisResult  ─▶  SQLite (local)
                                               │
                           browser UI (Canvas overlay + charts)
 ```

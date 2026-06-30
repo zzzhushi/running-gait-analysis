@@ -2,72 +2,84 @@ import * as api from "../api.js";
 import { el } from "../format.js";
 
 export default function upload(app) {
-  let poseData = null, videoUrl = null;
-  const status = el("div", { style: "color:var(--muted);font-size:13px;margin-top:10px" }, "No pose file loaded yet.");
-
+  const labelInput = el("input", { type: "text", placeholder: "e.g. Tuesday tempo — side" });
+  const videoSel = el("select", {}, [el("option", { value: "" }, "— pick a video —")]);
   const viewSel = el("select", {}, ["side-left", "side-right", "rear", "front"]
     .map((v) => el("option", { value: v }, v)));
-  const labelInput = el("input", { type: "text", placeholder: "e.g. Tuesday tempo — side" });
   const heightInput = el("input", { type: "number", placeholder: "optional, e.g. 178", min: "100", max: "230" });
   const speedInput = el("input", { type: "number", placeholder: "optional, e.g. 12.5", step: "0.1", min: "0" });
   const sexSel = el("select", {}, [["", "—"], ["female", "Female"], ["male", "Male"]].map(([v, t]) => el("option", { value: v }, t)));
   const legInput = el("input", { type: "number", placeholder: "optional, e.g. 82", min: "50", max: "120" });
+  const forceCheck = el("input", { type: "checkbox" });
+  const analyzeBtn = el("button", { class: "btn btn-accent", disabled: true }, "Extract & Analyze");
+  const statusEl = el("div", { style: "font-size:13px;margin-top:10px;min-height:18px" }, "");
+  const logPre = el("pre", {
+    style: "display:none;margin-top:12px;font-size:11px;line-height:1.5;background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow:auto;max-height:220px;white-space:pre-wrap;color:var(--muted)",
+  }, "");
 
-  const poseInput = el("input", { type: "file", accept: ".json,application/json", style: "display:none" });
-  const videoInput = el("input", { type: "file", accept: "video/*", style: "display:none" });
-
-  async function loadPose(file) {
-    try {
-      poseData = JSON.parse(await file.text());
-      if (poseData.view) viewSel.value = poseData.view;
-      status.textContent = `Loaded pose: ${poseData.frames?.length || 0} frames · view ${poseData.view || "?"} · ${poseData.source || "?"}`;
-    } catch (e) {
-      status.textContent = "Could not parse that pose JSON.";
-    }
+  function fmtMtime(iso) {
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   }
-  poseInput.addEventListener("change", (e) => e.target.files[0] && loadPose(e.target.files[0]));
-  videoInput.addEventListener("change", (e) => {
-    const f = e.target.files[0];
-    if (f) { videoUrl = URL.createObjectURL(f); status.textContent += "  ·  video attached"; }
-  });
 
-  const dz = el("div", { class: "dropzone" }, [
-    el("div", { style: "font-size:15px;margin-bottom:6px" }, "Drop a pose .json here"),
-    el("div", { style: "color:var(--muted);font-size:13px" }, "…and optionally the matching video to overlay onto"),
-    el("div", { style: "margin-top:14px;display:flex;gap:10px;justify-content:center" }, [
-      el("button", { class: "btn", onclick: () => poseInput.click() }, "Choose pose JSON"),
-      el("button", { class: "btn btn-ghost", onclick: () => videoInput.click() }, "Attach video (optional)"),
-    ]),
-    status,
-  ]);
-  dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
-  dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
-  dz.addEventListener("drop", async (e) => {
-    e.preventDefault(); dz.classList.remove("drag");
-    for (const f of e.dataTransfer.files) {
-      if (f.name.endsWith(".json")) await loadPose(f);
-      else if (f.type.startsWith("video")) { videoUrl = URL.createObjectURL(f); }
+  api.listVideos().then((videos) => {
+    for (const v of videos) {
+      const text = v.filename + "  ·  " + fmtMtime(v.mtime) + (v.cached ? "  · cached" : "");
+      videoSel.append(el("option", { value: v.stem }, text));
     }
+    if (!videos.length) {
+      videoSel.append(el("option", { value: "", disabled: true }, "No videos found in data/video/"));
+    }
+  }).catch(() => {
+    videoSel.append(el("option", { value: "", disabled: true }, "Could not load video list"));
   });
 
-  const analyzeBtn = el("button", { class: "btn btn-accent" }, "Analyze");
+  function updateBtn() {
+    analyzeBtn.disabled = !videoSel.value || !viewSel.value || !labelInput.value.trim();
+  }
+  labelInput.addEventListener("input", updateBtn);
+  videoSel.addEventListener("change", updateBtn);
+  viewSel.addEventListener("change", updateBtn);
+
   analyzeBtn.addEventListener("click", async () => {
-    if (!poseData) { status.textContent = "Pick a pose JSON first."; return; }
-    poseData.view = viewSel.value;
-    analyzeBtn.textContent = "Analyzing…"; analyzeBtn.disabled = true;
+    const stem = videoSel.value;
+    const view = viewSel.value;
+    const label = labelInput.value.trim();
+    if (!stem || !view || !label) return;
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = "Extracting…";
+    statusEl.textContent = "Running pose extraction — this may take a minute or two…";
+    statusEl.style.color = "var(--muted)";
+    logPre.style.display = "none";
+    logPre.textContent = "";
     try {
       const profile = {};
       if (sexSel.value) profile.sex = sexSel.value;
       if (heightInput.value) profile.height_cm = parseFloat(heightInput.value);
       if (legInput.value) profile.leg_length_cm = parseFloat(legInput.value);
       if (speedInput.value) profile.speed_kmh = parseFloat(speedInput.value);
-      const { id } = await api.analyzePose(poseData, labelInput.value || "",
-        Object.keys(profile).length ? profile : null);
-      if (videoUrl) api.setVideoUrl(id, videoUrl);
-      location.hash = "#/report/" + id;
+      const res = await api.ingest(stem, view, {
+        force: forceCheck.checked,
+        label,
+        profile: Object.keys(profile).length ? profile : null,
+      });
+      api.setVideoUrl(res.id, "/api/video/" + stem);
+      statusEl.textContent = (res.cached ? "✓ Cached pose reused" : "✓ Fresh extraction complete") + "  ·  navigating…";
+      statusEl.style.color = "var(--accent, #4caf50)";
+      if (res.extractor_log) {
+        logPre.textContent = res.extractor_log;
+        logPre.style.display = "block";
+      }
+      location.hash = "#/report/" + res.id;
     } catch (e) {
-      status.textContent = "Analyze failed: " + e.message;
-      analyzeBtn.disabled = false; analyzeBtn.textContent = "Analyze";
+      statusEl.textContent = "Extraction failed: " + e.message;
+      statusEl.style.color = "var(--red, #e57373)";
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = "Extract & Analyze";
+      // Try to parse and show extractor log from error response
+      try {
+        const body = JSON.parse(e.message.replace(/^HTTP \d+ /, "") || "{}");
+        if (body.extractor_log) { logPre.textContent = body.extractor_log; logPre.style.display = "block"; }
+      } catch (_) { /* ignore parse failure */ }
     }
   });
 
@@ -77,26 +89,23 @@ export default function upload(app) {
       el("h1", {}, "New analysis"),
       el("p", {}, "Everything runs locally — your video never leaves this machine."),
     ])]),
-    dz,
     el("div", { style: "display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px" }, [
+      el("div", { class: "field", style: "grid-column:1/-1" }, [el("label", {}, "Label"), labelInput]),
+      el("div", { class: "field" }, [el("label", {}, "Video"), videoSel]),
       el("div", { class: "field" }, [el("label", {}, "View"), viewSel]),
-      el("div", { class: "field" }, [el("label", {}, "Label"), labelInput]),
+      el("div", { class: "field", style: "grid-column:1/-1" }, [
+        el("label", { style: "display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer" }, [
+          forceCheck,
+          el("span", { style: "font-size:13px;color:var(--muted)" }, "Force re-extract even if cached"),
+        ]),
+      ]),
       el("div", { class: "field" }, [el("label", {}, "Sex — optional, personalizes injury-risk norms"), sexSel]),
-      el("div", { class: "field" }, [el("label", {}, "Leg length (cm) — optional, personalizes cadence & scale"), legInput]),
       el("div", { class: "field" }, [el("label", {}, "Your height (cm) — optional, enables cm & vertical ratio"), heightInput]),
+      el("div", { class: "field" }, [el("label", {}, "Leg length (cm) — optional, personalizes cadence & scale"), legInput]),
       el("div", { class: "field" }, [el("label", {}, "Treadmill speed (km/h) — optional, enables stride length"), speedInput]),
     ]),
-    el("div", { style: "margin:6px 0 22px" }, [analyzeBtn]),
-    el("div", { class: "tips" }, [
-      el("div", { style: "font-weight:600;margin-bottom:8px" }, "Turning a video into a pose file"),
-      el("div", {
-        style: "font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#0b0f14;padding:10px 12px;border-radius:8px;border:1px solid var(--line);white-space:pre;overflow:auto",
-      }, "pip install rtmlib onnxruntime opencv-python\npython extractor/extract_pose.py myrun.mp4 --view side-left -o myrun.pose.json"),
-      el("ul", { style: "margin:12px 0 0;padding-left:18px" }, [
-        el("li", {}, "Film one runner filling the frame, camera level and steady (a tripod is ideal)."),
-        el("li", {}, "Side view shows overstride, trunk lean, and knee drive; rear view shows hip drop and crossover."),
-        el("li", {}, "120/240 fps slow-mo sharpens ground-contact timing; 30/60 fps is fine for angles & cadence."),
-      ]),
-    ]),
+    el("div", { style: "margin:14px 0 6px" }, [analyzeBtn]),
+    statusEl,
+    logPre,
   );
 }

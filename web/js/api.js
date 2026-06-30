@@ -16,6 +16,13 @@ export const analyzePose = (pose, label, profile) =>
 export const deleteRun = (id) => fetch("/api/runs/" + id, { method: "DELETE" }).then(j);
 export const reseed = () => fetch("/api/seed", { method: "POST" }).then(j);
 export const narrative = (id) => fetch("/api/narrative/" + id, { method: "POST" }).then(j);
+export const listVideos = () => fetch("/api/videos").then(j);
+export const ingest = (video, view, opts = {}) =>
+  fetch("/api/ingest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ video, view, ...opts }),
+  }).then(j);
 
 // Video blobs are not persisted server-side in v1; keep them in-memory per run id
 // so the player can overlay on the real footage during this session.
