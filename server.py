@@ -42,6 +42,12 @@ EXTRACTOR = os.path.join(ROOT, "extractor", "extract_pose.py")
 INGEST_TIMEOUT = 600  # seconds
 SCHEMA_VERSION = 2  # bump when the DB schema changes to auto-wipe and recreate
 
+
+class ExtractionError(RuntimeError):
+    def __init__(self, message: str, log: str = ""):
+        super().__init__(message)
+        self.log = log
+
 _extract_locks: dict[str, threading.Lock] = {}
 _extract_locks_mu = threading.Lock()
 
@@ -251,7 +257,7 @@ def ingest_video(video_stem: str, view: str, force: bool = False,
             )
             extractor_log = r.stderr.strip()
             if r.returncode != 0:
-                raise RuntimeError(f"extractor failed: {r.stderr.strip()}")
+                raise ExtractionError("extractor failed", extractor_log)
 
     with open(pose_path) as fh:
         pose_dict = json.load(fh)
@@ -300,7 +306,7 @@ class Handler(BaseHTTPRequestHandler):
     def _serve_static(self, path: str):
         rel = path.lstrip("/") or "index.html"
         full = os.path.normpath(os.path.join(WEB_DIR, rel))
-        if not full.startswith(WEB_DIR) or not os.path.isfile(full):
+        if not full.startswith(WEB_DIR + os.sep) or not os.path.isfile(full):
             self.send_error(404)
             return
         ctype = mimetypes.guess_type(full)[0] or "application/octet-stream"
@@ -409,6 +415,8 @@ class Handler(BaseHTTPRequestHandler):
                     self._json({"error": str(e)}, 404)
                 except subprocess.TimeoutExpired:
                     self._json({"error": f"extraction timed out after {INGEST_TIMEOUT}s"}, 504)
+                except ExtractionError as e:
+                    self._json({"error": str(e), "extractor_log": e.log}, 500)
                 except RuntimeError as e:
                     self._json({"error": str(e)}, 500)
             else:

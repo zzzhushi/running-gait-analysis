@@ -49,6 +49,15 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                     "Take quicker, lighter steps — aim to bump your step rate ~5-10% without speeding up.",
                     "Run 4x30s to a metronome set at your target cadence; jog easy between.",
                     "cadence")
+            elif cad > 195:
+                add("high" if st == "bad" else "med",
+                    "Your cadence is very high",
+                    f"Your cadence is about {cad:.0f} steps/min, above the typical efficient range. An "
+                    "unusually high cadence can indicate overly short, shuffling steps and may limit "
+                    "stride power.",
+                    "Allow a little more flight time — let each stride open up a touch.",
+                    "Relaxed strides at easy pace focusing on full hip extension at push-off.",
+                    "cadence")
 
         over = _val(values, "overstride")
         st = targets["overstride"].status(over)
@@ -64,14 +73,14 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
         trunk = _val(values, "trunk_lean")
         st = targets["trunk_lean"].status(trunk)
         if trunk == trunk and trunk < 5:
-            add("low", "Run a touch more forward",
+            add("high" if st == "bad" else "med", "Run a touch more forward",
                 f"Your trunk is fairly upright ({trunk:.0f} deg). A small forward lean from the ankles helps "
                 "you use gravity and reduces braking.",
                 "Think 'tall, then tip' — a gentle whole-body lean from the ankles.",
                 "Falling-start drill: stand tall, lean until you have to step, repeat into a run.",
                 "trunk_lean")
         elif trunk == trunk and trunk > 16:
-            add("med", "Too much trunk lean",
+            add("high" if st == "bad" else "med", "Too much trunk lean",
                 f"You're leaning ~{trunk:.0f} deg forward, which can overload the lower back and hip flexors.",
                 "Lift the chest and run a little taller; lean from the ankles, not by folding at the waist.",
                 "Wall posture drill + core anti-extension work (dead bugs, planks).",

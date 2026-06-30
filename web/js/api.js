@@ -1,7 +1,12 @@
 // Thin wrappers over the local JSON API (same-origin, no CORS needed).
 
 async function j(res) {
-  if (!res.ok) throw new Error("HTTP " + res.status);
+  if (!res.ok) {
+    const text = await res.text();
+    const err = new Error("HTTP " + res.status);
+    err.body = text;
+    throw err;
+  }
   return res.json();
 }
 

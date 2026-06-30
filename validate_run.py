@@ -242,7 +242,7 @@ def main():
     if feedback:
         print("TOP FINDINGS")
         for f in feedback[:5]:
-            sev = {"bad": ANSI_BAD, "warn": ANSI_WARN}.get(f.get("severity","info"), ANSI_INFO)
+            sev = {"high": ANSI_BAD, "med": ANSI_WARN, "low": ANSI_INFO, "good": ANSI_OK}.get(f.get("severity", "low"), ANSI_INFO)
             print(f"  {sev}  {f['title']}: {f['cue']}")
         print()
 

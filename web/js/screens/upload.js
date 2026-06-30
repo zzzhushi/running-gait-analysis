@@ -155,7 +155,7 @@ export default async function upload(app) {
       analyzeBtn.disabled = false;
       analyzeBtn.textContent = "Extract & Analyze";
       try {
-        const body = JSON.parse(e.message.replace(/^HTTP \d+ /, "") || "{}");
+        const body = JSON.parse(e.body || "{}");
         if (body.extractor_log) { logPre.textContent = body.extractor_log; logPre.style.display = "block"; }
       } catch (_) { /* ignore */ }
     }

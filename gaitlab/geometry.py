@@ -114,7 +114,10 @@ def find_peaks(values: List[float], min_distance: int = 1,
         if v >= left and v >= right and (v > left or v > right):
             candidates.append(i)
     if min_prominence > 0.0:
-        floor = min(v for v in values if not math.isnan(v))
+        non_nan = [v for v in values if not math.isnan(v)]
+        if not non_nan:
+            return []
+        floor = min(non_nan)
         candidates = [i for i in candidates if values[i] - floor >= min_prominence]
     candidates.sort(key=lambda i: values[i], reverse=True)
     chosen: List[int] = []
