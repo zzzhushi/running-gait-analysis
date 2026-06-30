@@ -151,6 +151,14 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
         ps = {"l": per_side.get("l", {}).get("step_length"), "r": per_side.get("r", {}).get("step_length")}
         cards.append(_info_card("step_length", "Step length", "m", values["step_length"],
                                 "Distance per step (speed × step time).", per_side=ps))
+    if values.get("head_drop") is not None:
+        cards.append(_info_card("head_drop", "Head bobbing", "%leg", values["head_drop"],
+                                "Vertical head-crown bounce per stride. Ideally tracks with hip VO; "
+                                "a much higher value suggests the head is nodding independently."))
+    if values.get("head_lateral_sway") is not None:
+        cards.append(_info_card("head_lateral_sway", "Head lateral sway", "%leg", values["head_lateral_sway"],
+                                "Side-to-side head movement per stride. Often mirrors pelvic drop; "
+                                "a compensatory tilt is common when hip stabilisers are weak."))
 
     events_dict = {
         "strikes": ev.strikes,

@@ -38,7 +38,7 @@ Index  Name            Used?  Notes
  14    right_knee      yes
  15    left_ankle      yes
  16    right_ankle     yes
- 17    head (crown)    NO     worth adding — enables head bobbing / forward head posture
+ 17    head (crown)    yes    head_drop (side), head_lateral_sway (rear)
  18    neck            yes    derived mid-point in wholebody mode
  19    mid_hip         yes    derived mid-point
  20    left_big_toe    yes

@@ -88,7 +88,7 @@ def _choose_timestamps(probe_ts, pos_msec, kept_idx, total_read):
 
 # RTMPose body+feet (Halpe26). Has the 6 foot keypoints we care about.
 HALPE26 = {
-    "nose": 0, "neck": 18, "mid_hip": 19,
+    "nose": 0, "head": 17, "neck": 18, "mid_hip": 19,
     "l_shoulder": 5, "r_shoulder": 6, "l_elbow": 7, "r_elbow": 8, "l_wrist": 9, "r_wrist": 10,
     "l_hip": 11, "r_hip": 12, "l_knee": 13, "r_knee": 14, "l_ankle": 15, "r_ankle": 16,
     "l_heel": 24, "r_heel": 25, "l_big_toe": 20, "r_big_toe": 21, "l_small_toe": 22, "r_small_toe": 23,

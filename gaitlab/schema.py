@@ -15,7 +15,7 @@ SCHEMA_VERSION = "gaitlab.pose/v1"
 # Canonical keypoint set: a superset that RTMPose-Halpe26 (26 kpts incl. 6 foot points)
 # and MediaPipe-BlazePose (33 kpts) both map into. Order is fixed; arrays are aligned to it.
 KEYPOINTS: List[str] = [
-    "nose", "neck", "mid_hip",
+    "nose", "head", "neck", "mid_hip",
     "l_shoulder", "r_shoulder",
     "l_elbow", "r_elbow",
     "l_wrist", "r_wrist",

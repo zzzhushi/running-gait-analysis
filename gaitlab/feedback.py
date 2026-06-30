@@ -146,6 +146,15 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
                 "Run tall past a fence/rail and keep your head height steady.",
                 "vertical_oscillation")
 
+        hd = _val(values, "head_drop")
+        if hd == hd and vo == vo and hd > max(vo * 1.5, 5.0):
+            add("low", "Head bobbing",
+                f"Your head bounces ~{hd:.1f}% of a leg-length per stride — noticeably more than your hip "
+                f"({vo:.1f}%). Extra head movement is wasted energy and can contribute to neck and upper-back fatigue.",
+                "Keep your chin level and fix your gaze on the horizon — imagine a book balanced on your head.",
+                "Head-still drill: run alongside a fence and keep your eye level steady for 30 s at a time.",
+                "head_drop")
+
         fs = _val(values, "foot_strike_angle")
         if fs == fs and fs > 12 and over == over and over > 8:
             add("med", "Heavy heel-strike with overstriding",

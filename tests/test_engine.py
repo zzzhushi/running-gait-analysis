@@ -195,5 +195,33 @@ class TestM7Metrics(unittest.TestCase):
             self.assertIn(k, keys)
 
 
+class TestHeadMetric(unittest.TestCase):
+    def test_head_drop_present_and_plausible_side(self):
+        v = compute_metrics(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=51))["values"]
+        self.assertIn("head_drop", v)
+        self.assertTrue(0 < v["head_drop"] < 15, v["head_drop"])
+
+    def test_head_lateral_sway_present_and_plausible_rear(self):
+        v = compute_metrics(synthetic.generate("rear", fps=60, duration=6, cadence=170, seed=52))["values"]
+        self.assertIn("head_lateral_sway", v)
+        self.assertTrue(0 < v["head_lateral_sway"] < 20, v["head_lateral_sway"])
+
+    def test_head_cards_appear_in_analysis(self):
+        keys = [c["key"] for c in analyze(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=53)).to_dict()["metrics"]]
+        self.assertIn("head_drop", keys)
+        keys_r = [c["key"] for c in analyze(synthetic.generate("rear", fps=60, duration=6, cadence=170, seed=54)).to_dict()["metrics"]]
+        self.assertIn("head_lateral_sway", keys_r)
+
+    def test_no_head_metric_without_keypoint(self):
+        from gaitlab.schema import KEYPOINTS, PoseSequence
+        seq = synthetic.generate("side-left", fps=60, duration=4, cadence=176, seed=55)
+        # Strip "head" from keypoint_names and frames to simulate an old pose JSON
+        idx = seq.keypoint_names.index("head")
+        seq.keypoint_names = [k for k in seq.keypoint_names if k != "head"]
+        seq.frames = [[p for j, p in enumerate(fr) if j != idx] for fr in seq.frames]
+        v = compute_metrics(seq)["values"]
+        self.assertNotIn("head_drop", v)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -112,8 +112,10 @@ def _generate_side(view, fps, duration, cadence, width, height, asymmetry, noise
         # torso + head
         neck = (hip[0] + torso * math.sin(trunk_lean), hip[1] - torso * math.cos(trunk_lean))
         nose = (neck[0] + head * math.sin(trunk_lean), neck[1] - head * math.cos(trunk_lean))
+        head_crown = (neck[0] + 0.11 * H * math.sin(trunk_lean), neck[1] - 0.11 * H * math.cos(trunk_lean))
         _set(fr, "neck", neck[0], neck[1])
         _set(fr, "nose", nose[0], nose[1])
+        _set(fr, "head", head_crown[0], head_crown[1])
 
         # arms swing opposite to the legs
         for side, phase in (("l", phase_l + math.pi), ("r", phase_r + math.pi)):
@@ -194,6 +196,7 @@ def _generate_rear(view, fps, duration, cadence, width, height, asymmetry, noise
         nose = (body_x, neck[1] - 0.13 * H)
         _set(fr, "neck", neck[0], neck[1])
         _set(fr, "nose", nose[0], nose[1])
+        _set(fr, "head", body_x, neck[1] - 0.11 * H)
         _set(fr, "l_shoulder", body_x - 0.14 * H, neck[1] + 0.02 * H)
         _set(fr, "r_shoulder", body_x + 0.14 * H, neck[1] + 0.02 * H)
         for side, sgn in (("l", -1), ("r", 1)):

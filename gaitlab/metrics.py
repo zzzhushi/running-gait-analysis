@@ -268,6 +268,14 @@ def _compute_side(seq, ev: GaitEvents, leg: float, cal: Dict, res: Dict) -> None
         sl = [per_side[s].get("stride_length") for s in ("l", "r")]
         res["values"]["stride_length"] = _median([x for x in sl if x is not None])
 
+    if seq.has("head"):
+        head_y = geo.moving_average(seq.series_y("head"), 3)
+        strides = ev.strikes["l"]
+        hd_vals = [max(head_y[strides[i]:strides[i + 1]]) - min(head_y[strides[i]:strides[i + 1]])
+                   for i in range(len(strides) - 1) if head_y[strides[i]:strides[i + 1]]]
+        head_px = _median(hd_vals) if hd_vals else geo.peak_to_peak(head_y)
+        res["values"]["head_drop"] = head_px / leg * 100.0
+
     foi = res["frames_of_interest"]
     if ev.strikes["l"]:
         foi["l_strike"] = ev.strikes["l"][0]
@@ -331,6 +339,10 @@ def _compute_rear(seq, ev: GaitEvents, leg: float, cal: Dict, res: Dict) -> None
     if cal["speed_mps"]:
         sl = [per_side[s].get("stride_length") for s in ("l", "r")]
         res["values"]["stride_length"] = _median([x for x in sl if x is not None])
+
+    if seq.has("head"):
+        head_x = geo.moving_average(seq.series_x("head"), 5)
+        res["values"]["head_lateral_sway"] = geo.peak_to_peak(head_x) / leg * 100.0
 
     foi = res["frames_of_interest"]
     if any(t == t for t in tilt):
