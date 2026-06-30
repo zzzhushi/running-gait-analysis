@@ -12,3 +12,7 @@ venv/
 
 # OS
 .DS_Store
+
+
+# User data
+/userdata/

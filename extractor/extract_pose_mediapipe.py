@@ -15,10 +15,63 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from gaitlab.schema import KEYPOINTS, SCHEMA_VERSION  # noqa: E402
+
+
+def probe_timestamps(path):
+    """Real per-frame presentation timestamps (seconds), via ffprobe.
+
+    Reads the container's actual frame PTS — the same clock the browser's <video>
+    uses — so the overlay stays aligned even on variable-frame-rate phone video,
+    where OpenCV's CAP_PROP_POS_MSEC is unreliable. Returns a list sorted ascending
+    (presentation order), or None if ffprobe is missing / the probe fails.
+    """
+    if not shutil.which("ffprobe"):
+        return None
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "frame=best_effort_timestamp_time",
+             "-of", "csv=print_section=0", path],
+            capture_output=True, text=True, timeout=300)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    vals = []
+    for line in out.stdout.splitlines():
+        s = line.strip().rstrip(",")
+        if not s or s == "N/A":
+            continue
+        try:
+            vals.append(float(s))
+        except ValueError:
+            continue
+    if len(vals) < 2:
+        return None
+    vals.sort()
+    return vals
+
+
+def _monotonic_positive(ts):
+    return (ts is not None and len(ts) > 1 and ts[-1] > 0
+            and all(ts[i] >= ts[i - 1] for i in range(1, len(ts))))
+
+
+def _choose_timestamps(probe_ts, pos_msec, kept_idx, total_read):
+    """Pick the best per-frame timestamp source: ffprobe PTS > OpenCV POS_MSEC > None."""
+    if probe_ts is not None and kept_idx and len(probe_ts) >= total_read:
+        picked = [probe_ts[i] for i in kept_idx]
+        if _monotonic_positive(picked):
+            return picked, "ffprobe (real container PTS)"
+    if _monotonic_positive(pos_msec):
+        return pos_msec, "OpenCV POS_MSEC"
+    return None, "constant frame rate (f/fps) — overlay may drift on VFR video"
 
 # MediaPipe BlazePose 33-landmark indices -> canonical names. BlazePose has no neck /
 # pelvis / small-toe, so neck & mid_hip are derived and small toes are left absent.
@@ -56,6 +109,8 @@ def main():
     ap.add_argument("-o", "--output", default=None)
     ap.add_argument("--every", type=int, default=1)
     ap.add_argument("--max-seconds", type=float, default=None)
+    ap.add_argument("--no-ffprobe", action="store_true",
+                    help="skip ffprobe PTS probe (use OpenCV timestamps / constant rate)")
     args = ap.parse_args()
 
     try:
@@ -74,10 +129,15 @@ def main():
     pose = mp.solutions.pose.Pose(model_complexity=2, min_detection_confidence=0.5)
     print(f"Running MediaPipe BlazePose on {args.video} ({width}x{height} @ {fps:.0f}fps)…", file=sys.stderr)
 
+    probe_ts = None if args.no_ffprobe else probe_timestamps(args.video)
+
     frames = []
+    pos_msec = []
+    kept_idx = []
     read_i = 0
     max_frames = int(args.max_seconds * fps) if args.max_seconds else None
     while True:
+        t_msec = cap.get(cv2.CAP_PROP_POS_MSEC)
         ok, img = cap.read()
         if not ok:
             break
@@ -87,6 +147,8 @@ def main():
                 frames.append(to_canonical(res.pose_landmarks.landmark, width, height))
             else:
                 frames.append([[0.0, 0.0, 0.0] for _ in KEYPOINTS])
+            pos_msec.append(t_msec / 1000.0)
+            kept_idx.append(read_i)
             if len(frames) % 15 == 0:
                 print(f"\r  {len(frames)} frames analyzed…", end="", file=sys.stderr)
         read_i += 1
@@ -94,12 +156,17 @@ def main():
             break
     cap.release()
 
+    timestamps, ts_src = _choose_timestamps(probe_ts, pos_msec, kept_idx, read_i)
+    print(f"\n  timestamp source: {ts_src}", file=sys.stderr)
+
     out = {
         "schema": SCHEMA_VERSION, "source": "mediapipe-blazepose", "view": args.view,
         "fps": fps / args.every, "width": width, "height": height,
         "keypoint_names": list(KEYPOINTS),
         "frames": [[[round(v, 3) for v in p] for p in fr] for fr in frames],
     }
+    if timestamps is not None:
+        out["timestamps"] = [round(t, 4) for t in timestamps]
     path = args.output or (os.path.splitext(args.video)[0] + ".pose.json")
     with open(path, "w") as fh:
         json.dump(out, fh)

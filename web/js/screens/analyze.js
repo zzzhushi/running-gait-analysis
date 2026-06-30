@@ -10,6 +10,21 @@ export default async function analyze(app, params) {
   const pose = r.pose, n = pose.frames.length, fps = pose.fps || 30;
   const videoUrl = api.getVideoUrl(id);
 
+  // Real per-frame timestamps (seconds) when the extractor captured them — robust to
+  // variable frame rate. Without them, fall back to the constant-rate f/fps model.
+  const ts = Array.isArray(pose.timestamps) && pose.timestamps.length === n ? pose.timestamps : null;
+  const timeAtFrame = (f) => (ts ? ts[Math.max(0, Math.min(n - 1, f | 0))] : f / fps);
+  function frameAtTime(t) {
+    if (!ts) return Math.min(n - 1, Math.max(0, Math.floor(t * fps)));
+    // floor search: last frame whose timestamp <= t (matches browser video rendering)
+    let lo = 0, hi = n - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (ts[mid] <= t) lo = mid; else hi = mid - 1;
+    }
+    return lo;
+  }
+
   const canvas = el("canvas");
   const stage = el("div", { class: "stage" });
   let video = null;
@@ -76,6 +91,15 @@ export default async function analyze(app, params) {
   const series = r.series || {};
   const state = { frame: 0, playing: false, speed: 1, last: performance.now(), raf: 0 };
 
+  // Debug overlay — toggle with ?debug in the URL. Shows live video.currentTime vs
+  // matched pose timestamp so you can see whether drift is constant or compounding.
+  const debugMode = location.search.includes("debug");
+  const dbg = debugMode ? el("div", {
+    style: "position:absolute;top:4px;left:4px;background:rgba(0,0,0,.75);color:#0f0;" +
+           "font:11px monospace;padding:4px 7px;border-radius:4px;z-index:99;pointer-events:none"
+  }, "") : null;
+  if (dbg) stage.style.position = "relative", stage.append(dbg);
+
   requestAnimationFrame(() => { renderer.resize(); drawTimeline(tlCanvas, r); render(0); });
   const onResize = () => { renderer.resize(); drawTimeline(tlCanvas, r); render(Math.floor(state.frame)); };
   window.addEventListener("resize", onResize);
@@ -87,7 +111,7 @@ export default async function analyze(app, params) {
     return "swing";
   }
   function updateRail(f) {
-    rTime.textContent = `${(f / fps).toFixed(2)}s · ${f}/${n - 1}`;
+    rTime.textContent = `${timeAtFrame(f).toFixed(2)}s · ${f}/${n - 1}`;
     rPhase.textContent = phaseLabel(f);
     for (const row of dynRows) {
       const s = series[row.key];
@@ -99,9 +123,16 @@ export default async function analyze(app, params) {
 
   function loop(now) {
     const dt = (now - state.last) / 1000; state.last = now;
-    if (video && !video.paused) state.frame = Math.min(n - 1, Math.max(0, Math.round(video.currentTime * fps)));
+    if (video && !video.paused) state.frame = Math.min(n - 1, Math.max(0, frameAtTime(video.currentTime)));
     else if (state.playing) { state.frame += dt * fps * state.speed; if (state.frame >= n - 1) state.frame = 0; }
-    render(Math.floor(state.frame));
+    const f = Math.floor(state.frame);
+    render(f);
+    if (dbg && video) {
+      const vt = video.currentTime;
+      const pt = timeAtFrame(f);
+      const delta = (vt - pt) * 1000;
+      dbg.textContent = `video.currentTime: ${vt.toFixed(4)}s\npose ts[${f}]:     ${pt.toFixed(4)}s\ndelta: ${delta > 0 ? "+" : ""}${delta.toFixed(1)}ms`;
+    }
     state.raf = requestAnimationFrame(loop);
   }
   state.raf = requestAnimationFrame(loop);
@@ -110,7 +141,7 @@ export default async function analyze(app, params) {
   function setFrame(f) {
     f = Math.max(0, Math.min(n - 1, f));
     state.frame = f;
-    if (video) video.currentTime = f / fps;
+    if (video) video.currentTime = timeAtFrame(f);
     render(f);
   }
 

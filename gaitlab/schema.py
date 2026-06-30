@@ -8,7 +8,7 @@ that reasons about height accounts for this.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 SCHEMA_VERSION = "gaitlab.pose/v1"
 
@@ -46,6 +46,10 @@ class PoseSequence:
     frames: List[List[Point]]  # frames[f][kp_index] = (x, y, confidence)
     source: str = "unknown"
     keypoint_names: List[str] = field(default_factory=lambda: list(KEYPOINTS))
+    # Real per-frame presentation timestamps in SECONDS, aligned to `frames`.
+    # Present when the extractor could read them (robust to variable frame rate);
+    # None for synthetic/constant-rate clips, where f/fps is exact.
+    timestamps: Optional[List[float]] = None
 
     # --- basic info -------------------------------------------------------
     @property
@@ -109,7 +113,7 @@ class PoseSequence:
 
     # --- (de)serialization ------------------------------------------------
     def to_pose_dict(self) -> dict:
-        return {
+        d = {
             "schema": SCHEMA_VERSION,
             "source": self.source,
             "view": self.view,
@@ -119,6 +123,9 @@ class PoseSequence:
             "keypoint_names": self.keypoint_names,
             "frames": [[[round(v, 3) for v in p] for p in fr] for fr in self.frames],
         }
+        if self.timestamps is not None:
+            d["timestamps"] = [round(t, 4) for t in self.timestamps]
+        return d
 
     @staticmethod
     def from_pose_dict(d: dict) -> "PoseSequence":
@@ -129,6 +136,7 @@ class PoseSequence:
             ]
             for fr in d["frames"]
         ]
+        ts = d.get("timestamps")
         return PoseSequence(
             fps=float(d.get("fps", 30.0)),
             width=int(d.get("width", 0)),
@@ -137,4 +145,5 @@ class PoseSequence:
             frames=frames,
             source=d.get("source", "unknown"),
             keypoint_names=list(d.get("keypoint_names", KEYPOINTS)),
+            timestamps=[float(t) for t in ts] if ts else None,
         )
