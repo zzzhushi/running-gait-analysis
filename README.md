@@ -40,9 +40,33 @@ python3 extractor/extract_pose.py myrun.mp4 --view side-left -o myrun.pose.json
 Then in the app: **New analysis → choose the pose JSON** (optionally attach the video to
 overlay onto) → **Analyze**. Your video never leaves your machine.
 
-Filming tips: one runner filling the frame, camera level and steady (a tripod is ideal).
-Side view shows overstride / trunk lean / knee drive; rear view shows hip drop /
-crossover. 120–240 fps slow-mo sharpens ground-contact timing.
+**Filming tips**
+
+| | Side view | Rear view |
+|---|---|---|
+| **What it measures** | Trunk lean, overstride, knee drive, arm posture, vertical oscillation, foot-strike | Pelvic drop, crossover, lateral sway, pronation |
+| **Camera height** | Level with mid-hip | Level with mid-hip |
+| **Distance** | 3–5 m from treadmill | 3–5 m from treadmill |
+| **Frame rate** | 60 fps minimum; 120/240 fps for sharper contact timing | 60 fps is fine (no timing metrics) |
+| **Format** | `.mov` or `.mp4`; iPhone slow-mo works | same |
+
+**General:**
+- One runner filling most of the frame, contrasting background, steady camera (tripod).
+- Keep the camera level — especially for rear view, where a tilted camera directly biases pelvic-drop readings.
+- Avoid handheld rail gripping while filming side view — the wrist becomes stationary and the engine sees zero arm swing.
+
+**Treadmill handrails (side view):**
+Handrails sit at the same depth as the runner's hips in a 2-D side image. If a rail
+overlaps a key joint, pose confidence drops and that keypoint is skipped for those frames.
+The metrics most at risk are trunk lean (hip reference), overstride (hip reference), and
+arm swing (wrist behind the rail). Two ways to avoid this:
+
+- **Angle the camera 10–15° in front of or behind the treadmill** so the rail sits behind
+  the runner in the image rather than crossing their body.
+- **Lower or remove the rails** for the filming session if the treadmill allows it.
+
+The engine handles partial occlusion gracefully (medians across strides absorb a few bad
+frames) but consistent rail overlap on the hip or wrist will noticeably degrade those metrics.
 
 **Validate the pipeline on a new clip** (quick sanity check before opening the browser):
 
