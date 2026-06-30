@@ -14,14 +14,14 @@ ASYM_METRICS = [
     (MetricKey.OVERSTRIDE,             "Overstride",               "%leg", "higher_worse"),
     (MetricKey.FOOT_STRIKE_ANGLE,      "Foot-strike angle",        "deg", "neutral"),
     (MetricKey.CONTACT_TIME_MS,        "Ground contact time",      "ms",  "higher_worse"),
-    (MetricKey.HIP_EXTENSION,          "Hip extension",            "deg", "higher_better"),
-    (MetricKey.KNEE_DRIVE,             "Knee drive",               "deg", "higher_better"),
+    (MetricKey.HIP_EXTENSION,          "Hip extension (peak)",     "deg", "higher_better"),
+    (MetricKey.KNEE_DRIVE,             "Knee drive (peak)",        "deg", "higher_better"),
     (MetricKey.ARM_SWING,              "Arm swing",                "%leg", "neutral"),
     (MetricKey.HEEL_RECOVERY,          "Heel recovery",            "%leg", "neutral"),
     (MetricKey.STRIDE_LENGTH,          "Stride length",            "m",   "higher_better"),
     (MetricKey.STEP_LENGTH,            "Step length",              "m",   "higher_better"),
     (MetricKey.PELVIC_DROP,            "Pelvic drop",              "deg", "higher_worse"),
-    (MetricKey.PRONATION,              "Pronation (est.)",         "deg", "higher_worse"),
+    (MetricKey.PRONATION,              "Pronation (estimate)",     "deg", "higher_worse"),
 ]
 
 

@@ -16,8 +16,6 @@ from ..metrics import asymmetry as asym_mod
 from ..metrics.defs import METRIC_DEFS
 from ..metrics.keys import MetricKey
 
-SEV_WEIGHT = {"high": 3, "med": 2, "low": 1, "good": 0}
-
 MK = MetricKey  # local shorthand
 
 
@@ -71,7 +69,7 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
         if extra_fmt:
             fmt_args.update(extra_fmt)
         detail = ft["detail"].format(**fmt_args)
-        add(sev, ft["title"], detail, ft["cue"], ft["drill"], str(key), frame)
+        add(sev, ft["title"], detail, ft["cue"], ft["drill"], key.value, frame)
 
     is_side = view in ("side-left", "side-right")
 
@@ -79,13 +77,12 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
         # --- cadence ---
         cad = _val(values, MK.CADENCE)
         t_cad = targets.get(MK.CADENCE)
-        if t_cad and t_cad.status(cad) != "good" and cad == cad:
+        if t_cad and cad == cad:
             st = t_cad.status(cad)
             lo, hi = t_cad.good
-            direction = "low" if (lo and cad < lo) else "high"
-            sev = "high" if st == "bad" else "med"
-            _add_from_def(sev, MK.CADENCE, cad)
-            # direction override already handled via finding_text keys in defs.py
+            if st != "good" and (cad < lo or st == "bad"):
+                sev = "high" if st == "bad" else "med"
+                _add_from_def(sev, MK.CADENCE, cad)
 
         # --- overstride ---
         over = _val(values, MK.OVERSTRIDE)
@@ -100,7 +97,8 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
         t_trunk = targets.get(MK.TRUNK_LEAN)
         if t_trunk and trunk == trunk:
             st = t_trunk.status(trunk)
-            if st != "good":
+            lo, hi = t_trunk.good
+            if st != "good" and (trunk < lo or st == "bad"):
                 sev = "high" if st == "bad" else "med"
                 _add_from_def(sev, MK.TRUNK_LEAN, trunk)
 
@@ -167,7 +165,7 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
             _add_from_def(sev, MK.PELVIC_DROP, pd, frame=foi.get("max_pelvic_drop"))
 
         # --- crossover gait (boolean) ---
-        if values.get(MK.CROSSOVER) or values.get("crossover"):
+        if values.get(MK.CROSSOVER):
             ft = METRIC_DEFS[MK.STEP_WIDTH].finding_text.get("low", {})
             if ft:
                 add("med", ft["title"], ft["detail"].format(value=0),
@@ -176,8 +174,14 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
         # --- lateral trunk sway ---
         sway = _val(values, MK.LATERAL_TRUNK_SWAY)
         t_sway = targets.get(MK.LATERAL_TRUNK_SWAY)
-        if t_sway and t_sway.status(sway) != "good" and sway == sway:
+        if t_sway and sway == sway and sway > 9:
             _add_from_def("low", MK.LATERAL_TRUNK_SWAY, sway)
+
+        # --- head lateral sway ---
+        hls = _val(values, MK.HEAD_LATERAL_SWAY)
+        t_hls = targets.get(MK.HEAD_LATERAL_SWAY)
+        if t_hls and hls == hls and t_hls.status(hls) != "good":
+            _add_from_def("low", MK.HEAD_LATERAL_SWAY, hls)
 
         # --- pronation (informational, low-confidence) ---
         pr = _val(values, MK.PRONATION)
@@ -186,7 +190,7 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
             _add_from_def("low", MK.PRONATION, pr, frame=foi.get("max_pelvic_drop"))
 
         # --- arm crossover (boolean) ---
-        if values.get(MK.ARM_CROSSOVER) or values.get("arm_crossover"):
+        if values.get(MK.ARM_CROSSOVER):
             _add_from_def("low", MK.ARM_CROSSOVER, 0)
 
     # --- asymmetry findings ---

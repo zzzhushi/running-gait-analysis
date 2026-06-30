@@ -14,7 +14,6 @@ For head_drop, {ref} is also available (the paired vertical_oscillation value).
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional, Tuple
 
@@ -805,6 +804,29 @@ METRIC_DEFS: Dict[MetricKey, MetricDef] = {
                 ),
                 "cue": "Keep your chin level and fix your gaze on the horizon — imagine a book balanced on your head.",
                 "drill": "Head-still drill: run alongside a fence and keep your eye level steady for 30 s at a time.",
+            },
+        },
+    ),
+
+    MetricKey.HEAD_LATERAL_SWAY: MetricDef(
+        key=MetricKey.HEAD_LATERAL_SWAY,
+        label="Head lateral sway",
+        unit="%leg",
+        good=(None, 6),
+        warn=(None, 10),
+        note="Side-to-side head movement per stride (rear view). Excess sway signals poor upper-body stability.",
+        confidence="moderate",
+        views=("rear",),
+        scored=False,
+        finding_text={
+            "high": {
+                "title": "Head swaying side to side",
+                "detail": (
+                    "Your head moves ~{value:.1f}% of a leg-length laterally per stride. "
+                    "Excess head sway wastes energy and can strain the neck and upper back."
+                ),
+                "cue": "Fix your gaze on a distant point and keep your head still over your shoulders as you run.",
+                "drill": "Head-still drill: run and hold your eye level steady for 30 s. Pair with lateral hip work.",
             },
         },
     ),
