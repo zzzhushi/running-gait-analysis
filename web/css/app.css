@@ -192,6 +192,28 @@ table.cmp { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.cmp th, table.cmp td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
 table.cmp td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
+/* ---------- user switcher ---------- */
+.user-wrap { position: relative; }
+.user-btn {
+  display: flex; align-items: center; gap: 6px; font-size: 13px;
+  color: var(--muted); background: none; border: 1px solid var(--line);
+  border-radius: 8px; padding: 5px 10px; cursor: pointer; white-space: nowrap;
+}
+.user-btn:hover { color: var(--text); border-color: #3a4654; }
+.user-btn .chevron { font-size: 9px; opacity: .6; }
+.user-menu {
+  position: absolute; right: 0; top: calc(100% + 6px);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px 0; min-width: 190px; z-index: 100; box-shadow: var(--shadow);
+}
+.user-menu-item {
+  display: block; width: 100%; text-align: left; padding: 8px 14px;
+  font-size: 13px; color: var(--muted); background: none; border: none; cursor: pointer;
+}
+.user-menu-item:hover { color: var(--text); background: var(--panel2); }
+.user-menu-item.current { color: var(--text); font-weight: 600; }
+.user-menu-sep { height: 1px; background: var(--line); margin: 4px 0; }
+
 @media (max-width: 860px) {
   .player { grid-template-columns: 1fr; }
   .chart-row { grid-template-columns: 1fr; }

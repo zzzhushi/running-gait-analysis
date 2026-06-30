@@ -4,11 +4,13 @@ import { sparkline } from "../charts.js";
 import { SkeletonRenderer } from "../overlay.js";
 
 export default async function library(app) {
-  const runs = await api.listRuns();
+  const activeUser = api.getActiveUser();
+  const runs = await api.listRuns(activeUser?.id);
+  const userLabel = activeUser ? activeUser.name + "'s" : "Your";
 
   app.append(el("div", { class: "page-head" }, [
     el("div", {}, [
-      el("h1", {}, "Your runs"),
+      el("h1", {}, userLabel + " runs"),
       el("p", {}, `${runs.length} ${runs.length === 1 ? "analysis" : "analyses"} · stored locally on this machine`),
     ]),
     el("a", { class: "btn btn-accent", "data-nav": "#/upload" }, "+ New analysis"),

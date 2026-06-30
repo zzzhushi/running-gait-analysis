@@ -5,6 +5,7 @@ import analyze from "./screens/analyze.js";
 import trends from "./screens/trends.js";
 import combine from "./screens/combine.js";
 import { el } from "./format.js";
+import * as api from "./api.js";
 
 const ROUTES = [
   [/^#\/library$/, library, []],
@@ -51,5 +52,64 @@ document.addEventListener("click", (e) => {
 
 window.addEventListener("hashchange", route);
 
+// ---------------------------------------------------------------- user header
+async function initHeader() {
+  const area = document.getElementById("user-area");
+  if (!area) return;
+
+  let users = [];
+  try { users = await api.listUsers(); } catch { return; }
+  if (!users.length) return;
+
+  let active = api.getActiveUser();
+  if (!active || !users.find((u) => u.id === active.id)) {
+    active = users[0];
+    api.setActiveUser(active);
+  }
+
+  const wrap = el("div", { class: "user-wrap" });
+  const btn = el("button", { class: "user-btn" }, [
+    el("span", { class: "user-name" }, active.name),
+    el("span", { class: "chevron" }, "▾"),
+  ]);
+  const menu = el("div", { class: "user-menu", style: "display:none" });
+
+  function buildMenu() {
+    menu.innerHTML = "";
+    users.forEach((u) => {
+      const item = el("button", {
+        class: "user-menu-item" + (u.id === active.id ? " current" : ""),
+      }, (u.id === active.id ? "✓ " : "") + u.name);
+      item.addEventListener("click", () => {
+        active = u;
+        api.setActiveUser(u);
+        btn.querySelector(".user-name").textContent = u.name;
+        menu.style.display = "none";
+        buildMenu();
+        route(); // re-render current screen with new user
+      });
+      menu.append(item);
+    });
+    menu.append(el("div", { class: "user-menu-sep" }));
+    const newItem = el("button", { class: "user-menu-item" }, "+ New user");
+    newItem.addEventListener("click", () => {
+      menu.style.display = "none";
+      location.hash = "#/upload";
+    });
+    menu.append(newItem);
+  }
+  buildMenu();
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    menu.style.display = menu.style.display === "none" ? "block" : "none";
+  });
+  document.addEventListener("click", () => { menu.style.display = "none"; });
+
+  wrap.append(btn, menu);
+  area.append(wrap);
+}
+
 if (!location.hash) location.hash = "#/library";
 else route();
+initHeader();

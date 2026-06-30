@@ -26,7 +26,7 @@ import uuid
 import webbrowser
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 from gaitlab import analyze
 from gaitlab.schema import PoseSequence
@@ -40,6 +40,7 @@ VIDEO_DIR = os.path.join(DATA_DIR, "video")
 POSE_DIR = os.path.join(DATA_DIR, "pose")
 EXTRACTOR = os.path.join(ROOT, "extractor", "extract_pose.py")
 INGEST_TIMEOUT = 600  # seconds
+SCHEMA_VERSION = 2  # bump when the DB schema changes to auto-wipe and recreate
 
 _extract_locks: dict[str, threading.Lock] = {}
 _extract_locks_mu = threading.Lock()
@@ -53,47 +54,83 @@ def _get_extract_lock(pose_path: str) -> threading.Lock:
 
 
 # --------------------------------------------------------------------------- DB
-def db() -> sqlite3.Connection:
+def _init_db() -> None:
+    """One-time DB setup at startup: check schema version, wipe if stale, create tables."""
     os.makedirs(DATA_DIR, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS runs (
-               id TEXT PRIMARY KEY,
-               created_at TEXT,
-               label TEXT,
-               view TEXT,
-               source TEXT,
-               score REAL,
-               grade TEXT,
-               cadence REAL,
-               n_findings INTEGER,
-               result_json TEXT
-           )"""
-    )
+    try:
+        row = conn.execute("SELECT v FROM _meta").fetchone()
+        current_v = row["v"] if row else 0
+    except Exception:
+        current_v = 0
+    if current_v != SCHEMA_VERSION:
+        for tbl in ("runs", "users", "_meta"):
+            conn.execute(f"DROP TABLE IF EXISTS {tbl}")
+        conn.commit()
+    conn.execute("CREATE TABLE IF NOT EXISTS _meta (v INTEGER)")
+    if not conn.execute("SELECT v FROM _meta").fetchone():
+        conn.execute("INSERT INTO _meta VALUES (?)", (SCHEMA_VERSION,))
+    else:
+        conn.execute("UPDATE _meta SET v=?", (SCHEMA_VERSION,))
+    conn.execute("""CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        created_at TEXT,
+        name TEXT NOT NULL,
+        sex TEXT,
+        height_cm REAL,
+        leg_length_cm REAL
+    )""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS runs (
+        id TEXT PRIMARY KEY,
+        created_at TEXT,
+        label TEXT,
+        view TEXT,
+        source TEXT,
+        score REAL,
+        grade TEXT,
+        cadence REAL,
+        n_findings INTEGER,
+        speed_kmh REAL,
+        user_id TEXT REFERENCES users(id),
+        result_json TEXT
+    )""")
+    conn.commit()
+    conn.close()
+
+
+def db() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     return conn
 
 
-def store_run(label: str, seq: PoseSequence, profile=None) -> dict:
+def store_run(label: str, seq: PoseSequence, profile=None, user_id: str = None) -> dict:
     result = analyze(seq, label=label, profile=profile).to_dict()
     s = result["summary"]
     rid = uuid.uuid4().hex[:12]
+    speed_kmh = (profile or {}).get("speed_kmh")
     with db() as conn:
         conn.execute(
-            "INSERT INTO runs VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO runs VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             (rid, datetime.now(timezone.utc).isoformat(timespec="seconds"),
              s["label"], s["view"], s["source"], s["overall_score"], s["grade"],
-             s["cadence"], s["n_findings"], json.dumps(result)),
+             s["cadence"], s["n_findings"], speed_kmh, user_id, json.dumps(result)),
         )
     return {"id": rid, "result": result}
 
 
-def list_runs() -> list:
+def list_runs(user_id: str = None) -> list:
+    cols = "id, created_at, label, view, source, score, grade, cadence, n_findings, speed_kmh, user_id"
     with db() as conn:
-        rows = conn.execute(
-            "SELECT id, created_at, label, view, source, score, grade, cadence, n_findings "
-            "FROM runs ORDER BY created_at DESC"
-        ).fetchall()
+        if user_id:
+            rows = conn.execute(
+                f"SELECT {cols} FROM runs WHERE user_id=? ORDER BY created_at DESC", (user_id,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                f"SELECT {cols} FROM runs ORDER BY created_at DESC"
+            ).fetchall()
     return [dict(r) for r in rows]
 
 
@@ -108,6 +145,45 @@ def delete_run(rid: str) -> None:
         conn.execute("DELETE FROM runs WHERE id=?", (rid,))
 
 
+def list_users() -> list:
+    with db() as conn:
+        rows = conn.execute("SELECT * FROM users ORDER BY created_at").fetchall()
+    return [dict(r) for r in rows]
+
+
+def create_user(name: str, sex: str = None, height_cm: float = None,
+                leg_length_cm: float = None) -> dict:
+    uid = uuid.uuid4().hex[:12]
+    created = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with db() as conn:
+        conn.execute("INSERT INTO users VALUES (?,?,?,?,?,?)",
+                     (uid, created, name, sex, height_cm, leg_length_cm))
+    return {"id": uid, "created_at": created, "name": name,
+            "sex": sex, "height_cm": height_cm, "leg_length_cm": leg_length_cm}
+
+
+def get_user(uid: str) -> dict:
+    with db() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    return dict(row) if row else None
+
+
+def update_user(uid: str, updates: dict) -> dict:
+    allowed = {"name", "sex", "height_cm", "leg_length_cm"}
+    fields = {k: v for k, v in updates.items() if k in allowed}
+    if fields:
+        sets = ", ".join(f"{k}=?" for k in fields)
+        with db() as conn:
+            conn.execute(f"UPDATE users SET {sets} WHERE id=?", [*fields.values(), uid])
+    return get_user(uid)
+
+
+def delete_user(uid: str) -> None:
+    with db() as conn:
+        conn.execute("UPDATE runs SET user_id=NULL WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+
+
 def seed_if_empty(force: bool = False) -> None:
     with db() as conn:
         count = conn.execute("SELECT COUNT(*) AS c FROM runs").fetchone()["c"]
@@ -115,8 +191,11 @@ def seed_if_empty(force: bool = False) -> None:
             conn.execute("DELETE FROM runs")
             count = 0
     if count == 0:
+        with db() as conn:
+            row = conn.execute("SELECT id FROM users WHERE name='Demo' LIMIT 1").fetchone()
+        demo_id = row["id"] if row else create_user("Demo")["id"]
         for label, seq, cal in synthetic.demo_runs():
-            store_run(label, seq, cal)
+            store_run(label, seq, cal, user_id=demo_id)
 
 
 def list_videos() -> list:
@@ -140,7 +219,7 @@ def list_videos() -> list:
 
 
 def ingest_video(video_stem: str, view: str, force: bool = False,
-                 label: str = "", profile=None) -> dict:
+                 label: str = "", profile=None, user_id: str = None) -> dict:
     from gaitlab.schema import VIEWS
     safe_stem = os.path.basename(video_stem)
     if not safe_stem or safe_stem != video_stem:
@@ -178,7 +257,7 @@ def ingest_video(video_stem: str, view: str, force: bool = False,
         pose_dict = json.load(fh)
     pose_dict["view"] = view
     seq = PoseSequence.from_pose_dict(pose_dict)
-    stored = store_run(label, seq, profile)
+    stored = store_run(label, seq, profile, user_id=user_id)
     stored["cached"] = cached
     stored["video_stem"] = safe_stem
     stored["extractor_log"] = extractor_log
@@ -236,10 +315,19 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- routes --
     def do_GET(self):
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
+        qs = parse_qs(parsed.query)
         try:
             if path == "/api/runs":
-                self._json(list_runs())
+                uid = (qs.get("user_id") or [None])[0]
+                self._json(list_runs(uid))
+            elif path == "/api/users":
+                self._json(list_users())
+            elif path.startswith("/api/users/"):
+                uid = path.rsplit("/", 1)[-1]
+                user = get_user(uid)
+                self._json(user if user else {"error": "not found"}, 200 if user else 404)
             elif path.startswith("/api/runs/"):
                 run = get_run(path.rsplit("/", 1)[-1])
                 self._json(run, 200 if run else 404)
@@ -260,13 +348,40 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:  # noqa: BLE001
             self._json({"error": str(e)}, 500)
 
+    def do_PUT(self):
+        path = urlparse(self.path).path
+        try:
+            if path.startswith("/api/users/"):
+                uid = path.rsplit("/", 1)[-1]
+                body = self._read_body()
+                user = update_user(uid, body)
+                self._json(user if user else {"error": "not found"}, 200 if user else 404)
+            else:
+                self.send_error(404)
+        except Exception as e:
+            self._json({"error": str(e)}, 500)
+
     def do_POST(self):
         path = urlparse(self.path).path
         try:
-            if path == "/api/analyze":
+            if path == "/api/users":
+                body = self._read_body()
+                name = (body.get("name") or "").strip()
+                if not name:
+                    self._json({"error": "name is required"}, 400)
+                    return
+                self._json(create_user(
+                    name=name,
+                    sex=body.get("sex") or None,
+                    height_cm=body.get("height_cm") or None,
+                    leg_length_cm=body.get("leg_length_cm") or None,
+                ), 201)
+            elif path == "/api/analyze":
                 body = self._read_body()
                 seq = PoseSequence.from_pose_dict(body["pose"])
-                self._json(store_run(body.get("label", ""), seq, body.get("profile") or body.get("calibration")))
+                self._json(store_run(body.get("label", ""), seq,
+                                     body.get("profile") or body.get("calibration"),
+                                     user_id=body.get("user_id") or None))
             elif path.startswith("/api/narrative/"):
                 run = get_run(path.rsplit("/", 1)[-1])
                 if not run:
@@ -286,6 +401,7 @@ class Handler(BaseHTTPRequestHandler):
                         force=bool(body.get("force", False)),
                         label=body.get("label", ""),
                         profile=body.get("profile") or None,
+                        user_id=body.get("user_id") or None,
                     ))
                 except ValueError as e:
                     self._json({"error": str(e)}, 400)
@@ -302,11 +418,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         path = urlparse(self.path).path
-        if path.startswith("/api/runs/"):
-            delete_run(path.rsplit("/", 1)[-1])
-            self._json({"ok": True})
-        else:
-            self.send_error(404)
+        try:
+            if path.startswith("/api/runs/"):
+                delete_run(path.rsplit("/", 1)[-1])
+                self._json({"ok": True})
+            elif path.startswith("/api/users/"):
+                delete_user(path.rsplit("/", 1)[-1])
+                self._json({"ok": True})
+            else:
+                self.send_error(404)
+        except Exception as e:
+            self._json({"error": str(e)}, 500)
 
 
 def main():
@@ -315,6 +437,7 @@ def main():
     ap.add_argument("--no-open", action="store_true", help="don't open a browser")
     args = ap.parse_args()
 
+    _init_db()
     seed_if_empty()
     url = f"http://localhost:{args.port}"
     print(f"GaitLab running at {url}  (Ctrl-C to stop)")

@@ -3,10 +3,12 @@ import { el, fmt, viewLabel } from "../format.js";
 import { lineChart } from "../charts.js";
 
 export default async function trends(app) {
-  const runs = await api.listRuns();
+  const activeUser = api.getActiveUser();
+  const runs = await api.listRuns(activeUser?.id);
+  const userLabel = activeUser ? activeUser.name + "'s" : "Your";
   app.append(el("div", { class: "crumb" }, [el("a", { "data-nav": "#/library" }, "← Library")]));
   app.append(el("div", { class: "page-head" }, [el("div", {}, [
-    el("h1", {}, "Trends"),
+    el("h1", {}, userLabel + " trends"),
     el("p", {}, "How your metrics move across sessions."),
   ])]));
 

@@ -5,7 +5,8 @@ async function j(res) {
   return res.json();
 }
 
-export const listRuns = () => fetch("/api/runs").then(j);
+export const listRuns = (userId) =>
+  fetch("/api/runs" + (userId ? "?user_id=" + userId : "")).then(j);
 export const getRun = (id) => fetch("/api/runs/" + id).then((r) => (r.ok ? r.json() : null));
 export const analyzePose = (pose, label, profile) =>
   fetch("/api/analyze", {
@@ -16,6 +17,29 @@ export const analyzePose = (pose, label, profile) =>
 export const deleteRun = (id) => fetch("/api/runs/" + id, { method: "DELETE" }).then(j);
 export const reseed = () => fetch("/api/seed", { method: "POST" }).then(j);
 export const narrative = (id) => fetch("/api/narrative/" + id, { method: "POST" }).then(j);
+export const listUsers = () => fetch("/api/users").then(j);
+export const createUser = (data) =>
+  fetch("/api/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  }).then(j);
+export const updateUser = (id, data) =>
+  fetch("/api/users/" + id, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  }).then(j);
+export const deleteUser = (id) =>
+  fetch("/api/users/" + id, { method: "DELETE" }).then(j);
+
+const ACTIVE_USER_KEY = "gaitlab_active_user";
+export const getActiveUser = () => {
+  try { return JSON.parse(localStorage.getItem(ACTIVE_USER_KEY)); } catch { return null; }
+};
+export const setActiveUser = (user) =>
+  localStorage.setItem(ACTIVE_USER_KEY, user ? JSON.stringify(user) : "null");
+
 export const listVideos = () => fetch("/api/videos").then(j);
 export const ingest = (video, view, opts = {}) =>
   fetch("/api/ingest", {
