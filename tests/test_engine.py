@@ -5,9 +5,9 @@ import math
 import unittest
 
 from gaitlab import analyze, synthetic
-from gaitlab import geometry as geo
-from gaitlab.events import detect_events
-from gaitlab.metrics import compute as compute_metrics
+from gaitlab.core import geometry as geo
+from gaitlab.core.events import detect_events
+from gaitlab.metrics.compute import compute as compute_metrics
 
 
 class TestGeometry(unittest.TestCase):
@@ -135,13 +135,13 @@ class TestM5Metrics(unittest.TestCase):
 
 class TestM6(unittest.TestCase):
     def test_personalized_cadence_higher_for_short_runner(self):
-        from gaitlab.targets import personalize
+        from gaitlab.metrics.defs import personalize
         short = personalize({"height_cm": 155})["cadence"].good
         tall = personalize({"height_cm": 188})["cadence"].good
         self.assertGreater(sum(short) / 2, sum(tall) / 2)
 
     def test_female_pelvic_drop_band_wider(self):
-        from gaitlab.targets import personalize, TARGETS
+        from gaitlab.metrics.defs import personalize, METRIC_DEFS as TARGETS
         self.assertGreater(personalize({"sex": "female"})["pelvic_drop"].good[1],
                            TARGETS["pelvic_drop"].good[1])
 
@@ -213,7 +213,7 @@ class TestHeadMetric(unittest.TestCase):
         self.assertIn("head_lateral_sway", keys_r)
 
     def test_no_head_metric_without_keypoint(self):
-        from gaitlab.schema import KEYPOINTS, PoseSequence
+        from gaitlab.core.schema import KEYPOINTS, PoseSequence
         seq = synthetic.generate("side-left", fps=60, duration=4, cadence=176, seed=55)
         # Strip "head" from keypoint_names and frames to simulate an old pose JSON
         idx = seq.keypoint_names.index("head")

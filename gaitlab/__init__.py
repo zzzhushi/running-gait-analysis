@@ -11,7 +11,7 @@ MediaPipe, and the synthetic generator all produce the same PoseSequence, so the
 engine never needs to know which one fed it.
 """
 
-from .schema import PoseSequence, KEYPOINTS, VIEWS, SCHEMA_VERSION
+from .core.schema import PoseSequence, KEYPOINTS, VIEWS, SCHEMA_VERSION
 from .analyze import analyze, AnalysisResult
 
 __all__ = [

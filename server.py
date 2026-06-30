@@ -29,7 +29,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 from gaitlab import analyze
-from gaitlab.schema import PoseSequence
+from gaitlab.core.schema import PoseSequence
 from gaitlab import synthetic
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -226,7 +226,7 @@ def list_videos() -> list:
 
 def ingest_video(video_stem: str, view: str, force: bool = False,
                  label: str = "", profile=None, user_id: str = None) -> dict:
-    from gaitlab.schema import VIEWS
+    from gaitlab.core.schema import VIEWS
     safe_stem = os.path.basename(video_stem)
     if not safe_stem or safe_stem != video_stem:
         raise ValueError(f"invalid video stem: {video_stem!r}")
@@ -393,7 +393,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not run:
                     self._json({"error": "run not found"}, 404)
                 else:
-                    from gaitlab import narrative
+                    from gaitlab.coaching import narrative
                     self._json(narrative.generate(run))
             elif path == "/api/seed":
                 seed_if_empty(force=True)

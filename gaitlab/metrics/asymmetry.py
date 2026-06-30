@@ -4,23 +4,24 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-from .targets import TARGETS
+from .defs import METRIC_DEFS
+from .keys import MetricKey
 
-# key, label, unit, direction ("higher_better" | "higher_worse" | "neutral")
+# (key, label, unit, direction)  —  direction: "higher_better" | "higher_worse" | "neutral"
 ASYM_METRICS = [
-    ("knee_flexion_midstance", "Knee flexion (midstance)", "deg", "higher_better"),
-    ("knee_flexion_contact", "Knee flexion (contact)", "deg", "neutral"),
-    ("overstride", "Overstride", "%leg", "higher_worse"),
-    ("foot_strike_angle", "Foot-strike angle", "deg", "neutral"),
-    ("contact_time_ms", "Ground contact time", "ms", "higher_worse"),
-    ("hip_extension", "Hip extension", "deg", "higher_better"),
-    ("knee_drive", "Knee drive", "deg", "higher_better"),
-    ("arm_swing", "Arm swing", "%leg", "neutral"),
-    ("heel_recovery", "Heel recovery", "%leg", "neutral"),
-    ("stride_length", "Stride length", "m", "higher_better"),
-    ("step_length", "Step length", "m", "higher_better"),
-    ("pelvic_drop", "Pelvic drop", "deg", "higher_worse"),
-    ("pronation", "Pronation (est.)", "deg", "higher_worse"),
+    (MetricKey.KNEE_FLEXION_MIDSTANCE, "Knee flexion (midstance)", "deg", "higher_better"),
+    (MetricKey.KNEE_FLEXION_CONTACT,   "Knee flexion (contact)",   "deg", "neutral"),
+    (MetricKey.OVERSTRIDE,             "Overstride",               "%leg", "higher_worse"),
+    (MetricKey.FOOT_STRIKE_ANGLE,      "Foot-strike angle",        "deg", "neutral"),
+    (MetricKey.CONTACT_TIME_MS,        "Ground contact time",      "ms",  "higher_worse"),
+    (MetricKey.HIP_EXTENSION,          "Hip extension",            "deg", "higher_better"),
+    (MetricKey.KNEE_DRIVE,             "Knee drive",               "deg", "higher_better"),
+    (MetricKey.ARM_SWING,              "Arm swing",                "%leg", "neutral"),
+    (MetricKey.HEEL_RECOVERY,          "Heel recovery",            "%leg", "neutral"),
+    (MetricKey.STRIDE_LENGTH,          "Stride length",            "m",   "higher_better"),
+    (MetricKey.STEP_LENGTH,            "Step length",              "m",   "higher_better"),
+    (MetricKey.PELVIC_DROP,            "Pelvic drop",              "deg", "higher_worse"),
+    (MetricKey.PRONATION,              "Pronation (est.)",         "deg", "higher_worse"),
 ]
 
 
@@ -42,8 +43,8 @@ def _worse_side(l: float, r: float, direction: str) -> str:
 
 
 def compute(per_side: Dict[str, Dict[str, float]], targets: Optional[Dict] = None) -> List[dict]:
-    _targets = targets or TARGETS
-    t = _targets["asymmetry"]
+    _targets = targets or METRIC_DEFS
+    t = _targets[MetricKey.ASYMMETRY]
     out: List[dict] = []
     if not per_side or "l" not in per_side or "r" not in per_side:
         return out

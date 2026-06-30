@@ -17,9 +17,9 @@ import math
 from statistics import median
 from typing import Dict, List, Optional
 
-from . import geometry as geo
-from .events import GaitEvents, detect_events
-from .schema import PoseSequence
+from ..core import geometry as geo
+from ..core.events import GaitEvents, detect_events
+from ..core.schema import PoseSequence
 
 
 def _median(xs: List[float]) -> float:

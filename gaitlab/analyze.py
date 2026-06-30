@@ -6,14 +6,14 @@ import math
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from . import asymmetry as asym_mod
-from . import exercises as exercises_mod
-from . import feedback as fb
-from . import metrics as metrics_mod
-from . import quality as quality_mod
-from .events import detect_events
-from .schema import PoseSequence
-from .targets import TARGETS, personalize
+from .coaching import exercises as exercises_mod
+from .coaching import feedback as fb
+from .core.events import detect_events
+from .core.schema import PoseSequence
+from .metrics import asymmetry as asym_mod
+from .metrics import compute as metrics_mod
+from .metrics import quality as quality_mod
+from .metrics.defs import METRIC_DEFS, personalize
 
 SIDE_CARDS = [
     ("cadence", None),
@@ -23,7 +23,7 @@ SIDE_CARDS = [
     ("hip_extension", "hip_extension"),
     ("knee_drive", "knee_drive"),
     ("vertical_oscillation", None),
-    ("contact_time", "contact_time_ms"),
+    ("contact_time", "contact_time_ms"), #sztodo: why not same? 
     ("duty_factor", "duty_factor"),
     ("elbow_angle", "elbow_angle"),
     ("arm_swing", None),
@@ -133,6 +133,8 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
     asym = asym_mod.compute(per_side, targets)
     items, score, grade = fb.build(values, per_side, asym, seq.view, m["frames_of_interest"], targets)
 
+    # _card() still uses t.label / t.unit / t.status() / t.score() / t.good / t.warn / t.note
+    # MetricDef has all these, so METRIC_DEFS and personalized targets both work here.
     cards_spec = SIDE_CARDS if seq.is_side() else REAR_CARDS
     cards = [_card(k, values, psk, per_side, targets) for (k, psk) in cards_spec]
 
