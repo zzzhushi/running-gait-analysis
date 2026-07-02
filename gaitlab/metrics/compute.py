@@ -96,6 +96,19 @@ def _peak_hip_extension(seq: PoseSequence, ev: GaitEvents, side: str, facing: in
     return _median(peaks)
 
 
+def _hip_adduction(seq: PoseSequence, ev: GaitEvents, side: str) -> float:
+    """Rear-view thigh adduction at midstance (deg, +ve = knee collapsing toward midline)."""
+    mids = ev.midstance(side) or list(range(0, seq.n, max(1, seq.n // 8)))
+    vals: List[float] = []
+    for m in mids:
+        hip = seq.xy(m, f"{side}_hip")
+        knee = seq.xy(m, f"{side}_knee")
+        mid_x = seq.xy(m, "mid_hip")[0]
+        to_mid = 1.0 if mid_x >= hip[0] else -1.0
+        vals.append(geo.signed_lean(hip, knee, to_mid))
+    return _median(vals)
+
+
 def _pronation(seq: PoseSequence, ev: GaitEvents, side: str) -> float:
     """Rear-view rear-foot roll-in estimate at contact (deg, +ve = pronation). Low confidence."""
     frames = ev.strikes[side] or ev.midstance(side) or list(range(0, seq.n, max(1, seq.n // 8)))
@@ -298,11 +311,13 @@ def _compute_rear(seq, ev: GaitEvents, leg: float, cal: Dict, res: Dict) -> None
         mids = ev.midstance(side)
         drops = [abs(tilt[m]) for m in mids] if mids else [abs(t) for t in tilt]
         per_side[side]["pelvic_drop"] = _median(drops)
+        per_side[side]["hip_adduction"] = _hip_adduction(seq, ev, side)
         per_side[side]["pronation"] = _pronation(seq, ev, side)
         if cal["speed_mps"] and side in ev.stride_time:
             per_side[side]["stride_length"] = cal["speed_mps"] * ev.stride_time[side]
     res["per_side"] = per_side
     res["values"]["pelvic_drop"] = _worst_high(per_side["l"]["pelvic_drop"], per_side["r"]["pelvic_drop"])
+    res["values"]["hip_adduction"] = _worst_high(per_side["l"]["hip_adduction"], per_side["r"]["hip_adduction"])
     res["values"]["pronation"] = _worst_high(abs_or_nan(per_side["l"]["pronation"]), abs_or_nan(per_side["r"]["pronation"]))
 
     seps = []

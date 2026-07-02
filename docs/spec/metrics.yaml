@@ -155,6 +155,19 @@ metrics:
     personalized: true
     requirements: [R3.3, R12.2]
 
+  hip_adduction:
+    tier: C
+    unit: deg
+    good: [null, 8]
+    warn: [null, 12]
+    confidence: moderate
+    views: [rear]
+    scored: true
+    per_side: true
+    asym_direction: higher_worse
+    formula: "signed_lean(hip, knee, facing=toward_midline) at midstance frames (median); worst (max) side"
+    requirements: [R3.3]
+
   pronation:
     tier: C
     unit: deg
@@ -389,15 +402,49 @@ composites:
     requirements: [R14.4]
 
   lateral_chain:
-    status: pending          # needs knee-valgus, which is rejected for 2-D rear (§7.3)
+    status: implemented      # unblocked by hip_adduction (replaces the rejected knee_valgus proxy)
     view: rear
     all_of:
       - "pelvic_drop > 6"
-      - "knee_valgus flagged (same side)"
+      - "hip_adduction > 8"
     severity: high
-    supersedes: [pelvic_drop]
-    cue: "Clamshells, hip hikes; strengthen glute med/max."
+    supersedes: [pelvic_drop, hip_adduction]
+    cue: "Run 'level hips, knees tracking straight'; clamshells and hip hikes strengthen glute med/max."
     requirements: [R14.5]
+
+  underpowered_pushoff:
+    status: implemented
+    view: side
+    all_of:
+      - "hip_extension < 10"
+      - "knee_drive < 20"
+      - "cadence > good.high"     # short, quick steps standing in for push-off
+    severity: med
+    supersedes: [hip_extension, knee_drive]
+    cue: "Push the ground back behind you and drive the knee forward; let each stride open up a touch."
+    requirements: [R14.6]
+
+  upper_body_rotation:
+    status: implemented
+    view: rear
+    all_of:
+      - "arm_crossover"
+      - "lateral_trunk_sway > 8"
+    severity: med
+    supersedes: [lateral_trunk_sway, arm_crossover]
+    cue: "Swing the arms front-to-back like pistons; that alone often settles the trunk down."
+    requirements: [R14.7]
+
+  one_sided_deficit:
+    status: implemented
+    view: "side, rear"
+    all_of:
+      - "same worse_side across >=2 flagged per-side asymmetry metrics"
+      - "not tied with the other side's count"
+    severity: high
+    supersedes: "the individual asymmetry findings it absorbs"
+    cue: "Prioritize strength and mobility work on the consistently-worse side."
+    requirements: [R14.8]
 
 # =============================================================================
 # Asymmetry (tech_requirements.md §13; gaitlab/metrics/asymmetry.py)
@@ -421,6 +468,7 @@ asymmetry:
     stride_length: higher_better
     step_length: higher_better
     pelvic_drop: higher_worse
+    hip_adduction: higher_worse
     pronation: higher_worse
 
 # =============================================================================
@@ -448,7 +496,7 @@ scoring:
   # Listed here for human reference / doc generation:
   # Excludes the `asymmetry` meta-metric, which scores via the penalty path, not the base mean.
   scored_keys_side: [cadence, trunk_lean, knee_flexion_midstance, overstride, vertical_oscillation, contact_time, duty_factor, hip_extension, knee_drive, elbow_angle]
-  scored_keys_rear: [cadence, pelvic_drop, step_width, lateral_trunk_sway]
+  scored_keys_rear: [cadence, pelvic_drop, hip_adduction, step_width, lateral_trunk_sway]
   notes: "pronation excluded from the rear scored set (R17.1)."
 
 # =============================================================================
@@ -509,8 +557,17 @@ requirements:
     description: "Heavy heel-strike + overstride composite."
     status: implemented
   R14.5:
-    description: "Lateral-chain composite (pelvic drop + knee valgus) — deferred, needs valgus."
-    status: pending
+    description: "Lateral-chain composite (pelvic drop + hip adduction, same-side collapse)."
+    status: implemented
+  R14.6:
+    description: "Under-powered push-off / shuffle composite (low hip extension + low knee drive + high cadence)."
+    status: implemented
+  R14.7:
+    description: "Excess upper-body rotation composite (arm crossover + lateral trunk sway)."
+    status: implemented
+  R14.8:
+    description: "Consistent one-sided deficit (meta-asymmetry): same side worse across >=2 per-side metrics."
+    status: implemented
   R17.0:
     description: "Overall score = mean(scored) - asymmetry penalty; grade cutoffs A/B/C/D/E."
     status: implemented

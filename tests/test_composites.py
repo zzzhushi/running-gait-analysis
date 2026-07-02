@@ -68,8 +68,57 @@ def test_composite_ranks_above_components(make_values):
 
 
 @pytest.mark.covers("R14.5")
-@pytest.mark.xfail(reason="lateral-chain composite deferred: needs knee valgus, rejected for 2-D rear (§7.3)")
-def test_lateral_chain_composite_pending(make_values):
-    values = make_values("rear", pelvic_drop=12)
+def test_lateral_chain_composite_fires_and_supersedes(make_values):
+    values = make_values("rear", pelvic_drop=12, hip_adduction=10)
     items, _s, _g = fb.build(values, {}, [], "rear", {})
     assert "lateral_chain" in _metrics(items)
+    assert {"pelvic_drop", "hip_adduction"}.isdisjoint(_metrics(items))
+
+
+@pytest.mark.covers("R14.6")
+def test_underpowered_pushoff_composite_fires_and_supersedes(make_values):
+    values = make_values("side-left", hip_extension=4, knee_drive=8, cadence=198)
+    items, _s, _g = fb.build(values, {}, [], "side-left", {})
+    assert "underpowered_pushoff" in _metrics(items)
+    assert {"hip_extension", "knee_drive"}.isdisjoint(_metrics(items))
+
+
+@pytest.mark.covers("R14.7")
+def test_upper_body_rotation_composite_fires_and_supersedes(make_values):
+    values = make_values("rear", arm_crossover=True, lateral_trunk_sway=14)
+    items, _s, _g = fb.build(values, {}, [], "rear", {})
+    assert "upper_body_rotation" in _metrics(items)
+    assert {"lateral_trunk_sway", "arm_crossover"}.isdisjoint(_metrics(items))
+
+
+@pytest.mark.covers("R14.8")
+def test_one_sided_deficit_fires_when_same_side_worse_across_metrics(make_values):
+    values = make_values("side-left")
+    asym = [
+        {"key": "hip_extension", "label": "Hip extension (peak)", "unit": "deg",
+         "left": 8.0, "right": 18.0, "diff_pct": 76.9, "status": "bad", "worse_side": "left"},
+        {"key": "knee_flexion_midstance", "label": "Knee flexion (midstance)", "unit": "deg",
+         "left": 30.0, "right": 44.0, "diff_pct": 37.8, "status": "warn", "worse_side": "left"},
+        {"key": "overstride", "label": "Overstride", "unit": "%leg",
+         "left": 5.0, "right": 6.0, "diff_pct": 18.2, "status": "good", "worse_side": "left"},
+    ]
+    items, _s, _g = fb.build(values, {}, asym, "side-left", {})
+    metas = [i for i in items if i["metric"] == "one_sided_deficit"]
+    assert len(metas) == 1
+    assert "left" in metas[0]["title"]
+    # the two absorbed per-metric imbalance findings are not duplicated separately
+    assert not any(i["title"].startswith("Left/right imbalance: Hip extension") for i in items)
+    assert not any(i["title"].startswith("Left/right imbalance: Knee flexion") for i in items)
+
+
+def test_one_sided_deficit_does_not_fire_on_single_metric_or_tie(make_values):
+    values = make_values("side-left")
+    single = [{"key": "hip_extension", "label": "Hip extension (peak)", "unit": "deg",
+               "left": 8.0, "right": 18.0, "diff_pct": 76.9, "status": "bad", "worse_side": "left"}]
+    items, _s, _g = fb.build(values, {}, single, "side-left", {})
+    assert "one_sided_deficit" not in _metrics(items)
+
+    tied = single + [{"key": "knee_drive", "label": "Knee drive (peak)", "unit": "deg",
+                       "left": 25.0, "right": 12.0, "diff_pct": 70.3, "status": "bad", "worse_side": "right"}]
+    items, _s, _g = fb.build(values, {}, tied, "side-left", {})
+    assert "one_sided_deficit" not in _metrics(items)

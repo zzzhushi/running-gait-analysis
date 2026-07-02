@@ -19,6 +19,14 @@ def test_pelvic_drop_confidence_is_value_dependent():
 
 
 @pytest.mark.covers("R3.3")
+def test_hip_adduction_confidence_is_value_dependent():
+    d = METRIC_DEFS[MetricKey.HIP_ADDUCTION]
+    assert value_confidence(d, 3.0) == "low"        # near the ±4 deg noise floor
+    assert value_confidence(d, 6.0) == "moderate"
+    assert value_confidence(d, 10.0) == "high"      # clears the floor
+
+
+@pytest.mark.covers("R3.3")
 def test_pronation_stays_low_regardless():
     d = METRIC_DEFS[MetricKey.PRONATION]
     assert value_confidence(d, 2.0) == "low"

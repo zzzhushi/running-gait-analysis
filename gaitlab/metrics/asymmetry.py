@@ -21,6 +21,7 @@ ASYM_METRICS = [
     (MetricKey.STRIDE_LENGTH,          "Stride length",            "m",   "higher_better"),
     (MetricKey.STEP_LENGTH,            "Step length",              "m",   "higher_better"),
     (MetricKey.PELVIC_DROP,            "Pelvic drop",              "deg", "higher_worse"),
+    (MetricKey.HIP_ADDUCTION,          "Hip adduction (peak)",     "deg", "higher_worse"),
     (MetricKey.PRONATION,              "Pronation (estimate)",     "deg", "higher_worse"),
 ]
 

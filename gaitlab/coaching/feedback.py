@@ -43,63 +43,130 @@ def _composites(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]
     """Fired composite patterns (tech_requirements.md §14) as (finding, superseded_keys).
 
     A composite is a conjunction of thresholded metrics; it outranks (supersedes) its
-    component single-metric findings. Side-view only for the implemented set.
+    component single-metric findings.
     """
-    if view not in ("side-left", "side-right"):
-        return []
     v = lambda k: _val(values, k)
-    cad, over, he = v(MK.CADENCE), v(MK.OVERSTRIDE), v(MK.HIP_EXTENSION)
-    kfm, tl, vo, fs = v(MK.KNEE_FLEXION_MIDSTANCE), v(MK.TRUNK_LEAN), v(MK.VERTICAL_OSCILLATION), v(MK.FOOT_STRIKE_ANGLE)
-    t_cad = targets.get(MK.CADENCE)
-    cad_lo = t_cad.good[0] if t_cad and t_cad.good[0] is not None else 170
 
     def ok(*xs):
         return all(x == x for x in xs)  # all non-NaN
 
     out: List[Tuple[dict, set]] = []
 
-    # R14.1 — overstriding / reaching
-    if ok(over, he, cad) and over > 8 and he < 10 and cad < cad_lo:
-        out.append((_mk(
-            "high", "Overstriding — quicken your cadence",
-            f"You're reaching out in front: the foot lands ~{over:.0f}% of a leg ahead of your hips, "
-            f"hip extension is limited (~{he:.0f}°), and cadence is low (~{cad:.0f} spm). Together these "
-            "brake you on every step and raise impact loading.",
-            "Lift cadence ~5-10% and let the foot land under your hips.",
-            "High-cadence strides (6×20s) + couch stretch and glute bridges for hip extension.",
-            "overstriding"), {"overstride", "hip_extension", "cadence"}))
+    if view in ("side-left", "side-right"):
+        cad, over, he = v(MK.CADENCE), v(MK.OVERSTRIDE), v(MK.HIP_EXTENSION)
+        kfm, tl, vo, fs = v(MK.KNEE_FLEXION_MIDSTANCE), v(MK.TRUNK_LEAN), v(MK.VERTICAL_OSCILLATION), v(MK.FOOT_STRIKE_ANGLE)
+        kd = v(MK.KNEE_DRIVE)
+        t_cad = targets.get(MK.CADENCE)
+        cad_lo = t_cad.good[0] if t_cad and t_cad.good[0] is not None else 170
+        cad_hi = t_cad.good[1] if t_cad and t_cad.good[1] is not None else 190
 
-    # R14.2 — sinking at mid-stance
-    if ok(kfm, tl) and kfm > 50 and tl > 16:
-        out.append((_mk(
-            "high", "Sinking into mid-stance",
-            f"Your knee collapses (~{kfm:.0f}° flexion) while the trunk pitches forward (~{tl:.0f}°) at "
-            "mid-stance — a sign the stance leg and core aren't holding you tall.",
-            "Run tall; don't sink into the stance leg.",
-            "Glute bridges and anti-extension core work (dead bugs, planks).",
-            "sinking_midstance"), {"knee_flexion_midstance", "trunk_lean"}))
+        # R14.1 — overstriding / reaching
+        if ok(over, he, cad) and over > 8 and he < 10 and cad < cad_lo:
+            out.append((_mk(
+                "high", "Overstriding — quicken your cadence",
+                f"You're reaching out in front: the foot lands ~{over:.0f}% of a leg ahead of your hips, "
+                f"hip extension is limited (~{he:.0f}°), and cadence is low (~{cad:.0f} spm). Together these "
+                "brake you on every step and raise impact loading.",
+                "Lift cadence ~5-10% and let the foot land under your hips.",
+                "High-cadence strides (6×20s) + couch stretch and glute bridges for hip extension.",
+                "overstriding"), {"overstride", "hip_extension", "cadence"}))
 
-    # R14.3 — bouncing
-    if ok(vo, cad) and vo > 18 and cad < cad_lo:
-        out.append((_mk(
-            "high", "Bouncing — drive forward, not up",
-            f"Your hips travel ~{vo:.0f}% of a leg vertically each stride at a low cadence (~{cad:.0f} spm), "
-            "so drive is going up instead of forward.",
-            "Lift cadence and keep the crown of your head on a level line.",
-            "Run-tall-past-a-rail (4×20s) and pogo hops (3×10).",
-            "bouncing"), {"vertical_oscillation", "cadence"}))
+        # R14.2 — sinking at mid-stance
+        if ok(kfm, tl) and kfm > 50 and tl > 16:
+            out.append((_mk(
+                "high", "Sinking into mid-stance",
+                f"Your knee collapses (~{kfm:.0f}° flexion) while the trunk pitches forward (~{tl:.0f}°) at "
+                "mid-stance — a sign the stance leg and core aren't holding you tall.",
+                "Run tall; don't sink into the stance leg.",
+                "Glute bridges and anti-extension core work (dead bugs, planks).",
+                "sinking_midstance"), {"knee_flexion_midstance", "trunk_lean"}))
 
-    # R14.4 — heavy heel-strike + overstride
-    if ok(fs, over) and fs > 12 and over > 8:
-        out.append((_mk(
-            "med", "Heavy heel-strike with overstriding",
-            "You land clearly on the heel with the foot well ahead of you. Heel contact itself isn't bad, "
-            "but combined with overstriding it amplifies braking and impact.",
-            "Fixing the overstride (land under your hips) usually softens the heel-strike on its own.",
-            "High-cadence strides focusing on landing beneath you.",
-            "heavy_heelstrike"), {"foot_strike_angle"}))
+        # R14.3 — bouncing
+        if ok(vo, cad) and vo > 18 and cad < cad_lo:
+            out.append((_mk(
+                "high", "Bouncing — drive forward, not up",
+                f"Your hips travel ~{vo:.0f}% of a leg vertically each stride at a low cadence (~{cad:.0f} spm), "
+                "so drive is going up instead of forward.",
+                "Lift cadence and keep the crown of your head on a level line.",
+                "Run-tall-past-a-rail (4×20s) and pogo hops (3×10).",
+                "bouncing"), {"vertical_oscillation", "cadence"}))
+
+        # R14.4 — heavy heel-strike + overstride
+        if ok(fs, over) and fs > 12 and over > 8:
+            out.append((_mk(
+                "med", "Heavy heel-strike with overstriding",
+                "You land clearly on the heel with the foot well ahead of you. Heel contact itself isn't bad, "
+                "but combined with overstriding it amplifies braking and impact.",
+                "Fixing the overstride (land under your hips) usually softens the heel-strike on its own.",
+                "High-cadence strides focusing on landing beneath you.",
+                "heavy_heelstrike"), {"foot_strike_angle"}))
+
+        # R14.6 — under-powered push-off / shuffle
+        if ok(he, kd, cad) and he < 10 and kd < 20 and cad > cad_hi:
+            out.append((_mk(
+                "med", "Shuffling — drive from the hip, not just the feet",
+                f"Hip extension (~{he:.0f}°) and knee drive (~{kd:.0f}°) are both limited, and cadence is "
+                f"high (~{cad:.0f} spm) — short, quick steps standing in for a powerful push-off.",
+                "Push the ground back behind you and drive the knee forward; let each stride open up a touch.",
+                "Hip-flexor mobility + glute activation (bridges) and A-skips for an active knee drive.",
+                "underpowered_pushoff"), {"hip_extension", "knee_drive"}))
+
+    else:
+        pd, ha = v(MK.PELVIC_DROP), v(MK.HIP_ADDUCTION)
+        crossover, sway = bool(values.get(MK.ARM_CROSSOVER)), v(MK.LATERAL_TRUNK_SWAY)
+
+        # R14.5 — lateral chain: pelvis drops AND the hip/knee collapses inward together
+        if ok(pd, ha) and pd > 6 and ha > 8:
+            out.append((_mk(
+                "high", "Lateral hip collapse (weak stabilizers)",
+                f"Your pelvis drops (~{pd:.0f}°) while the hip/knee collapses inward toward the midline "
+                f"(~{ha:.0f}°) at the same time — together these point to weak hip abductors letting the "
+                "whole lateral chain give way, not just one piece of it.",
+                "Run 'level hips, knees tracking straight' — resist both the drop and the inward collapse.",
+                "Hip-abductor strength: side planks, banded hip-hikes/clamshells, single-leg squats, 3x/week.",
+                "lateral_chain"), {"pelvic_drop", "hip_adduction"}))
+
+        # R14.7 — excess upper-body rotation
+        if crossover and sway == sway and sway > 8:
+            out.append((_mk(
+                "med", "Upper body rotating and swaying together",
+                f"Your arms cross the midline while the trunk sways ~{sway:.0f}% of a leg-length laterally "
+                "each stride — the cross-body arm swing is likely feeding the trunk sway, not just riding along with it.",
+                "Swing the arms front-to-back like pistons; that alone often settles the trunk down.",
+                "Mirror arm-swing drill (piston arms) + Pallof press for anti-rotation core control.",
+                "upper_body_rotation"), {"lateral_trunk_sway", "arm_crossover"}))
 
     return out
+
+
+def _one_sided_deficit(asym: List[dict]) -> Tuple[Optional[dict], set]:
+    """R14.8 — consistent one-sided deficit (meta-asymmetry): the same side comes out
+    worse across several per-side metrics. Pure self-comparison (no absolute cutoffs
+    needed), which is the most defensible signal available given how little validated
+    injury threshold evidence exists. Supersedes the individual asymmetry findings it
+    absorbs so the same side isn't called out repeatedly.
+    """
+    flagged = [a for a in asym if a["status"] != "good"]
+    by_side: Dict[str, List[dict]] = {"left": [], "right": []}
+    for a in flagged:
+        by_side[a["worse_side"]].append(a)
+    left_n, right_n = len(by_side["left"]), len(by_side["right"])
+    if left_n < 2 and right_n < 2:
+        return None, set()
+    if left_n == right_n:
+        return None, set()  # ambiguous — don't guess which side
+    side, entries = ("left", by_side["left"]) if left_n > right_n else ("right", by_side["right"])
+    labels = ", ".join(a["label"] for a in entries)
+    finding = _mk(
+        "high", f"Your {side} side is consistently doing less",
+        f"Across {len(entries)} measures ({labels}), your {side} side comes out worse every time. "
+        "That consistency is a more useful signal than any single metric alone — it points to a real, "
+        "one-sided pattern rather than noise.",
+        f"Prioritize strength and mobility work on the {side} side specifically.",
+        f"Single-leg strength on the {side} side (squats, calf raises, hip work); re-film in ~4 weeks to recheck.",
+        "one_sided_deficit",
+    )
+    return finding, {a["key"] for a in entries}
 
 
 def _finding(targets: Dict, key: MetricKey, value: float, direction: Optional[str] = None) -> Optional[dict]:
@@ -261,9 +328,15 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
         items[:] = [i for i in items if i.get("metric") not in superseded]
         items.append(finding)
 
+    # --- one-sided deficit (meta-asymmetry): outranks the individual asymmetry
+    # findings it absorbs, same supersession pattern as the composites above ---
+    meta_finding, meta_keys = _one_sided_deficit(asym)
+    if meta_finding:
+        items.append(meta_finding)
+
     # --- asymmetry findings ---
     for a in asym[:3]:
-        if a["status"] == "good":
+        if a["status"] == "good" or a["key"] in meta_keys:
             continue
         sev = "high" if a["status"] == "bad" else "med"
         add(sev, f"Left/right imbalance: {a['label']}",

@@ -96,6 +96,11 @@ def value_confidence(defn: "MetricDef", value: float) -> str:
         if a < NOISE_FLOOR_DEG:
             return "low"
         return "moderate" if a <= 6.0 else "high"
+    if defn.key == MetricKey.HIP_ADDUCTION:
+        a = abs(value)
+        if a < NOISE_FLOOR_DEG:
+            return "low"
+        return "moderate" if a <= 8.0 else "high"
     if defn.key == MetricKey.PRONATION:
         return "low"
     return defn.confidence
@@ -520,6 +525,49 @@ METRIC_DEFS: Dict[MetricKey, MetricDef] = {
              "progression": "Add load / standing on a step."},
             {"name": "Single-leg squats",
              "why": "Controls hip + knee under bodyweight on one leg.",
+             "dose": "3×8/side",
+             "progression": "Lower box / add weight."},
+        ],
+    ),
+
+    MetricKey.HIP_ADDUCTION: MetricDef(
+        key=MetricKey.HIP_ADDUCTION,
+        label="Hip adduction (peak)",
+        unit="deg",
+        good=(None, 8),
+        warn=(None, 12),
+        note=(
+            "How far the thigh collapses toward the midline at midstance. Excess adduction is "
+            "the frontal-plane pattern most linked to running injury in female runners."
+        ),
+        confidence="moderate",  # value-dependent per R3.3; < ~4 deg is near noise floor
+        views=("rear",),
+        scored=True,
+        per_side=True,
+        asym_direction="higher_worse",
+        finding_text={
+            "high": {
+                "title": "Hip/knee collapsing inward",
+                "detail": (
+                    "Your thigh drifts inward about {value:.0f} deg toward the midline at midstance. "
+                    "This collapse is the frontal-plane pattern most consistently linked to injury risk "
+                    "in female runners, and often traces to the hip abductors."
+                ),
+                "cue": "Run 'knees tracking straight' — imagine your knee aiming over your second toe.",
+                "drill": "Hip-abductor strength: side planks, banded hip-hikes/clamshells, single-leg squats, 3×/week.",
+            },
+        },
+        exercises=[
+            {"name": "Side planks",
+             "why": "Builds lateral hip/core endurance to resist the thigh collapsing in.",
+             "dose": "3×30s/side",
+             "progression": "Add top-leg raises."},
+            {"name": "Banded clamshells / hip-hikes",
+             "why": "Directly trains the hip abductors that control adduction.",
+             "dose": "3×12/side",
+             "progression": "Add load / standing on a step."},
+            {"name": "Single-leg squats",
+             "why": "Controls hip + knee alignment under bodyweight on one leg.",
              "dose": "3×8/side",
              "progression": "Lower box / add weight."},
         ],

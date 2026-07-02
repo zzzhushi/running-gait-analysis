@@ -25,6 +25,7 @@ METRIC_KEYPOINTS = {
     "vertical_oscillation": ("mid_hip",),
     "elbow_angle": ("l_shoulder", "l_elbow", "l_wrist", "r_shoulder", "r_elbow", "r_wrist"),
     "pelvic_drop": ("l_hip", "r_hip"),
+    "hip_adduction": ("l_hip", "l_knee", "r_hip", "r_knee"),
     "pronation": ("l_heel", "l_ankle", "r_heel", "r_ankle"),
     "step_width": ("l_ankle", "r_ankle", "mid_hip"),
     "lateral_trunk_sway": ("neck", "mid_hip"),
@@ -70,6 +71,7 @@ SIDE_CARDS = [
 REAR_CARDS = [
     ("cadence", None),
     ("pelvic_drop", "pelvic_drop"),
+    ("hip_adduction", "hip_adduction"),
     ("pronation", "pronation"),
     ("step_width", None),
     ("lateral_trunk_sway", None),

@@ -10,8 +10,9 @@ import math
 
 import pytest
 
+from gaitlab.core.events import GaitEvents
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
-from gaitlab.metrics.compute import _knee_flexion, _leg_length, compute
+from gaitlab.metrics.compute import _hip_adduction, _knee_flexion, _leg_length, compute
 
 
 def pose_from_points(view, frames, fps=60, width=1080, height=1920):
@@ -78,3 +79,27 @@ def test_hip_extension_worst_side_is_min(synth):
     m = compute(synth("side-left", fps=60, duration=6, cadence=176, asymmetry=0.3, seed=11))
     ps = m["per_side"]
     assert m["values"]["hip_extension"] == pytest.approx(min(ps["l"]["hip_extension"], ps["r"]["hip_extension"]))
+
+
+@pytest.mark.parametrize("side,mid_hip_x,hip_x,knee_dx,expected", [
+    # left hip is left of midline (to_mid=+1): knee moving toward midline (+x) => adduction
+    ("l", 500.0, 400.0, 17.63, 10.0),
+    # right hip is right of midline (to_mid=-1): knee moving toward midline (-x) => adduction
+    ("r", 500.0, 600.0, -17.63, 10.0),
+    # knee moving away from midline => negative (abduction), not adduction
+    ("l", 500.0, 400.0, -17.63, -10.0),
+])
+def test_hip_adduction_analytic(side, mid_hip_x, hip_x, knee_dx, expected):
+    hip = (hip_x, 0.0)
+    knee = (hip_x + knee_dx, 100.0)
+    seq = pose_from_points("rear", [{f"{side}_hip": hip, f"{side}_knee": knee, "mid_hip": (mid_hip_x, 0.0)}])
+    ev = GaitEvents(stance={"l": [(0, 0)], "r": [(0, 0)]})
+    assert _hip_adduction(seq, ev, side) == pytest.approx(expected, abs=0.5)
+
+
+def test_hip_adduction_worst_side_is_max(synth):
+    m = compute(synth("rear", fps=60, duration=6, cadence=170, asymmetry=0.4, seed=9))
+    ps = m["per_side"]
+    assert ps["l"]["hip_adduction"] == ps["l"]["hip_adduction"]  # not nan
+    assert ps["r"]["hip_adduction"] == ps["r"]["hip_adduction"]
+    assert m["values"]["hip_adduction"] == pytest.approx(max(ps["l"]["hip_adduction"], ps["r"]["hip_adduction"]))

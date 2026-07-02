@@ -1,5 +1,6 @@
 {
   "asymmetry": {
+    "MetricKey.HIP_ADDUCTION": "good",
     "MetricKey.PELVIC_DROP": "good",
     "MetricKey.PRONATION": "good"
   },
@@ -17,6 +18,10 @@
     "head_lateral_sway": {
       "status": "info",
       "value": 56.225
+    },
+    "hip_adduction": {
+      "status": "good",
+      "value": 0.861
     },
     "lateral_trunk_sway": {
       "status": "bad",
@@ -47,7 +52,7 @@
     "cadence": 167.442,
     "grade": "B",
     "n_findings": 0,
-    "overall_score": 74.5,
+    "overall_score": 79.6,
     "view": "rear"
   }
 }

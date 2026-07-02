@@ -15,6 +15,7 @@
 | head_drop | B | %leg | — | — | moderate | side | no |
 | head_lateral_sway | B | %leg | ≤ 6 | ≤ 10 | moderate | rear | no |
 | heel_recovery | B | %leg | — | — | moderate | side | no |
+| hip_adduction | C | deg | ≤ 8 | ≤ 12 | moderate | rear | yes |
 | hip_extension | A | deg | ≥ 10 | ≥ 5 | high | side | yes |
 | knee_drive | A | deg | ≥ 20 | ≥ 10 | high | side | yes |
 | knee_flexion_contact | B | deg | — | — | high | side | no |
@@ -37,7 +38,10 @@
 | sinking_midstance | side | implemented | knee_flexion_midstance > 50; trunk_lean > 16 | high |
 | bouncing | side | implemented | vertical_oscillation > 18; cadence < good.low | high |
 | heavy_heelstrike | side | implemented | foot_strike_angle > 12; overstride > 8 | med |
-| lateral_chain | rear | pending | pelvic_drop > 6; knee_valgus flagged (same side) | high |
+| lateral_chain | rear | implemented | pelvic_drop > 6; hip_adduction > 8 | high |
+| underpowered_pushoff | side | implemented | hip_extension < 10; knee_drive < 20; cadence > good.high | med |
+| upper_body_rotation | rear | implemented | arm_crossover; lateral_trunk_sway > 8 | med |
+| one_sided_deficit | side, rear | implemented | same worse_side across >=2 flagged per-side asymmetry metrics; not tied with the other side's count | high |
 
 # Requirements
 
@@ -52,7 +56,10 @@
 | R14.2 | implemented | Sinking-at-midstance composite (deep knee flexion + trunk pitch). |
 | R14.3 | implemented | Bouncing composite (high vertical oscillation + low cadence). |
 | R14.4 | implemented | Heavy heel-strike + overstride composite. |
-| R14.5 | pending | Lateral-chain composite (pelvic drop + knee valgus) — deferred, needs valgus. |
+| R14.5 | implemented | Lateral-chain composite (pelvic drop + hip adduction, same-side collapse). |
+| R14.6 | implemented | Under-powered push-off / shuffle composite (low hip extension + low knee drive + high cadence). |
+| R14.7 | implemented | Excess upper-body rotation composite (arm crossover + lateral trunk sway). |
+| R14.8 | implemented | Consistent one-sided deficit (meta-asymmetry): same side worse across >=2 per-side metrics. |
 | R17.0 | implemented | Overall score = mean(scored) - asymmetry penalty; grade cutoffs A/B/C/D/E. |
 | R17.1 | implemented | Pronation (low confidence) excluded from the rear scored set. |
 | R3.2 | implemented | Every metric emits a High/Moderate/Low confidence tag. |

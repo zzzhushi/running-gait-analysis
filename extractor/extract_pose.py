@@ -34,7 +34,7 @@ import sys
 
 # Share the exact canonical keypoint order with the analysis engine.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from gaitlab.schema import KEYPOINTS, SCHEMA_VERSION  # noqa: E402
+from gaitlab import KEYPOINTS, SCHEMA_VERSION  # noqa: E402
 
 
 def probe_timestamps(path):

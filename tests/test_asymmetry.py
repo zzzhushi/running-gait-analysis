@@ -50,6 +50,15 @@ def test_worse_side_direction_semantics():
     assert ov["worse_side"] == "left"
 
 
+def test_hip_adduction_asymmetry_flags_worse_side():
+    # L 15 deg vs R 4 deg: big gap, right side (4) is within good -> not both healthy -> flags
+    per_side = {"l": {"hip_adduction": 15.0}, "r": {"hip_adduction": 4.0}}
+    out = A.compute(per_side)
+    ha = [a for a in out if a["key"] == MetricKey.HIP_ADDUCTION][0]
+    assert ha["status"] in ("warn", "bad")
+    assert ha["worse_side"] == "left"          # higher is worse for higher_worse
+
+
 def test_overall_diff_averages_flagged_only():
     asym = [
         {"diff_pct": 20.0, "status": "bad"},
