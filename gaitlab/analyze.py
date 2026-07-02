@@ -13,7 +13,43 @@ from .core.schema import PoseSequence
 from .metrics import asymmetry as asym_mod
 from .metrics import compute as metrics_mod
 from .metrics import quality as quality_mod
-from .metrics.defs import METRIC_DEFS, personalize
+from .metrics.defs import METRIC_DEFS, personalize, value_confidence
+
+# Contributing keypoints per metric — used to propagate tracking confidence (R5.2).
+METRIC_KEYPOINTS = {
+    "trunk_lean": ("mid_hip", "neck"),
+    "knee_flexion_midstance": ("l_hip", "l_knee", "l_ankle", "r_hip", "r_knee", "r_ankle"),
+    "overstride": ("l_hip", "l_ankle", "r_hip", "r_ankle"),
+    "hip_extension": ("l_hip", "l_knee", "r_hip", "r_knee"),
+    "knee_drive": ("l_hip", "l_knee", "r_hip", "r_knee"),
+    "vertical_oscillation": ("mid_hip",),
+    "elbow_angle": ("l_shoulder", "l_elbow", "l_wrist", "r_shoulder", "r_elbow", "r_wrist"),
+    "pelvic_drop": ("l_hip", "r_hip"),
+    "pronation": ("l_heel", "l_ankle", "r_heel", "r_ankle"),
+    "step_width": ("l_ankle", "r_ankle", "mid_hip"),
+    "lateral_trunk_sway": ("neck", "mid_hip"),
+}
+_CONF_RANK = {"low": 0, "moderate": 1, "high": 2}
+
+
+def _keypoint_conf_level(seq: PoseSequence, names) -> str:
+    vals = [seq.pt(f, n)[2] for f in range(seq.n) for n in names
+            if seq.has(n) and seq.pt(f, n)[2] > 0]
+    if not vals:
+        return "low"
+    m = sum(vals) / len(vals)
+    return "high" if m >= 0.6 else "moderate" if m >= 0.4 else "low"
+
+
+def metric_confidence(seq: PoseSequence, key: str, value, defn) -> str:
+    """Final metric confidence: value-dependent tier (R3.2/R3.3) downgraded by weak
+    contributing keypoints (R5.2). Returns the worse of the two levels."""
+    vc = value_confidence(defn, value) if defn is not None else "moderate"
+    names = METRIC_KEYPOINTS.get(key)
+    if not names:
+        return vc
+    kl = _keypoint_conf_level(seq, names)
+    return vc if _CONF_RANK[vc] <= _CONF_RANK[kl] else kl
 
 SIDE_CARDS = [
     ("cadence", None),
@@ -112,6 +148,11 @@ class AnalysisResult:
     def to_dict(self) -> Dict:
         return _sanitize(self.data)
 
+    def validate(self) -> "AnalysisResult":
+        """Assert the (JSON-safe) output conforms to the schema; returns self."""
+        validate_result(self.to_dict())
+        return self
+
 
 def _info_card(key, label, unit, value, note, per_side=None):
     card = {"key": key, "label": label, "unit": unit, "value": value, "status": "info", "note": note}
@@ -121,6 +162,7 @@ def _info_card(key, label, unit, value, note, per_side=None):
 
 
 def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
+    seq.validate()  # reject malformed pose input early with a clear error
     ev = detect_events(seq)
     cal = None
     if profile:
@@ -162,6 +204,10 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
                                 "Side-to-side head movement per stride. Often mirrors pelvic drop; "
                                 "a compensatory tilt is common when hip stabilisers are weak."))
 
+    # R3.2/R3.3/R5.2 — every card carries a value-dependent, keypoint-propagated confidence
+    for c in cards:
+        c["confidence"] = metric_confidence(seq, c["key"], c.get("value"), targets.get(c["key"]))
+
     events_dict = {
         "strikes": ev.strikes,
         "toeoffs": ev.toeoffs,
@@ -197,6 +243,52 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
         "pose": seq.to_pose_dict(),
     }
     return AnalysisResult(data)
+
+
+GRADES = {"A", "B", "C", "D", "E"}
+SEVERITIES = {"high", "med", "low", "good"}
+CARD_STATUSES = {"good", "warn", "bad", "info"}
+
+
+class ResultValidationError(ValueError):
+    """Raised when an AnalysisResult does not conform to the output schema."""
+
+
+def validate_result(data: Dict) -> Dict:
+    """Assert the analysis output conforms to the declared schema; raise on violation.
+
+    Invariants (tech_requirements.md §16-§18): score in [0,100], grade in A-E, every
+    metric card is complete, and every feedback item has a known severity.
+    """
+    errs: List[str] = []
+    s = data.get("summary")
+    if not isinstance(s, dict):
+        raise ResultValidationError("missing summary")
+    score = s.get("overall_score")
+    if not isinstance(score, (int, float)) or not (0 <= score <= 100):
+        errs.append(f"overall_score {score!r} not in [0,100]")
+    if s.get("grade") not in GRADES:
+        errs.append(f"grade {s.get('grade')!r} not in {GRADES}")
+    if s.get("view") not in ("side-left", "side-right", "rear", "front"):
+        errs.append(f"view {s.get('view')!r} invalid")
+
+    for c in data.get("metrics", []):
+        for req in ("key", "label", "unit", "value", "status"):
+            if req not in c:
+                errs.append(f"metric card {c.get('key')!r} missing '{req}'")
+        if c.get("status") not in CARD_STATUSES:
+            errs.append(f"metric card {c.get('key')!r} bad status {c.get('status')!r}")
+        v = c.get("value")
+        if v is not None and not isinstance(v, (int, float)):
+            errs.append(f"metric card {c.get('key')!r} value not numeric/None: {v!r}")
+
+    for it in data.get("feedback", []):
+        if it.get("severity") not in SEVERITIES:
+            errs.append(f"feedback item bad severity {it.get('severity')!r}")
+
+    if errs:
+        raise ResultValidationError("; ".join(errs))
+    return data
 
 
 def _sanitize(obj):

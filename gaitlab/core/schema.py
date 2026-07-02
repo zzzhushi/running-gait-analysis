@@ -7,10 +7,15 @@ that reasons about height accounts for this.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 SCHEMA_VERSION = "gaitlab.pose/v1"
+
+
+class PoseValidationError(ValueError):
+    """Raised when a PoseSequence is structurally invalid (bad shape, ranges, or view)."""
 
 # Canonical keypoint set: a superset that RTMPose-Halpe26 (26 kpts incl. 6 foot points)
 # and MediaPipe-BlazePose (33 kpts) both map into. Order is fixed; arrays are aligned to it.
@@ -50,6 +55,52 @@ class PoseSequence:
     # Present when the extractor could read them (robust to variable frame rate);
     # None for synthetic/constant-rate clips, where f/fps is exact.
     timestamps: Optional[List[float]] = None
+
+    # --- validation -------------------------------------------------------
+    def validate(self) -> "PoseSequence":
+        """Check structural integrity; raise PoseValidationError listing every problem.
+
+        Guards the analysis pipeline against malformed pose input (wrong frame shape,
+        non-finite coordinates, confidence outside [0,1], unknown view). Returns self
+        so it can be chained.
+        """
+        errs: List[str] = []
+        if not isinstance(self.fps, (int, float)) or self.fps != self.fps or self.fps <= 0:
+            errs.append(f"fps must be a positive number (got {self.fps!r})")
+        if self.view not in VIEWS:
+            errs.append(f"view must be one of {VIEWS} (got {self.view!r})")
+        if not self.keypoint_names:
+            errs.append("keypoint_names is empty")
+        if not self.frames:
+            errs.append("frames is empty")
+
+        k = len(self.keypoint_names)
+        for fi, fr in enumerate(self.frames):
+            if len(fr) != k:
+                errs.append(f"frame {fi} has {len(fr)} keypoints, expected {k}")
+                break  # one shape error is enough; don't spam
+            bad = None
+            for pi, p in enumerate(fr):
+                if len(p) < 3:
+                    bad = f"kp {pi} is not (x, y, confidence)"
+                    break
+                x, y, c = p[0], p[1], p[2]
+                if any(not isinstance(v, (int, float)) or math.isnan(v) or math.isinf(v)
+                       for v in (x, y, c)):
+                    bad = f"kp {pi} has a non-finite value {tuple(p[:3])}"
+                    break
+                # Real extractors (RTMPose/ONNX) occasionally emit scores slightly above
+                # 1.0, so allow a small margin; only reject clearly-broken confidences.
+                if c < 0.0 or c > 1.5:
+                    bad = f"kp {pi} confidence {c} outside [0,1.5]"
+                    break
+            if bad:
+                errs.append(f"frame {fi}: {bad}")
+                break
+
+        if errs:
+            raise PoseValidationError("; ".join(errs))
+        return self
 
     # --- basic info -------------------------------------------------------
     @property

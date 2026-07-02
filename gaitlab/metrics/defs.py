@@ -77,6 +77,30 @@ class MetricDef:
         return max(0.0, 100.0 - 55.0 * frac)
 
 
+# Pose places a joint centre with ~±2-4 deg of angular error, so small angular
+# readings sit in the noise floor and must be reported at lower confidence (R3.3).
+NOISE_FLOOR_DEG = 4.0
+
+
+def value_confidence(defn: "MetricDef", value: float) -> str:
+    """Value-dependent confidence for a metric reading (R3.2/R3.3).
+
+    Tier-C angle metrics scale confidence with magnitude: a small reading near the
+    ±4 deg noise floor is Low; a large reading that clears the floor is more trustworthy.
+    Pronation stays Low regardless (2-D rear-foot estimate, partly occluded).
+    """
+    if value is None or value != value:
+        return "low"
+    if defn.key == MetricKey.PELVIC_DROP:
+        a = abs(value)
+        if a < NOISE_FLOOR_DEG:
+            return "low"
+        return "moderate" if a <= 6.0 else "high"
+    if defn.key == MetricKey.PRONATION:
+        return "low"
+    return defn.confidence
+
+
 def _within(value: float, band: Tuple[Optional[float], Optional[float]]) -> bool:
     lo, hi = band
     if lo is not None and value < lo:

@@ -1,0 +1,519 @@
+# =============================================================================
+# GaitLab canonical spec — SINGLE SOURCE OF TRUTH (human + machine readable)
+# =============================================================================
+# This file is the authority for every metric's numeric bands, units, view,
+# confidence, and scoring role, plus composite patterns, asymmetry, scoring,
+# and the requirements registry.
+#
+# Drift detection: tests/test_spec_conformance.py asserts gaitlab/metrics/defs.py
+# (METRIC_DEFS) matches the `metrics:` section below. scripts/gen_spec_tables.py
+# regenerates the tables in docs/tech_requirements.md from this file (--check in CI).
+#
+# `formula` fields are prose descriptions of the computation in gaitlab/metrics/
+# compute.py — they document intent; they are not executed.
+#
+# tier: A = high-confidence sagittal; B = moderate/informational; C = value-dependent.
+# =============================================================================
+
+metrics:
+
+  # --- Tier A: high-confidence sagittal, scored -----------------------------
+  cadence:
+    tier: A
+    unit: spm
+    good: [170, 185]
+    warn: [160, 195]
+    confidence: high
+    views: [side, rear]
+    scored: true
+    per_side: false
+    asym_direction: neutral
+    formula: "60000 / median merged (either-foot) step interval (ms)"
+    personalized: true
+    requirements: [R12.1]
+
+  trunk_lean:
+    tier: A
+    unit: deg
+    good: [5, 12]
+    warn: [0, 16]
+    confidence: high
+    views: [side]
+    scored: true
+    per_side: false
+    asym_direction: neutral
+    formula: "median signed_lean(mid_hip -> neck) vs vertical, facing-corrected"
+
+  knee_flexion_midstance:
+    tier: A
+    unit: deg
+    good: [38, 50]
+    warn: [28, 58]
+    confidence: high
+    views: [side]
+    scored: true
+    per_side: true
+    asym_direction: higher_better
+    formula: "180 - angle_3pt(hip, knee, ankle) at midpoint of stance; worst (min) side reported"
+
+  overstride:
+    tier: A
+    unit: "%leg"
+    good: [null, 8]
+    warn: [null, 15]
+    confidence: high
+    views: [side]
+    scored: true
+    per_side: true
+    asym_direction: higher_worse
+    formula: "(ankle_x - hip_x) * facing / leg_length * 100 at strike; worst (max) side reported"
+
+  vertical_oscillation:
+    tier: A
+    unit: "%leg"
+    good: [null, 12]
+    warn: [null, 18]
+    confidence: high
+    views: [side]
+    scored: true
+    per_side: false
+    asym_direction: neutral
+    formula: "median per-stride peak-to-peak of mid_hip y / leg_length * 100"
+
+  contact_time:
+    tier: A
+    unit: ms
+    good: [null, 250]
+    warn: [null, 300]
+    confidence: high
+    views: [side]
+    scored: true
+    per_side: false
+    asym_direction: neutral
+    formula: "median (toe_off - strike) per foot in ms; worst (max) side reported; fps-bound"
+
+  duty_factor:
+    tier: A
+    unit: "%"
+    good: [null, 40]
+    warn: [null, 48]
+    confidence: high
+    views: [side]
+    scored: true
+    per_side: false
+    asym_direction: neutral
+    formula: "contact_time / stride_time * 100; worst (max) side reported"
+
+  hip_extension:
+    tier: A
+    unit: deg
+    good: [10, null]
+    warn: [5, null]
+    confidence: high
+    views: [side]
+    scored: true
+    per_side: true
+    asym_direction: higher_better
+    formula: "peak thigh angle behind vertical over a stride (5-frame smoothed); worst (min) side reported"
+
+  knee_drive:
+    tier: A
+    unit: deg
+    good: [20, null]
+    warn: [10, null]
+    confidence: high
+    views: [side]
+    scored: true
+    per_side: true
+    asym_direction: higher_better
+    formula: "peak forward thigh angle in swing (5-frame smoothed); worst (min) side reported"
+
+  elbow_angle:
+    tier: A
+    unit: deg
+    good: [75, 105]
+    warn: [60, 120]
+    confidence: high
+    views: [side]
+    scored: true
+    per_side: true
+    asym_direction: neutral
+    formula: "median angle_3pt(shoulder, elbow, wrist); flagged only when > 110"
+
+  # --- Tier C: value-dependent confidence, rear ----------------------------
+  pelvic_drop:
+    tier: C
+    unit: deg
+    good: [null, 6]
+    warn: [null, 10]
+    confidence: moderate
+    views: [rear]
+    scored: true
+    per_side: true
+    asym_direction: higher_worse
+    formula: "|angle of L-hip<->R-hip line vs horizontal| at midstance (5-frame smoothed); worst (max) side"
+    personalized: true
+    requirements: [R3.3, R12.2]
+
+  pronation:
+    tier: C
+    unit: deg
+    good: [null, 8]
+    warn: [null, 12]
+    confidence: low
+    views: [rear]
+    scored: false          # R17.1: low-confidence, excluded from headline score
+    per_side: true
+    asym_direction: higher_worse
+    formula: "rear-foot roll-in at contact from heel-ankle offset; low confidence 2-D estimate"
+    requirements: [R3.3, R17.1]
+
+  # --- Tier B: rear, scored ------------------------------------------------
+  step_width:
+    tier: B
+    unit: "%leg"
+    good: [2, 14]
+    warn: [0, 22]
+    confidence: high
+    views: [rear]
+    scored: true
+    per_side: false
+    asym_direction: neutral
+    formula: "median ankle-to-ankle distance at strikes / leg * 100; crossover flagged separately"
+
+  lateral_trunk_sway:
+    tier: B
+    unit: "%leg"
+    good: [null, 8]
+    warn: [null, 12]
+    confidence: high
+    views: [rear]
+    scored: true
+    per_side: false
+    asym_direction: neutral
+    formula: "peak-to-peak neck x relative to mid_hip / leg * 100 (5-frame smoothed)"
+
+  # --- overall asymmetry meta-metric (scored via penalty) ------------------
+  asymmetry:
+    tier: A
+    unit: "%"
+    good: [null, 5]
+    warn: [null, 10]
+    confidence: high
+    views: [side, rear]
+    scored: true
+    per_side: false
+    asym_direction: neutral
+    formula: "|L-R| / mean(|L|,|R|) * 100 per per-side metric; see asymmetry section"
+    requirements: [R13.1]
+
+  # --- Tier B/C: per-side or informational, NOT globally scored ------------
+  knee_flexion_contact:
+    tier: B
+    unit: deg
+    good: [null, null]
+    warn: [null, null]
+    confidence: high
+    views: [side]
+    scored: false
+    per_side: true
+    asym_direction: neutral
+    formula: "180 - angle_3pt(hip, knee, ankle) at strike; informational"
+
+  foot_strike_angle:
+    tier: B
+    unit: deg
+    good: [null, null]
+    warn: [null, null]
+    confidence: moderate
+    views: [side]
+    scored: false
+    per_side: true
+    asym_direction: neutral
+    formula: "atan2(-(toe_y - heel_y), |toe_x - heel_x|) at strike; negative heel-first"
+
+  contact_time_ms:
+    tier: A
+    unit: ms
+    good: [null, 250]
+    warn: [null, 300]
+    confidence: high
+    views: [side]
+    scored: false
+    per_side: true
+    asym_direction: higher_worse
+    formula: "per-side contact time in ms; feeds asymmetry"
+
+  arm_swing:
+    tier: B
+    unit: "%leg"
+    good: [null, null]
+    warn: [null, null]
+    confidence: moderate
+    views: [side]
+    scored: false
+    per_side: true
+    asym_direction: neutral
+    formula: "peak-to-peak (wrist_x - shoulder_x) * facing / leg * 100"
+
+  heel_recovery:
+    tier: B
+    unit: "%leg"
+    good: [null, null]
+    warn: [null, null]
+    confidence: moderate
+    views: [side]
+    scored: false
+    per_side: true
+    asym_direction: neutral
+    formula: "per-stride heel-y peak-to-peak in swing / leg * 100"
+
+  stride_length:
+    tier: B
+    unit: m
+    good: [null, null]
+    warn: [null, null]
+    confidence: moderate
+    views: [side]
+    scored: false
+    per_side: true
+    asym_direction: higher_better
+    formula: "speed_mps * stride_time; requires speed input"
+
+  step_length:
+    tier: B
+    unit: m
+    good: [null, null]
+    warn: [null, null]
+    confidence: moderate
+    views: [side]
+    scored: false
+    per_side: true
+    asym_direction: higher_better
+    formula: "speed_mps * step_time; requires speed input"
+
+  arm_crossover:
+    tier: B
+    unit: ""
+    good: [null, null]
+    warn: [null, null]
+    confidence: moderate
+    views: [rear]
+    scored: false
+    per_side: false
+    asym_direction: neutral
+    formula: "boolean: hands cross midline in > 25% of frames"
+
+  head_drop:
+    tier: B
+    unit: "%leg"
+    good: [null, null]
+    warn: [null, null]
+    confidence: moderate
+    views: [side]
+    scored: false
+    per_side: false
+    asym_direction: neutral
+    formula: "per-stride head-y peak-to-peak / leg * 100; flagged when > max(1.5*VO, 5%)"
+
+  head_lateral_sway:
+    tier: B
+    unit: "%leg"
+    good: [null, 6]
+    warn: [null, 10]
+    confidence: moderate
+    views: [rear]
+    scored: false
+    per_side: false
+    asym_direction: neutral
+    formula: "peak-to-peak head x / leg * 100 (5-frame smoothed)"
+
+# Enum keys (gaitlab/metrics/keys.py) that are computed into values but have no
+# MetricDef entry (no bands/coaching) — excluded from drift checks by design.
+computed_only:
+  - crossover
+  - trunk_pelvis_rotation
+  - flight_time
+  - vertical_oscillation_cm
+  - vertical_ratio
+
+# =============================================================================
+# Composite patterns (tech_requirements.md §14)
+# A composite is a conjunction of thresholded metrics. It OUTRANKS its component
+# findings, and the report surfaces at most 3 findings total (R14.0).
+# =============================================================================
+composites:
+  overstriding:
+    status: implemented
+    view: side
+    all_of:
+      - "overstride > 8"          # %leg, out of good band
+      - "hip_extension < 10"      # deg, out of good band
+      - "cadence < good.low"      # below personalized good band
+    severity: high
+    supersedes: [overstride, hip_extension, cadence]
+    cue: "Increase your cadence ~5-10% and let the foot land under your hips."
+    requirements: [R14.1]
+
+  sinking_midstance:
+    status: implemented
+    view: side
+    all_of:
+      - "knee_flexion_midstance > 50"   # collapsing into stance
+      - "trunk_lean > 16"               # pitching forward
+    severity: high
+    supersedes: [knee_flexion_midstance, trunk_lean]
+    cue: "Run tall; don't sink into the stance leg. Bridges and core control help."
+    requirements: [R14.2]
+
+  bouncing:
+    status: implemented
+    view: side
+    all_of:
+      - "vertical_oscillation > 18"
+      - "cadence < good.low"
+    severity: high
+    supersedes: [vertical_oscillation, cadence]
+    cue: "Drive forward, not up; lift cadence and keep the head level."
+    requirements: [R14.3]
+
+  heavy_heelstrike:
+    status: implemented
+    view: side
+    all_of:
+      - "foot_strike_angle > 12"
+      - "overstride > 8"
+    severity: med
+    supersedes: [foot_strike_angle]
+    cue: "Fixing the overstride (land under your hips) usually softens the heel-strike."
+    requirements: [R14.4]
+
+  lateral_chain:
+    status: pending          # needs knee-valgus, which is rejected for 2-D rear (§7.3)
+    view: rear
+    all_of:
+      - "pelvic_drop > 6"
+      - "knee_valgus flagged (same side)"
+    severity: high
+    supersedes: [pelvic_drop]
+    cue: "Clamshells, hip hikes; strengthen glute med/max."
+    requirements: [R14.5]
+
+# =============================================================================
+# Asymmetry (tech_requirements.md §13; gaitlab/metrics/asymmetry.py)
+# =============================================================================
+asymmetry:
+  formula: "AI = |L - R| / mean(|L|, |R|) * 100"
+  bands:
+    good: [null, 5]
+    warn: [null, 10]
+  suppression: "If BOTH sides are individually within their metric's good band, suppress the flag (R13.2)."
+  metrics:
+    knee_flexion_midstance: higher_better
+    knee_flexion_contact: neutral
+    overstride: higher_worse
+    foot_strike_angle: neutral
+    contact_time_ms: higher_worse
+    hip_extension: higher_better
+    knee_drive: higher_better
+    arm_swing: neutral
+    heel_recovery: neutral
+    stride_length: higher_better
+    step_length: higher_better
+    pelvic_drop: higher_worse
+    pronation: higher_worse
+
+# =============================================================================
+# Scoring (tech_requirements.md §17; gaitlab/coaching/feedback.py)
+# =============================================================================
+scoring:
+  per_metric:
+    good: 100
+    warn_edge: 45      # 100 - 55*1.0
+    deep_bad: 17.5     # 100 - 55*1.5 (frac clamped to 1.5)
+    nan: 50
+    frac_clamp: 1.5
+    slope: 55
+  overall:
+    base: "mean of scored-metric scores for the view"
+    penalty: "clamp(mean(flagged asymmetry diffs) * 0.8, 0, 22)"
+    formula: "clamp(base - penalty, 0, 100)"
+  grades:
+    A: 85
+    B: 72
+    C: 58
+    D: 42
+    # else E
+  # Scored key lists derive from metrics[*].scored == true AND view in metrics[*].views.
+  # Listed here for human reference / doc generation:
+  # Excludes the `asymmetry` meta-metric, which scores via the penalty path, not the base mean.
+  scored_keys_side: [cadence, trunk_lean, knee_flexion_midstance, overstride, vertical_oscillation, contact_time, duty_factor, hip_extension, knee_drive, elbow_angle]
+  scored_keys_rear: [cadence, pelvic_drop, step_width, lateral_trunk_sway]
+  notes: "pronation excluded from the rear scored set (R17.1)."
+
+# =============================================================================
+# Personalization (tech_requirements.md §12; gaitlab/metrics/defs.py personalize())
+# =============================================================================
+personalization:
+  cadence:
+    center: "188.0 - 0.615 * (stature_cm - 157.0) + (1.2 * (speed_kmh - 10.0) if speed)"
+    clamp: [160, 200]
+    good: "[center - 7, center + 7]"
+    warn: "[center - 14, center + 14]"
+    stature: "leg_length_cm / 0.48 preferred, else height_cm"
+    requirements: [R12.1]
+  pelvic_drop_female:
+    good: [null, 7]
+    warn: [null, 11]
+    requirements: [R12.2]
+
+# =============================================================================
+# Requirements registry — drives the traceability matrix (conftest.py RTM).
+# status: implemented (needs >=1 passing covering test) | pending (needs an xfail placeholder)
+# =============================================================================
+requirements:
+  R3.2:
+    description: "Every metric emits a High/Moderate/Low confidence tag."
+    status: implemented
+  R3.3:
+    description: "Confidence is value-dependent for Tier C (small readings near the noise floor = Low)."
+    status: implemented
+  R5.2:
+    description: "Low-confidence keypoints are excluded and propagate into the metric's confidence."
+    status: implemented
+  R12.1:
+    description: "Cadence bands personalized by stature and speed."
+    status: implemented
+  R12.2:
+    description: "Female pelvic-drop band widened."
+    status: implemented
+  R13.1:
+    description: "Asymmetry index = |L-R| / mean(|L|,|R|) * 100."
+    status: implemented
+  R13.2:
+    description: "Both-sides-good asymmetry suppression."
+    status: implemented
+  R14.0:
+    description: "At most 3 findings surfaced; a composite outranks its component findings."
+    status: implemented
+  R14.1:
+    description: "Overstriding composite (overstride + low hip extension + low cadence)."
+    status: implemented
+  R14.2:
+    description: "Sinking-at-midstance composite (deep knee flexion + trunk pitch)."
+    status: implemented
+  R14.3:
+    description: "Bouncing composite (high vertical oscillation + low cadence)."
+    status: implemented
+  R14.4:
+    description: "Heavy heel-strike + overstride composite."
+    status: implemented
+  R14.5:
+    description: "Lateral-chain composite (pelvic drop + knee valgus) — deferred, needs valgus."
+    status: pending
+  R17.0:
+    description: "Overall score = mean(scored) - asymmetry penalty; grade cutoffs A/B/C/D/E."
+    status: implemented
+  R17.1:
+    description: "Pronation (low confidence) excluded from the rear scored set."
+    status: implemented

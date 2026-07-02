@@ -34,6 +34,74 @@ def _direction(value: float, band: Tuple) -> str:
     return "any"
 
 
+def _mk(sev, title, detail, cue, drill, metric):
+    return {"severity": sev, "title": title, "detail": detail, "cue": cue,
+            "drill": drill, "metric": metric, "frame": None}
+
+
+def _composites(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]]:
+    """Fired composite patterns (tech_requirements.md §14) as (finding, superseded_keys).
+
+    A composite is a conjunction of thresholded metrics; it outranks (supersedes) its
+    component single-metric findings. Side-view only for the implemented set.
+    """
+    if view not in ("side-left", "side-right"):
+        return []
+    v = lambda k: _val(values, k)
+    cad, over, he = v(MK.CADENCE), v(MK.OVERSTRIDE), v(MK.HIP_EXTENSION)
+    kfm, tl, vo, fs = v(MK.KNEE_FLEXION_MIDSTANCE), v(MK.TRUNK_LEAN), v(MK.VERTICAL_OSCILLATION), v(MK.FOOT_STRIKE_ANGLE)
+    t_cad = targets.get(MK.CADENCE)
+    cad_lo = t_cad.good[0] if t_cad and t_cad.good[0] is not None else 170
+
+    def ok(*xs):
+        return all(x == x for x in xs)  # all non-NaN
+
+    out: List[Tuple[dict, set]] = []
+
+    # R14.1 — overstriding / reaching
+    if ok(over, he, cad) and over > 8 and he < 10 and cad < cad_lo:
+        out.append((_mk(
+            "high", "Overstriding — quicken your cadence",
+            f"You're reaching out in front: the foot lands ~{over:.0f}% of a leg ahead of your hips, "
+            f"hip extension is limited (~{he:.0f}°), and cadence is low (~{cad:.0f} spm). Together these "
+            "brake you on every step and raise impact loading.",
+            "Lift cadence ~5-10% and let the foot land under your hips.",
+            "High-cadence strides (6×20s) + couch stretch and glute bridges for hip extension.",
+            "overstriding"), {"overstride", "hip_extension", "cadence"}))
+
+    # R14.2 — sinking at mid-stance
+    if ok(kfm, tl) and kfm > 50 and tl > 16:
+        out.append((_mk(
+            "high", "Sinking into mid-stance",
+            f"Your knee collapses (~{kfm:.0f}° flexion) while the trunk pitches forward (~{tl:.0f}°) at "
+            "mid-stance — a sign the stance leg and core aren't holding you tall.",
+            "Run tall; don't sink into the stance leg.",
+            "Glute bridges and anti-extension core work (dead bugs, planks).",
+            "sinking_midstance"), {"knee_flexion_midstance", "trunk_lean"}))
+
+    # R14.3 — bouncing
+    if ok(vo, cad) and vo > 18 and cad < cad_lo:
+        out.append((_mk(
+            "high", "Bouncing — drive forward, not up",
+            f"Your hips travel ~{vo:.0f}% of a leg vertically each stride at a low cadence (~{cad:.0f} spm), "
+            "so drive is going up instead of forward.",
+            "Lift cadence and keep the crown of your head on a level line.",
+            "Run-tall-past-a-rail (4×20s) and pogo hops (3×10).",
+            "bouncing"), {"vertical_oscillation", "cadence"}))
+
+    # R14.4 — heavy heel-strike + overstride
+    if ok(fs, over) and fs > 12 and over > 8:
+        out.append((_mk(
+            "med", "Heavy heel-strike with overstriding",
+            "You land clearly on the heel with the foot well ahead of you. Heel contact itself isn't bad, "
+            "but combined with overstriding it amplifies braking and impact.",
+            "Fixing the overstride (land under your hips) usually softens the heel-strike on its own.",
+            "High-cadence strides focusing on landing beneath you.",
+            "heavy_heelstrike"), {"foot_strike_angle"}))
+
+    return out
+
+
 def _finding(targets: Dict, key: MetricKey, value: float, direction: Optional[str] = None) -> Optional[dict]:
     """Look up finding_text from METRIC_DEFS (not personalized targets) for the given key/direction.
 
@@ -150,11 +218,6 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
         if hd == hd and vo == vo and hd > max(vo * 1.5, 5.0):
             _add_from_def("low", MK.HEAD_DROP, hd, extra_fmt={"ref": vo})
 
-        # --- foot-strike + overstride combo ---
-        fs = _val(values, MK.FOOT_STRIKE_ANGLE)
-        if fs == fs and fs > 12 and over == over and over > 8:
-            _add_from_def("med", MK.FOOT_STRIKE_ANGLE, fs, frame=foi.get("l_strike"))
-
     else:
         # --- pelvic drop ---
         pd = _val(values, MK.PELVIC_DROP)
@@ -193,6 +256,11 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
         if values.get(MK.ARM_CROSSOVER):
             _add_from_def("low", MK.ARM_CROSSOVER, 0)
 
+    # --- composite patterns (§14): a composite outranks its component findings ---
+    for finding, superseded in _composites(values, view, targets):
+        items[:] = [i for i in items if i.get("metric") not in superseded]
+        items.append(finding)
+
     # --- asymmetry findings ---
     for a in asym[:3]:
         if a["status"] == "good":
@@ -215,6 +283,12 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
 
     order = {"high": 0, "med": 1, "low": 2, "good": 3}
     items.sort(key=lambda i: order[i["severity"]])
+
+    # R14.0 — surface at most 3 substantive findings (highest severity first);
+    # the positive "good" note (if any) is kept alongside.
+    non_good = [i for i in items if i["severity"] != "good"][:3]
+    good = [i for i in items if i["severity"] == "good"]
+    items = non_good + good
 
     score, grade = _score(values, per_side, asym, view, targets)
     return items, score, grade
