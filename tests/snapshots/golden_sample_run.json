@@ -1,42 +1,41 @@
 {
   "asymmetry": {
-    "MetricKey.PELVIC_DROP": "good",
-    "MetricKey.PRONATION": "good"
+    "MetricKey.PELVIC_DROP": "bad",
+    "MetricKey.PRONATION": "bad"
   },
   "feedback_titles": [
-    "Head swaying side to side",
-    "Possible overpronation (estimate)",
-    "Solid mechanics",
-    "Trunk swaying side to side"
+    "Hip drop (weak stabilizers)",
+    "Left/right imbalance: Pelvic drop",
+    "Left/right imbalance: Pronation (estimate)"
   ],
   "metrics": {
     "cadence": {
       "status": "warn",
-      "value": 167.442
+      "value": 163.636
     },
     "head_lateral_sway": {
       "status": "info",
-      "value": 56.225
+      "value": 4.905
     },
     "lateral_trunk_sway": {
-      "status": "bad",
-      "value": 52.506
+      "status": "good",
+      "value": 4.985
     },
     "pelvic_drop": {
-      "status": "good",
-      "value": 1.92
+      "status": "warn",
+      "value": 6.757
     },
     "pronation": {
-      "status": "bad",
-      "value": 19.985
+      "status": "warn",
+      "value": 10.87
     },
     "step_width": {
-      "status": "warn",
-      "value": 14.805
+      "status": "bad",
+      "value": 33.579
     },
     "trunk_pelvis_rotation": {
       "status": "info",
-      "value": 5.974
+      "value": 13.35
     }
   },
   "quality_levels": [
@@ -44,10 +43,10 @@
     "ok"
   ],
   "summary": {
-    "cadence": 167.442,
-    "grade": "B",
-    "n_findings": 0,
-    "overall_score": 74.5,
+    "cadence": 163.636,
+    "grade": "D",
+    "n_findings": 3,
+    "overall_score": 46.0,
     "view": "rear"
   }
 }
