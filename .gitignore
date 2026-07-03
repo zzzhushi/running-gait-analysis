@@ -16,3 +16,10 @@ venv/
 
 # User data
 /userdata/
+
+# Generated static build (engine zip + vendored model); built by scripts/build_web.py
+/web/py/
+/web/models/
+
+# Node (web tests)
+node_modules/

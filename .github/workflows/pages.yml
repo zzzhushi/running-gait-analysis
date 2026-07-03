@@ -1,0 +1,74 @@
+name: pages
+
+# Deploy the static, client-side build to GitHub Pages on push to main — but only if the
+# engine suite AND the web parity/mapping tests are green. Uses the official Pages Actions
+# (upload-pages-artifact + deploy-pages), not the legacy gh-pages branch.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One in-flight deploy at a time; don't cancel a running one mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # Layer 1 — the numeric source of truth. Engine is untouched, so this must stay green.
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
+
+  # Layers 2 & 3 — Pyodide==Python parity + the BlazePose->canonical mapping unit.
+  # Both run in plain Node (the pyodide npm package runs headless) — no browser needed.
+  test-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm test  # pretest builds web/py/gaitlab.zip; runs vitest + parity
+
+  build:
+    needs: [test-python, test-web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Copy the single-source engine into the static tree (never committed under web/).
+      - name: Bundle engine into web/py/gaitlab.zip
+        run: |
+          python3 scripts/build_web.py
+          touch web/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

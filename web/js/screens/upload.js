@@ -1,7 +1,13 @@
 import * as api from "../api.js";
 import { el } from "../format.js";
+import { IS_STATIC } from "../config.js";
+import * as pose from "../pose.js";
+import * as engine from "../engine.js";
 
 export default async function upload(app) {
+  // Warm the Pyodide engine while the user picks a clip (static mode only).
+  if (IS_STATIC) engine.preload().catch(() => { /* surfaced on submit */ });
+
   // ---------------------------------------------------------------- user section
   let users = [];
   try { users = await api.listUsers(); } catch { /* server may not have users yet */ }
@@ -72,7 +78,10 @@ export default async function upload(app) {
 
   // ---------------------------------------------------------------- run fields
   const labelInput   = el("input", { type: "text", placeholder: "e.g. Tuesday tempo — side" });
+  // Static: pick a local file (never uploaded). Server: choose a cached clip on disk.
+  const fileInput    = el("input", { type: "file", accept: "video/*", capture: "environment" });
   const videoSel     = el("select", {}, [el("option", { value: "" }, "— pick a video —")]);
+  const videoField   = IS_STATIC ? fileInput : videoSel;
   const viewSel      = el("select", {}, ["side-left", "side-right", "rear", "front"]
     .map((v) => el("option", { value: v }, v)));
   const speedInput   = el("input", { type: "number", placeholder: "optional, e.g. 12.5", step: "0.1", min: "0" });
@@ -100,48 +109,82 @@ export default async function upload(app) {
     prefillProfile(activeUser);
   });
 
-  // populate video dropdown
+  // populate video dropdown (server mode only)
   function fmtMtime(iso) {
     return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   }
-  api.listVideos().then((videos) => {
-    for (const v of videos) {
-      const text = v.filename + "  ·  " + fmtMtime(v.mtime) + (v.cached ? "  · cached" : "");
-      videoSel.append(el("option", { value: v.stem }, text));
-    }
-    if (!videos.length) videoSel.append(el("option", { value: "", disabled: true }, "No videos found in data/video/"));
-  }).catch(() => {
-    videoSel.append(el("option", { value: "", disabled: true }, "Could not load video list"));
-  });
+  if (!IS_STATIC) {
+    api.listVideos().then((videos) => {
+      for (const v of videos) {
+        const text = v.filename + "  ·  " + fmtMtime(v.mtime) + (v.cached ? "  · cached" : "");
+        videoSel.append(el("option", { value: v.stem }, text));
+      }
+      if (!videos.length) videoSel.append(el("option", { value: "", disabled: true }, "No videos found in data/video/"));
+    }).catch(() => {
+      videoSel.append(el("option", { value: "", disabled: true }, "Could not load video list"));
+    });
+  }
 
+  const hasVideo = () => (IS_STATIC ? fileInput.files.length > 0 : !!videoSel.value);
   function updateBtn() {
-    analyzeBtn.disabled = !videoSel.value || !viewSel.value || !labelInput.value.trim();
+    analyzeBtn.disabled = !hasVideo() || !viewSel.value || !labelInput.value.trim();
   }
   labelInput.addEventListener("input", updateBtn);
-  videoSel.addEventListener("change", updateBtn);
+  videoField.addEventListener("change", updateBtn);
   viewSel.addEventListener("change", updateBtn);
 
+  function collectProfile() {
+    const profile = {};
+    if (sexSel.value)      profile.sex = sexSel.value;
+    if (heightInput.value) profile.height_cm = parseFloat(heightInput.value);
+    if (legInput.value)    profile.leg_length_cm = parseFloat(legInput.value);
+    if (speedInput.value)  profile.speed_kmh = parseFloat(speedInput.value);
+    return Object.keys(profile).length ? profile : null;
+  }
+
+  function resetBtn() {
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = "Extract & Analyze";
+  }
+
   analyzeBtn.addEventListener("click", async () => {
-    const stem  = videoSel.value;
     const view  = viewSel.value;
     const label = labelInput.value.trim();
-    if (!stem || !view || !label) return;
+    if (!hasVideo() || !view || !label) return;
     analyzeBtn.disabled = true;
     analyzeBtn.textContent = "Extracting…";
-    statusEl.textContent = "Running pose extraction — this may take a minute or two…";
     statusEl.style.color = "var(--muted)";
     logPre.style.display = "none";
     logPre.textContent = "";
+    const profile = collectProfile();
+
+    if (IS_STATIC) {
+      const url = URL.createObjectURL(fileInput.files[0]);
+      const onProgress = (_frac, note) => { statusEl.textContent = note; };
+      try {
+        const poseDict = await pose.extract(url, view, onProgress);
+        const res = await api.analyzePose(poseDict, label, profile, onProgress);
+        api.setVideoUrl(res.id, url);
+        statusEl.textContent = "✓ Analysis complete  ·  navigating…";
+        statusEl.style.color = "var(--accent, #4caf50)";
+        location.hash = "#/report/" + res.id;
+      } catch (e) {
+        URL.revokeObjectURL(url);
+        statusEl.textContent = "Analysis failed: " + e.message;
+        statusEl.style.color = "var(--red, #e57373)";
+        resetBtn();
+      }
+      return;
+    }
+
+    // server mode: extract on the backend
+    statusEl.textContent = "Running pose extraction — this may take a minute or two…";
     try {
-      const profile = {};
-      if (sexSel.value)      profile.sex = sexSel.value;
-      if (heightInput.value) profile.height_cm = parseFloat(heightInput.value);
-      if (legInput.value)    profile.leg_length_cm = parseFloat(legInput.value);
-      if (speedInput.value)  profile.speed_kmh = parseFloat(speedInput.value);
+      const stem = videoSel.value;
       const res = await api.ingest(stem, view, {
         force:   forceCheck.checked,
         label,
-        profile: Object.keys(profile).length ? profile : null,
+        profile,
         user_id: activeUser ? activeUser.id : null,
       });
       api.setVideoUrl(res.id, "/api/video/" + stem);
@@ -152,8 +195,7 @@ export default async function upload(app) {
     } catch (e) {
       statusEl.textContent = "Extraction failed: " + e.message;
       statusEl.style.color = "var(--red, #e57373)";
-      analyzeBtn.disabled = false;
-      analyzeBtn.textContent = "Extract & Analyze";
+      resetBtn();
       try {
         const body = JSON.parse(e.body || "{}");
         if (body.extractor_log) { logPre.textContent = body.extractor_log; logPre.style.display = "block"; }
@@ -162,39 +204,45 @@ export default async function upload(app) {
   });
 
   // ---------------------------------------------------------------- layout
+  const fields = [];
+  // user picker — server mode only (static has no accounts)
+  if (!IS_STATIC) {
+    fields.push(el("div", { class: "field", style: "grid-column:1/-1" }, [
+      el("label", {}, "User"),
+      el("div", { style: "display:flex;gap:8px;align-items:center" }, [userSel, newUserToggle]),
+      newUserForm,
+    ]));
+  }
+  fields.push(
+    el("div", { class: "field", style: "grid-column:1/-1" }, [el("label", {}, "Label"), labelInput]),
+    el("div", { class: "field" }, [el("label", {}, "Video"), videoField]),
+    el("div", { class: "field" }, [el("label", {}, "View"), viewSel]),
+  );
+  if (!IS_STATIC) {
+    fields.push(el("div", { class: "field", style: "grid-column:1/-1" }, [
+      el("label", { style: "display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer" }, [
+        forceCheck,
+        el("span", { style: "font-size:13px;color:var(--muted)" }, "Force re-extract even if cached"),
+      ]),
+    ]));
+  }
+  fields.push(
+    el("div", { class: "field" }, [el("label", {}, "Treadmill speed (km/h) — optional, enables stride length"), speedInput]),
+    el("div", {}), // spacer
+    el("div", { class: "field" }, [el("label", {}, "Sex — optional, personalizes injury-risk norms"), sexSel]),
+    el("div", { class: "field" }, [el("label", {}, "Your height (cm) — optional, enables cm & vertical ratio"), heightInput]),
+    el("div", { class: "field" }, [el("label", {}, "Leg length (cm) — optional, personalizes cadence & scale"), legInput]),
+  );
+
+  if (!IS_STATIC) {
+    app.append(el("div", { class: "crumb" }, [el("a", { "data-nav": "#/library" }, "← Library")]));
+  }
   app.append(
-    el("div", { class: "crumb" }, [el("a", { "data-nav": "#/library" }, "← Library")]),
     el("div", { class: "page-head" }, [el("div", {}, [
       el("h1", {}, "New analysis"),
       el("p", {}, "Everything runs locally — your video never leaves this machine."),
     ])]),
-    el("div", { style: "display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px" }, [
-      // user picker row (full-width)
-      el("div", { class: "field", style: "grid-column:1/-1" }, [
-        el("label", {}, "User"),
-        el("div", { style: "display:flex;gap:8px;align-items:center" }, [userSel, newUserToggle]),
-        newUserForm,
-      ]),
-      // label (full-width)
-      el("div", { class: "field", style: "grid-column:1/-1" }, [el("label", {}, "Label"), labelInput]),
-      // video + view
-      el("div", { class: "field" }, [el("label", {}, "Video"), videoSel]),
-      el("div", { class: "field" }, [el("label", {}, "View"), viewSel]),
-      // force re-extract (full-width)
-      el("div", { class: "field", style: "grid-column:1/-1" }, [
-        el("label", { style: "display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer" }, [
-          forceCheck,
-          el("span", { style: "font-size:13px;color:var(--muted)" }, "Force re-extract even if cached"),
-        ]),
-      ]),
-      // per-run: speed
-      el("div", { class: "field" }, [el("label", {}, "Treadmill speed (km/h) — optional, enables stride length"), speedInput]),
-      el("div", {}), // spacer
-      // profile (pre-filled from user, per-run override)
-      el("div", { class: "field" }, [el("label", {}, "Sex — optional, personalizes injury-risk norms"), sexSel]),
-      el("div", { class: "field" }, [el("label", {}, "Your height (cm) — optional, enables cm & vertical ratio"), heightInput]),
-      el("div", { class: "field" }, [el("label", {}, "Leg length (cm) — optional, personalizes cadence & scale"), legInput]),
-    ]),
+    el("div", { style: "display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px" }, fields),
     el("div", { style: "margin:14px 0 6px" }, [analyzeBtn]),
     statusEl,
     logPre,

@@ -1,0 +1,16 @@
+{
+  "name": "gaitlab-web",
+  "private": true,
+  "type": "module",
+  "description": "GaitLab static (GitHub Pages) build — web tests only.",
+  "scripts": {
+    "pretest": "python3 scripts/build_web.py",
+    "test": "vitest run && node web/tests/parity.mjs",
+    "test:unit": "vitest run",
+    "test:parity": "node web/tests/parity.mjs"
+  },
+  "devDependencies": {
+    "pyodide": "0.26.4",
+    "vitest": "^2.1.8"
+  }
+}
