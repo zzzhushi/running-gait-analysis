@@ -43,12 +43,21 @@ def _composites(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]
     """Fired composite patterns (tech_requirements.md §14) as (finding, superseded_keys).
 
     A composite is a conjunction of thresholded metrics; it outranks (supersedes) its
-    component single-metric findings.
+    component single-metric findings. Thresholds are read from each metric's own
+    MetricDef band via `_bound()` (falling back to a literal only if the band is
+    unset) so a composite can't silently drift from the registry if a band changes.
     """
     v = lambda k: _val(values, k)
 
     def ok(*xs):
         return all(x == x for x in xs)  # all non-NaN
+
+    def bound(key, edge, side, fallback):
+        """edge: 'good' or 'warn'; side: 0 (low bound) or 1 (high bound)."""
+        t = targets.get(key)
+        band = getattr(t, edge, None) if t else None
+        val = band[side] if band else None
+        return val if val is not None else fallback
 
     out: List[Tuple[dict, set]] = []
 
@@ -59,9 +68,19 @@ def _composites(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]
         t_cad = targets.get(MK.CADENCE)
         cad_lo = t_cad.good[0] if t_cad and t_cad.good[0] is not None else 170
         cad_hi = t_cad.good[1] if t_cad and t_cad.good[1] is not None else 190
+        over_hi = bound(MK.OVERSTRIDE, "good", 1, 8)
+        he_lo = bound(MK.HIP_EXTENSION, "good", 0, 10)
+        kfm_hi = bound(MK.KNEE_FLEXION_MIDSTANCE, "good", 1, 50)
+        tl_hi = bound(MK.TRUNK_LEAN, "warn", 1, 16)
+        vo_hi = bound(MK.VERTICAL_OSCILLATION, "warn", 1, 18)
+        kd_lo = bound(MK.KNEE_DRIVE, "good", 0, 20)
+        # foot_strike_angle has no good/warn band by design (no strike pattern is
+        # inherently "good" or "bad" on its own — see its MetricDef note) — this
+        # cutoff is specific to the heavy-heelstrike composite, not a registry value.
+        fs_hi = 12
 
         # R14.1 — overstriding / reaching
-        if ok(over, he, cad) and over > 8 and he < 10 and cad < cad_lo:
+        if ok(over, he, cad) and over > over_hi and he < he_lo and cad < cad_lo:
             out.append((_mk(
                 "high", "Overstriding — quicken your cadence",
                 f"You're reaching out in front: the foot lands ~{over:.0f}% of a leg ahead of your hips, "
@@ -72,7 +91,7 @@ def _composites(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]
                 "overstriding"), {"overstride", "hip_extension", "cadence"}))
 
         # R14.2 — sinking at mid-stance
-        if ok(kfm, tl) and kfm > 50 and tl > 16:
+        if ok(kfm, tl) and kfm > kfm_hi and tl > tl_hi:
             out.append((_mk(
                 "high", "Sinking into mid-stance",
                 f"Your knee collapses (~{kfm:.0f}° flexion) while the trunk pitches forward (~{tl:.0f}°) at "
@@ -82,7 +101,7 @@ def _composites(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]
                 "sinking_midstance"), {"knee_flexion_midstance", "trunk_lean"}))
 
         # R14.3 — bouncing
-        if ok(vo, cad) and vo > 18 and cad < cad_lo:
+        if ok(vo, cad) and vo > vo_hi and cad < cad_lo:
             out.append((_mk(
                 "high", "Bouncing — drive forward, not up",
                 f"Your hips travel ~{vo:.0f}% of a leg vertically each stride at a low cadence (~{cad:.0f} spm), "
@@ -92,7 +111,7 @@ def _composites(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]
                 "bouncing"), {"vertical_oscillation", "cadence"}))
 
         # R14.4 — heavy heel-strike + overstride
-        if ok(fs, over) and fs > 12 and over > 8:
+        if ok(fs, over) and fs > fs_hi and over > over_hi:
             out.append((_mk(
                 "med", "Heavy heel-strike with overstriding",
                 "You land clearly on the heel with the foot well ahead of you. Heel contact itself isn't bad, "
@@ -102,7 +121,7 @@ def _composites(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]
                 "heavy_heelstrike"), {"foot_strike_angle"}))
 
         # R14.6 — under-powered push-off / shuffle
-        if ok(he, kd, cad) and he < 10 and kd < 20 and cad > cad_hi:
+        if ok(he, kd, cad) and he < he_lo and kd < kd_lo and cad > cad_hi:
             out.append((_mk(
                 "med", "Shuffling — drive from the hip, not just the feet",
                 f"Hip extension (~{he:.0f}°) and knee drive (~{kd:.0f}°) are both limited, and cadence is "
@@ -114,9 +133,12 @@ def _composites(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]
     else:
         pd, ha = v(MK.PELVIC_DROP), v(MK.HIP_ADDUCTION)
         crossover, sway = bool(values.get(MK.ARM_CROSSOVER)), v(MK.LATERAL_TRUNK_SWAY)
+        pd_hi = bound(MK.PELVIC_DROP, "good", 1, 6)
+        ha_hi = bound(MK.HIP_ADDUCTION, "good", 1, 8)
+        sway_hi = bound(MK.LATERAL_TRUNK_SWAY, "good", 1, 8)
 
         # R14.5 — lateral chain: pelvis drops AND the hip/knee collapses inward together
-        if ok(pd, ha) and pd > 6 and ha > 8:
+        if ok(pd, ha) and pd > pd_hi and ha > ha_hi:
             out.append((_mk(
                 "high", "Lateral hip collapse (weak stabilizers)",
                 f"Your pelvis drops (~{pd:.0f}°) while the hip/knee collapses inward toward the midline "
@@ -127,7 +149,7 @@ def _composites(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]
                 "lateral_chain"), {"pelvic_drop", "hip_adduction"}))
 
         # R14.7 — excess upper-body rotation
-        if crossover and sway == sway and sway > 8:
+        if crossover and sway == sway and sway > sway_hi:
             out.append((_mk(
                 "med", "Upper body rotating and swaying together",
                 f"Your arms cross the midline while the trunk sways ~{sway:.0f}% of a leg-length laterally "
@@ -265,7 +287,8 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
 
         # --- elbow angle ---
         ea = _val(values, MK.ELBOW_ANGLE)
-        if ea == ea and ea > 110:
+        t_ea = targets.get(MK.ELBOW_ANGLE)
+        if t_ea and ea == ea and t_ea.status(ea) != "good":
             _add_from_def("low", MK.ELBOW_ANGLE, ea)
 
         # --- duty factor ---
@@ -299,12 +322,12 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
             ft = METRIC_DEFS[MK.STEP_WIDTH].finding_text.get("low", {})
             if ft:
                 add("med", ft["title"], ft["detail"].format(value=0),
-                    ft["cue"], ft["drill"], str(MK.STEP_WIDTH))
+                    ft["cue"], ft["drill"], MK.STEP_WIDTH.value)
 
         # --- lateral trunk sway ---
         sway = _val(values, MK.LATERAL_TRUNK_SWAY)
         t_sway = targets.get(MK.LATERAL_TRUNK_SWAY)
-        if t_sway and sway == sway and sway > 9:
+        if t_sway and sway == sway and t_sway.status(sway) != "good":
             _add_from_def("low", MK.LATERAL_TRUNK_SWAY, sway)
 
         # --- head lateral sway ---

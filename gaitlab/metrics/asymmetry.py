@@ -7,22 +7,24 @@ from typing import Dict, List, Optional
 from .defs import METRIC_DEFS
 from .keys import MetricKey
 
-# (key, label, unit, direction)  —  direction: "higher_better" | "higher_worse" | "neutral"
+# Per-side metrics compared left vs right. Label, unit, and direction all come from
+# each key's own MetricDef (label/unit/asym_direction) — not duplicated here — so an
+# edit to METRIC_DEFS can't silently drift out of sync with the asymmetry table.
 ASYM_METRICS = [
-    (MetricKey.KNEE_FLEXION_MIDSTANCE, "Knee flexion (midstance)", "deg", "higher_better"),
-    (MetricKey.KNEE_FLEXION_CONTACT,   "Knee flexion (contact)",   "deg", "neutral"),
-    (MetricKey.OVERSTRIDE,             "Overstride",               "%leg", "higher_worse"),
-    (MetricKey.FOOT_STRIKE_ANGLE,      "Foot-strike angle",        "deg", "neutral"),
-    (MetricKey.CONTACT_TIME_MS,        "Ground contact time",      "ms",  "higher_worse"),
-    (MetricKey.HIP_EXTENSION,          "Hip extension (peak)",     "deg", "higher_better"),
-    (MetricKey.KNEE_DRIVE,             "Knee drive (peak)",        "deg", "higher_better"),
-    (MetricKey.ARM_SWING,              "Arm swing",                "%leg", "neutral"),
-    (MetricKey.HEEL_RECOVERY,          "Heel recovery",            "%leg", "neutral"),
-    (MetricKey.STRIDE_LENGTH,          "Stride length",            "m",   "higher_better"),
-    (MetricKey.STEP_LENGTH,            "Step length",              "m",   "higher_better"),
-    (MetricKey.PELVIC_DROP,            "Pelvic drop",              "deg", "higher_worse"),
-    (MetricKey.HIP_ADDUCTION,          "Hip adduction (peak)",     "deg", "higher_worse"),
-    (MetricKey.PRONATION,              "Pronation (estimate)",     "deg", "higher_worse"),
+    MetricKey.KNEE_FLEXION_MIDSTANCE,
+    MetricKey.KNEE_FLEXION_CONTACT,
+    MetricKey.OVERSTRIDE,
+    MetricKey.FOOT_STRIKE_ANGLE,
+    MetricKey.CONTACT_TIME_MS,
+    MetricKey.HIP_EXTENSION,
+    MetricKey.KNEE_DRIVE,
+    MetricKey.ARM_SWING,
+    MetricKey.HEEL_RECOVERY,
+    MetricKey.STRIDE_LENGTH,
+    MetricKey.STEP_LENGTH,
+    MetricKey.PELVIC_DROP,
+    MetricKey.HIP_ADDUCTION,
+    MetricKey.PRONATION,
 ]
 
 
@@ -49,7 +51,9 @@ def compute(per_side: Dict[str, Dict[str, float]], targets: Optional[Dict] = Non
     out: List[dict] = []
     if not per_side or "l" not in per_side or "r" not in per_side:
         return out
-    for key, label, unit, direction in ASYM_METRICS:
+    for key in ASYM_METRICS:
+        defn = _targets.get(key) or METRIC_DEFS[key]
+        label, unit, direction = defn.label, defn.unit, defn.asym_direction
         l = per_side["l"].get(key)
         r = per_side["r"].get(key)
         if l is None or r is None or l != l or r != r:

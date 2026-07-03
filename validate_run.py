@@ -158,7 +158,7 @@ def main():
 
     # ── 3. Analyze ───────────────────────────────────────────────────────────
     print(f"{ANSI_INFO} Step 3/3 — running gaitlab engine…")
-    from gaitlab.schema import PoseSequence
+    from gaitlab.core.schema import PoseSequence
     from gaitlab import analyze
 
     profile = {}
@@ -187,7 +187,7 @@ def main():
         print()
 
     # Gait events
-    from gaitlab.events import detect_events
+    from gaitlab.core.events import detect_events
     ev = detect_events(seq)
     n_l = len(ev.strikes.get("l", []))
     n_r = len(ev.strikes.get("r", []))

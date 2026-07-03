@@ -20,7 +20,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from gaitlab.schema import KEYPOINTS, SCHEMA_VERSION  # noqa: E402
+from gaitlab.core.schema import KEYPOINTS, SCHEMA_VERSION  # noqa: E402
 
 
 def probe_timestamps(path):

@@ -42,14 +42,25 @@ def _keypoint_conf_level(seq: PoseSequence, names) -> str:
     return "high" if m >= 0.6 else "moderate" if m >= 0.4 else "low"
 
 
-def metric_confidence(seq: PoseSequence, key: str, value, defn) -> str:
+def metric_confidence(seq: PoseSequence, key: str, value, defn, _cache: Optional[Dict[tuple, str]] = None) -> str:
     """Final metric confidence: value-dependent tier (R3.2/R3.3) downgraded by weak
-    contributing keypoints (R5.2). Returns the worse of the two levels."""
+    contributing keypoints (R5.2). Returns the worse of the two levels.
+
+    `_cache` (optional) memoizes `_keypoint_conf_level` by keypoint tuple for the
+    duration of one `analyze()` call — several metrics share identical tuples (e.g.
+    hip_extension/knee_drive/hip_adduction all use the same 4 hip/knee points), so
+    without it the same per-frame scan repeats once per card.
+    """
     vc = value_confidence(defn, value) if defn is not None else "moderate"
     names = METRIC_KEYPOINTS.get(key)
     if not names:
         return vc
-    kl = _keypoint_conf_level(seq, names)
+    if _cache is not None and names in _cache:
+        kl = _cache[names]
+    else:
+        kl = _keypoint_conf_level(seq, names)
+        if _cache is not None:
+            _cache[names] = kl
     return vc if _CONF_RANK[vc] <= _CONF_RANK[kl] else kl
 
 SIDE_CARDS = [
@@ -60,7 +71,7 @@ SIDE_CARDS = [
     ("hip_extension", "hip_extension"),
     ("knee_drive", "knee_drive"),
     ("vertical_oscillation", None),
-    ("contact_time", "contact_time_ms"), #sztodo: why not same? 
+    ("contact_time", "contact_time_ms"),
     ("duty_factor", "duty_factor"),
     ("elbow_angle", "elbow_angle"),
     ("arm_swing", None),
@@ -207,8 +218,9 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
                                 "a compensatory tilt is common when hip stabilisers are weak."))
 
     # R3.2/R3.3/R5.2 — every card carries a value-dependent, keypoint-propagated confidence
+    _conf_cache: Dict[tuple, str] = {}
     for c in cards:
-        c["confidence"] = metric_confidence(seq, c["key"], c.get("value"), targets.get(c["key"]))
+        c["confidence"] = metric_confidence(seq, c["key"], c.get("value"), targets.get(c["key"]), _conf_cache)
 
     events_dict = {
         "strikes": ev.strikes,

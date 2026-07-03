@@ -64,7 +64,7 @@ def test_pronation_excluded_from_scoring():
 @pytest.mark.covers("R13.1")
 def test_asymmetry_directions_match_code():
     yaml_asym = SPEC["asymmetry"]["metrics"]
-    code_asym = {k.value: direction for (k, _label, _unit, direction) in ASYM_METRICS}
+    code_asym = {k.value: METRIC_DEFS[k].asym_direction for k in ASYM_METRICS}
     assert yaml_asym == code_asym
 
 
