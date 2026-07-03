@@ -1,0 +1,52 @@
+{
+  "asymmetry": {
+    "MetricKey.PELVIC_DROP": "bad",
+    "MetricKey.PRONATION": "bad"
+  },
+  "feedback_titles": [
+    "Hip drop (weak stabilizers)",
+    "Left/right imbalance: Pelvic drop",
+    "Left/right imbalance: Pronation (estimate)"
+  ],
+  "metrics": {
+    "cadence": {
+      "status": "warn",
+      "value": 163.636
+    },
+    "head_lateral_sway": {
+      "status": "info",
+      "value": 4.905
+    },
+    "lateral_trunk_sway": {
+      "status": "good",
+      "value": 4.985
+    },
+    "pelvic_drop": {
+      "status": "warn",
+      "value": 6.757
+    },
+    "pronation": {
+      "status": "warn",
+      "value": 10.87
+    },
+    "step_width": {
+      "status": "bad",
+      "value": 33.579
+    },
+    "trunk_pelvis_rotation": {
+      "status": "info",
+      "value": 13.35
+    }
+  },
+  "quality_levels": [
+    "info",
+    "ok"
+  ],
+  "summary": {
+    "cadence": 163.636,
+    "grade": "D",
+    "n_findings": 3,
+    "overall_score": 46.0,
+    "view": "rear"
+  }
+}

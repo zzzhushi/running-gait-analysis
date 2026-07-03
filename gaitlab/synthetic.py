@@ -16,7 +16,7 @@ import math
 import random
 from typing import List
 
-from .schema import KEYPOINTS, KP_INDEX, Point, PoseSequence
+from .core.schema import KEYPOINTS, KP_INDEX, Point, PoseSequence
 
 
 def _blank_frame() -> List[Point]:

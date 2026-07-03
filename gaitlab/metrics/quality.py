@@ -9,8 +9,8 @@ from __future__ import annotations
 from statistics import mean
 from typing import List
 
-from .metrics import _body_px_height
-from .schema import PoseSequence
+from .ctx import _body_px_height
+from ..core.schema import PoseSequence
 
 
 def _ground_slope(seq: PoseSequence, events):

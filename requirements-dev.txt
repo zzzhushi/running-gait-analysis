@@ -1,0 +1,6 @@
+# Dev/test-only dependencies. NEVER imported by shipped runtime code
+# (gaitlab/, server.py, extractor/ stay zero-third-party-dep).
+# Install with:  pip install -r requirements-dev.txt
+pytest>=8.0
+hypothesis>=6.100
+PyYAML>=6.0        # parse the canonical spec (docs/spec/metrics.yaml) in tests/scripts only
