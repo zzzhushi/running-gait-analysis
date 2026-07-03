@@ -6,6 +6,9 @@ import trends from "./screens/trends.js";
 import combine from "./screens/combine.js";
 import { el } from "./format.js";
 import * as api from "./api.js";
+import { IS_STATIC } from "./config.js";
+
+const HOME = IS_STATIC ? "#/upload" : "#/library";
 
 const ROUTES = [
   [/^#\/library$/, library, []],
@@ -20,7 +23,7 @@ let cleanup = null;
 
 async function route() {
   const app = document.getElementById("app");
-  const raw = location.hash || "#/library";
+  const raw = location.hash || HOME;
   const [path, qs] = raw.split("?");
   const query = Object.fromEntries(new URLSearchParams(qs || ""));
 
@@ -41,7 +44,7 @@ async function route() {
     }
     return;
   }
-  location.hash = "#/library";
+  location.hash = HOME;
 }
 
 // Delegate clicks on [data-nav] elements to hash navigation.
@@ -110,6 +113,7 @@ async function initHeader() {
   area.append(wrap);
 }
 
-if (!location.hash) location.hash = "#/library";
+document.body.classList.toggle("static", IS_STATIC);
+if (!location.hash) location.hash = HOME;
 else route();
 initHeader();
