@@ -1,4 +1,4 @@
-"""Output language guardrails (tech_requirements.md §16-§18).
+"""Output language guardrails.
 
 The coaching output may name mechanical patterns and hedged muscular tendencies, but
 must NEVER name a medical diagnosis as a conclusion or use prohibited phrasing. This

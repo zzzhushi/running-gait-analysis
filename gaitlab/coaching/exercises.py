@@ -1,8 +1,11 @@
 """Corrective exercise plan builder.
 
-Exercise lists are defined in gaitlab/metrics/defs.py — edit them there.
-This module reads from METRIC_DEFS and assembles a deduped, prioritized plan
-from the structured findings.
+Exercises are defined on each metric's own module under
+gaitlab/metrics/definitions/ — this module just reads METRIC_DEFS and
+assembles a deduped, prioritized plan from the structured findings. A
+finding's `metric` field is always a plain metric key (or "asymmetry" for a
+left/right imbalance finding) — see gaitlab/coaching/feedback.py — so no
+separate alias table is needed to resolve it back to a MetricDef.
 """
 
 from __future__ import annotations
@@ -10,14 +13,6 @@ from __future__ import annotations
 from typing import List
 
 from ..metrics.defs import METRIC_DEFS
-
-# Aliases: map raw metric/title keys to the MetricDef key that holds exercises.
-ALIASES = {
-    "contact_time_ms": "contact_time",
-    "foot_strike_angle": "overstride",
-    "knee_flexion_contact": "knee_flexion_midstance",
-    "stride_length": "asymmetry",
-}
 
 
 def build_plan(findings: List[dict], limit: int = 5) -> List[dict]:
@@ -28,7 +23,6 @@ def build_plan(findings: List[dict], limit: int = 5) -> List[dict]:
         if f.get("severity") not in ("high", "med", "low"):
             continue
         key = "asymmetry" if str(f.get("title", "")).startswith("Left/right") else f.get("metric")
-        key = ALIASES.get(key, key)
         if not key or key in seen:
             continue
         mdef = METRIC_DEFS.get(key)

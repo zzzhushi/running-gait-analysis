@@ -1,28 +1,18 @@
-"""Left/right asymmetry from the per-side metric values."""
+"""Left/right asymmetry from the per-side metric values.
+
+The metrics tracked here (and their label/unit/direction) are derived from the
+registry's `per_side` flag — see gaitlab/metrics/spec.py:asym_metrics() — not a
+hand-maintained list, so a metric's label/unit can't drift out of sync between
+its own card and its asymmetry row.
+"""
 
 from __future__ import annotations
 
 from typing import Dict, List, Optional
 
+from . import spec as registry
 from .defs import METRIC_DEFS
 from .keys import MetricKey
-
-# (key, label, unit, direction)  —  direction: "higher_better" | "higher_worse" | "neutral"
-ASYM_METRICS = [
-    (MetricKey.KNEE_FLEXION_MIDSTANCE, "Knee flexion (midstance)", "deg", "higher_better"),
-    (MetricKey.KNEE_FLEXION_CONTACT,   "Knee flexion (contact)",   "deg", "neutral"),
-    (MetricKey.OVERSTRIDE,             "Overstride",               "%leg", "higher_worse"),
-    (MetricKey.FOOT_STRIKE_ANGLE,      "Foot-strike angle",        "deg", "neutral"),
-    (MetricKey.CONTACT_TIME_MS,        "Ground contact time",      "ms",  "higher_worse"),
-    (MetricKey.HIP_EXTENSION,          "Hip extension (peak)",     "deg", "higher_better"),
-    (MetricKey.KNEE_DRIVE,             "Knee drive (peak)",        "deg", "higher_better"),
-    (MetricKey.ARM_SWING,              "Arm swing",                "%leg", "neutral"),
-    (MetricKey.HEEL_RECOVERY,          "Heel recovery",            "%leg", "neutral"),
-    (MetricKey.STRIDE_LENGTH,          "Stride length",            "m",   "higher_better"),
-    (MetricKey.STEP_LENGTH,            "Step length",              "m",   "higher_better"),
-    (MetricKey.PELVIC_DROP,            "Pelvic drop",              "deg", "higher_worse"),
-    (MetricKey.PRONATION,              "Pronation (estimate)",     "deg", "higher_worse"),
-]
 
 
 def diff_pct(l: float, r: float) -> float:
@@ -48,14 +38,15 @@ def compute(per_side: Dict[str, Dict[str, float]], targets: Optional[Dict] = Non
     out: List[dict] = []
     if not per_side or "l" not in per_side or "r" not in per_side:
         return out
-    for key, label, unit, direction in ASYM_METRICS:
-        l = per_side["l"].get(key)
-        r = per_side["r"].get(key)
+    for defn in registry.asym_metrics():
+        key = defn.key
+        l = per_side["l"].get(key.value)
+        r = per_side["r"].get(key.value)
         if l is None or r is None or l != l or r != r:
             continue
         d = diff_pct(l, r)
         status = t.status(d)
-        # diff_pct explodes when values are near zero (e.g. L=0° R=3° → 200%).
+        # diff_pct explodes when values are near zero (e.g. L=0deg R=3deg -> 200%).
         # Suppress the flag when both sides are individually within the good target band:
         # if both values are healthy, a % difference between them isn't clinically meaningful.
         indiv_t = _targets.get(key)
@@ -64,13 +55,13 @@ def compute(per_side: Dict[str, Dict[str, float]], targets: Optional[Dict] = Non
                 status = "good"
         out.append({
             "key": key,
-            "label": label,
-            "unit": unit,
+            "label": defn.label,
+            "unit": defn.unit,
             "left": round(l, 2),
             "right": round(r, 2),
             "diff_pct": round(d, 1),
             "status": status,
-            "worse_side": _worse_side(l, r, direction),
+            "worse_side": _worse_side(l, r, defn.asym_direction),
         })
     out.sort(key=lambda a: a["diff_pct"], reverse=True)
     return out

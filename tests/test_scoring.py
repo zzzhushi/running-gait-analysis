@@ -1,4 +1,4 @@
-"""Scoring: per-metric band-edge anchors and the overall score/grade (R17.0)."""
+"""Scoring: per-metric band-edge anchors and the overall score/grade."""
 
 from __future__ import annotations
 
@@ -39,7 +39,6 @@ def test_score_nan_is_50():
     assert METRIC_DEFS[MetricKey.CADENCE].score(float("nan")) == 50.0
 
 
-@pytest.mark.covers("R17.0")
 def test_all_good_side_scores_grade_a(make_values):
     values = make_values("side-left")
     items, score, grade = fb.build(values, {}, [], "side-left", {})
@@ -47,14 +46,12 @@ def test_all_good_side_scores_grade_a(make_values):
     assert not any(i["severity"] in ("high", "med") for i in items)
 
 
-@pytest.mark.covers("R17.0")
 def test_degraded_side_scores_lower_grade(make_values):
     values = make_values("side-left", cadence=150, overstride=20, trunk_lean=20)
     _items, score, grade = fb.build(values, {}, [], "side-left", {})
     assert score < 85 and grade in ("B", "C", "D", "E")
 
 
-@pytest.mark.covers("R17.0")
 def test_grade_cutoffs_are_monotonic(make_values):
     # sweep worsening cadence and confirm score never increases as the metric degrades
     prev = 101.0

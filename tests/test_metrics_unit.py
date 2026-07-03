@@ -11,7 +11,8 @@ import math
 import pytest
 
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
-from gaitlab.metrics.compute import _knee_flexion, _leg_length, compute
+from gaitlab.metrics.compute import compute
+from gaitlab.metrics.ctx import _leg_length, knee_flexion_at
 
 
 def pose_from_points(view, frames, fps=60, width=1080, height=1920):
@@ -36,7 +37,7 @@ def pose_from_points(view, frames, fps=60, width=1080, height=1920):
 ])
 def test_knee_flexion_analytic(hip, knee, ankle, expected):
     seq = pose_from_points("side-left", [{"l_hip": hip, "l_knee": knee, "l_ankle": ankle}])
-    assert _knee_flexion(seq, 0, "l") == pytest.approx(expected, abs=0.5)
+    assert knee_flexion_at(seq, 0, "l") == pytest.approx(expected, abs=0.5)
 
 
 def test_leg_length_is_sum_of_thigh_and_shank():

@@ -9,7 +9,7 @@ from __future__ import annotations
 from statistics import mean
 from typing import List
 
-from .compute import _body_px_height
+from .ctx import _body_px_height
 from ..core.schema import PoseSequence
 
 

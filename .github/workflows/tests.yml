@@ -19,8 +19,8 @@ jobs:
       - name: Install dev dependencies
         run: pip install -r requirements-dev.txt
 
-      - name: Spec drift + traceability gate
-        run: pytest --rtm-strict
+      - name: Run tests
+        run: pytest
 
-      - name: Doc tables in sync with metrics.yaml
-        run: python scripts/gen_spec_tables.py --check
+      - name: Spec docs in sync with the code registry
+        run: python scripts/gen_spec.py --check

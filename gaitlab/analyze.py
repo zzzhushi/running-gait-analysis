@@ -1,4 +1,10 @@
-"""Top-level orchestration: PoseSequence -> AnalysisResult (JSON-ready)."""
+"""Top-level orchestration: PoseSequence -> AnalysisResult (JSON-ready).
+
+Card layout, contributing keypoints, and confidence propagation are all
+derived from the metric registry (gaitlab/metrics/spec.py) — to add a metric's
+card or change its keypoints, edit that metric's own module under
+gaitlab/metrics/definitions/; nothing here needs to change.
+"""
 
 from __future__ import annotations
 
@@ -13,23 +19,35 @@ from .core.schema import PoseSequence
 from .metrics import asymmetry as asym_mod
 from .metrics import compute as metrics_mod
 from .metrics import quality as quality_mod
+from .metrics import spec as registry
 from .metrics.defs import METRIC_DEFS, personalize, value_confidence
+from .metrics.keys import MetricKey
 
-# Contributing keypoints per metric — used to propagate tracking confidence (R5.2).
-METRIC_KEYPOINTS = {
-    "trunk_lean": ("mid_hip", "neck"),
-    "knee_flexion_midstance": ("l_hip", "l_knee", "l_ankle", "r_hip", "r_knee", "r_ankle"),
-    "overstride": ("l_hip", "l_ankle", "r_hip", "r_ankle"),
-    "hip_extension": ("l_hip", "l_knee", "r_hip", "r_knee"),
-    "knee_drive": ("l_hip", "l_knee", "r_hip", "r_knee"),
-    "vertical_oscillation": ("mid_hip",),
-    "elbow_angle": ("l_shoulder", "l_elbow", "l_wrist", "r_shoulder", "r_elbow", "r_wrist"),
-    "pelvic_drop": ("l_hip", "r_hip"),
-    "pronation": ("l_heel", "l_ankle", "r_heel", "r_ankle"),
-    "step_width": ("l_ankle", "r_ankle", "mid_hip"),
-    "lateral_trunk_sway": ("neck", "mid_hip"),
-}
 _CONF_RANK = {"low": 0, "moderate": 1, "high": 2}
+
+# Display order within a view (registration order is alphabetical by filename,
+# which reads poorly in the report). Any metric not listed here still appears
+# via the registry — this only controls the ordering of the "always" cards.
+CARD_ORDER = {
+    "side": [
+        "cadence", "trunk_lean", "knee_flexion_midstance", "overstride", "hip_extension",
+        "knee_drive", "vertical_oscillation", "contact_time", "duty_factor", "elbow_angle",
+        "arm_swing", "heel_recovery", "flight_time", "foot_strike_angle",
+    ],
+    "rear": [
+        "cadence", "pelvic_drop", "pronation", "step_width", "lateral_trunk_sway",
+        "trunk_pelvis_rotation",
+    ],
+}
+CONDITIONAL_ORDER = [
+    "vertical_oscillation_cm", "vertical_ratio", "stride_length", "step_length",
+    "head_drop", "head_lateral_sway",
+]
+
+
+def _ordered(defs: List, order: List[str]) -> List:
+    rank = {k: i for i, k in enumerate(order)}
+    return sorted(defs, key=lambda d: rank.get(d.key.value, len(order)))
 
 
 def _keypoint_conf_level(seq: PoseSequence, names) -> str:
@@ -42,39 +60,14 @@ def _keypoint_conf_level(seq: PoseSequence, names) -> str:
 
 
 def metric_confidence(seq: PoseSequence, key: str, value, defn) -> str:
-    """Final metric confidence: value-dependent tier (R3.2/R3.3) downgraded by weak
-    contributing keypoints (R5.2). Returns the worse of the two levels."""
+    """Final metric confidence: value-dependent tier downgraded by weak
+    contributing keypoints. Returns the worse of the two levels."""
     vc = value_confidence(defn, value) if defn is not None else "moderate"
-    names = METRIC_KEYPOINTS.get(key)
+    names = registry.keypoints_map().get(key)
     if not names:
         return vc
     kl = _keypoint_conf_level(seq, names)
     return vc if _CONF_RANK[vc] <= _CONF_RANK[kl] else kl
-
-SIDE_CARDS = [
-    ("cadence", None),
-    ("trunk_lean", None),
-    ("knee_flexion_midstance", "knee_flexion_midstance"),
-    ("overstride", "overstride"),
-    ("hip_extension", "hip_extension"),
-    ("knee_drive", "knee_drive"),
-    ("vertical_oscillation", None),
-    ("contact_time", "contact_time_ms"), #sztodo: why not same? 
-    ("duty_factor", "duty_factor"),
-    ("elbow_angle", "elbow_angle"),
-    ("arm_swing", None),
-    ("heel_recovery", "heel_recovery"),
-    ("flight_time", None),
-    ("foot_strike_angle", None),
-]
-REAR_CARDS = [
-    ("cadence", None),
-    ("pelvic_drop", "pelvic_drop"),
-    ("pronation", "pronation"),
-    ("step_width", None),
-    ("lateral_trunk_sway", None),
-    ("trunk_pelvis_rotation", None),
-]
 
 
 def _foot_strike_class(angle: float) -> str:
@@ -87,40 +80,32 @@ def _foot_strike_class(angle: float) -> str:
     return "midfoot"
 
 
-def _card(key: str, values: Dict, per_side_key: Optional[str], per_side: Dict, targets: Dict) -> Dict:
-    t = targets.get(key)
+def _card(defn, values: Dict, per_side: Dict, targets: Dict) -> Dict:
+    key = defn.key.value
+    t = targets.get(defn.key, defn)
     v = values.get(key)
     v = v if isinstance(v, (int, float)) else float("nan")
-    if key == "foot_strike_angle":
+
+    if defn.key == MetricKey.FOOT_STRIKE_ANGLE:
         card = {
             "key": key, "label": "Foot strike", "unit": "deg",
             "value": v, "status": "info",
             "text": _foot_strike_class(v),
-            "note": "Where your foot first contacts: heel, midfoot, or forefoot. None is inherently bad — "
-                    "it's the overstride that matters.",
+            "note": defn.note,
         }
-    elif t is None:
-        units = {"arm_swing": "%leg", "heel_recovery": "%leg", "flight_time": "ms", "trunk_pelvis_rotation": "deg"}
-        notes = {
-            "arm_swing": "Fore-aft arm drive. Aim for relaxed, even swing front-to-back (not across the body).",
-            "heel_recovery": "How much the heel picks up in swing (proxy). More recovery = a shorter, springier swing leg.",
-            "flight_time": "Time both feet are off the ground per step (fps-limited estimate).",
-            "trunk_pelvis_rotation": "Shoulder-vs-pelvis counter-rotation — a low-confidence 2-D rear-view proxy.",
-        }
-        card = {
-            "key": key, "label": key.replace("_", " ").title(), "unit": units.get(key, ""),
-            "value": v, "status": "info", "note": notes.get(key, ""),
-        }
+    elif defn.card_visibility == "conditional":
+        card = {"key": key, "label": defn.label, "unit": defn.unit, "value": v,
+                "status": "info", "note": defn.note}
     else:
         card = {
             "key": key, "label": t.label, "unit": t.unit,
-            "value": v, "status": t.status(v),
+            "value": v, "status": defn.card_status or t.status(v),
             "good": list(t.good), "warn": list(t.warn), "note": t.note,
         }
-    if per_side_key and per_side:
+    if defn.card_per_side_key and per_side:
         card["per_side"] = {
-            "l": per_side.get("l", {}).get(per_side_key),
-            "r": per_side.get("r", {}).get(per_side_key),
+            "l": per_side.get("l", {}).get(defn.card_per_side_key),
+            "r": per_side.get("r", {}).get(defn.card_per_side_key),
         }
     return card
 
@@ -154,13 +139,6 @@ class AnalysisResult:
         return self
 
 
-def _info_card(key, label, unit, value, note, per_side=None):
-    card = {"key": key, "label": label, "unit": unit, "value": value, "status": "info", "note": note}
-    if per_side:
-        card["per_side"] = per_side
-    return card
-
-
 def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
     seq.validate()  # reject malformed pose input early with a clear error
     ev = detect_events(seq)
@@ -175,38 +153,20 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
     asym = asym_mod.compute(per_side, targets)
     items, score, grade = fb.build(values, per_side, asym, seq.view, m["frames_of_interest"], targets)
 
-    # _card() still uses t.label / t.unit / t.status() / t.score() / t.good / t.warn / t.note
-    # MetricDef has all these, so METRIC_DEFS and personalized targets both work here.
-    cards_spec = SIDE_CARDS if seq.is_side() else REAR_CARDS
-    cards = [_card(k, values, psk, per_side, targets) for (k, psk) in cards_spec]
+    view_str = "side" if seq.is_side() else "rear"
+    always = _ordered(registry.cards_for_view(view_str), CARD_ORDER.get(view_str, []))
+    cards = [_card(defn, values, per_side, targets) for defn in always]
 
-    # calibration-derived absolutes only appear when height/speed were provided
-    if values.get("vertical_oscillation_cm") is not None:
-        cards.append(_info_card("vertical_oscillation_cm", "Vertical oscillation", "cm",
-                                values["vertical_oscillation_cm"], "Absolute hip bounce (from your height)."))
-    if values.get("vertical_ratio") is not None:
-        cards.append(_info_card("vertical_ratio", "Vertical ratio", "%", values["vertical_ratio"],
-                                "Bounce relative to step length — lower is more economical (~6-7% is good)."))
-    if values.get("stride_length") is not None:
-        ps = {"l": per_side.get("l", {}).get("stride_length"), "r": per_side.get("r", {}).get("stride_length")}
-        cards.append(_info_card("stride_length", "Stride length", "m", values["stride_length"],
-                                "From treadmill speed × stride time.", per_side=ps))
-    if values.get("step_length") is not None:
-        ps = {"l": per_side.get("l", {}).get("step_length"), "r": per_side.get("r", {}).get("step_length")}
-        cards.append(_info_card("step_length", "Step length", "m", values["step_length"],
-                                "Distance per step (speed × step time).", per_side=ps))
-    if values.get("head_drop") is not None:
-        cards.append(_info_card("head_drop", "Head bobbing", "%leg", values["head_drop"],
-                                "Vertical head-crown bounce per stride. Ideally tracks with hip VO; "
-                                "a much higher value suggests the head is nodding independently."))
-    if values.get("head_lateral_sway") is not None:
-        cards.append(_info_card("head_lateral_sway", "Head lateral sway", "%leg", values["head_lateral_sway"],
-                                "Side-to-side head movement per stride. Often mirrors pelvic drop; "
-                                "a compensatory tilt is common when hip stabilisers are weak."))
+    # calibration-derived absolutes and head-keypoint-gated metrics only appear
+    # once their value is actually computed.
+    conditional = _ordered(registry.conditional_cards_for_view(view_str), CONDITIONAL_ORDER)
+    for defn in conditional:
+        if values.get(defn.key.value) is not None:
+            cards.append(_card(defn, values, per_side, targets))
 
-    # R3.2/R3.3/R5.2 — every card carries a value-dependent, keypoint-propagated confidence
+    # every card carries a value-dependent, keypoint-propagated confidence
     for c in cards:
-        c["confidence"] = metric_confidence(seq, c["key"], c.get("value"), targets.get(c["key"]))
+        c["confidence"] = metric_confidence(seq, c["key"], c.get("value"), targets.get(MetricKey(c["key"])))
 
     events_dict = {
         "strikes": ev.strikes,
@@ -257,8 +217,8 @@ class ResultValidationError(ValueError):
 def validate_result(data: Dict) -> Dict:
     """Assert the analysis output conforms to the declared schema; raise on violation.
 
-    Invariants (tech_requirements.md §16-§18): score in [0,100], grade in A-E, every
-    metric card is complete, and every feedback item has a known severity.
+    Invariants: score in [0,100], grade in A-E, every metric card is complete,
+    and every feedback item has a known severity.
     """
     errs: List[str] = []
     s = data.get("summary")

@@ -28,7 +28,6 @@ def test_out_of_band_metric_surfaces_expected_finding(make_values, view, overrid
     assert expect_title in titles, titles
 
 
-@pytest.mark.covers("R14.4")
 def test_heavy_heelstrike_plus_overstride_combo(make_values):
     values = make_values("side-left", foot_strike_angle=20, overstride=12)
     items, _s, _g = fb.build(values, {}, [], "side-left", {})
