@@ -87,16 +87,23 @@ def to_canonical(lm, w: int, h: int):
     def P(i):
         return [lm[i].x * w, lm[i].y * h, float(getattr(lm[i], "visibility", 1.0))]
 
+    def mid(a, b):
+        return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, min(a[2], b[2])]
+
     frame = []
     for name in KEYPOINTS:
         if name in BLAZEPOSE:
             frame.append(P(BLAZEPOSE[name]))
         elif name == "neck":
-            a, b = P(11), P(12)
-            frame.append([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, min(a[2], b[2])])
+            frame.append(mid(P(11), P(12)))
         elif name == "mid_hip":
-            a, b = P(23), P(24)
-            frame.append([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, min(a[2], b[2])])
+            frame.append(mid(P(23), P(24)))
+        elif name == "head":
+            # BlazePose lacks a crown-of-head point; the ear midpoint is a stable
+            # head-region proxy for lateral head sway (RTMPose-Halpe has one directly).
+            # Fall back to the nose when neither ear is visible.
+            l, r = P(7), P(8)
+            frame.append(mid(l, r) if (l[2] > 0.1 or r[2] > 0.1) else P(0))
         else:
             frame.append([0.0, 0.0, 0.0])
     return frame

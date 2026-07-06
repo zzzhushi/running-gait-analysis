@@ -1,6 +1,6 @@
 // Layer 3 — the one risky pure-JS port. Feed fake BlazePose landmarks to toCanonical()
-// and assert the canonical 22-keypoint frame: pixel scaling, derived neck/mid_hip, and
-// zeroed small toes. No browser, no video, no model.
+// and assert the canonical 22-keypoint frame: pixel scaling, derived neck/mid_hip/head,
+// and zeroed small toes. No browser, no video, no model.
 import { describe, it, expect } from "vitest";
 import { toCanonical, KEYPOINTS, BLAZEPOSE } from "../js/pose.js";
 
@@ -40,6 +40,19 @@ describe("toCanonical", () => {
   it("derives mid_hip as the hip midpoint", () => {
     const a = P(23), b = P(24);
     expect(frame[idx("mid_hip")]).toEqual([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, Math.min(a[2], b[2])]);
+  });
+
+  it("derives head as the ear midpoint (BlazePose has no crown point)", () => {
+    const a = P(7), b = P(8); // left/right ear
+    expect(frame[idx("head")]).toEqual([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, Math.min(a[2], b[2])]);
+  });
+
+  it("falls back to nose for head when both ears are invisible", () => {
+    const lm = fakeLandmarks();
+    lm[7].visibility = 0;
+    lm[8].visibility = 0;
+    const f = toCanonical(lm, W, H);
+    expect(f[idx("head")]).toEqual([lm[0].x * W, lm[0].y * H, 0.9]); // nose keeps its own visibility
   });
 
   it("leaves small toes absent (zeroed) — BlazePose has none", () => {

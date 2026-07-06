@@ -30,21 +30,29 @@ export const BLAZEPOSE = {
   l_heel: 29, r_heel: 30, l_big_toe: 31, r_big_toe: 32,
 };
 
+// BlazePose face landmarks used to derive the canonical `head` point (ears/nose).
+const EAR_L = 7, EAR_R = 8, NOSE = 0;
+
 // Pure function: one frame of BlazePose landmarks -> one canonical frame (22 points).
 // `lm` is an array of { x, y, visibility } in normalized [0,1] coords. Mirrors the
-// Python to_canonical(): pixel-scale by (w,h), derive neck/mid_hip, zero the small toes.
+// Python to_canonical(): pixel-scale by (w,h), derive neck/mid_hip/head, zero small toes.
 export function toCanonical(lm, w, h) {
   const P = (i) => [lm[i].x * w, lm[i].y * h, Number(lm[i].visibility ?? 1.0)];
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, Math.min(a[2], b[2])];
   const frame = [];
   for (const name of KEYPOINTS) {
     if (name in BLAZEPOSE) {
       frame.push(P(BLAZEPOSE[name]));
     } else if (name === "neck") {
-      const a = P(11), b = P(12);
-      frame.push([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, Math.min(a[2], b[2])]);
+      frame.push(mid(P(11), P(12)));
     } else if (name === "mid_hip") {
-      const a = P(23), b = P(24);
-      frame.push([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, Math.min(a[2], b[2])]);
+      frame.push(mid(P(23), P(24)));
+    } else if (name === "head") {
+      // BlazePose has no crown-of-head point; the ear midpoint is a stable head-region
+      // proxy for lateral head sway / head drop (RTMPose-Halpe supplies one directly).
+      // Fall back to the nose when neither ear is visible (e.g. sharp profile).
+      const l = P(EAR_L), r = P(EAR_R);
+      frame.push(l[2] > 0.1 || r[2] > 0.1 ? mid(l, r) : P(NOSE));
     } else {
       frame.push([0.0, 0.0, 0.0]);
     }
@@ -56,6 +64,13 @@ const ZERO_FRAME = () => KEYPOINTS.map(() => [0.0, 0.0, 0.0]);
 const round3 = (p) => p.map((v) => Math.round(v * 1000) / 1000);
 
 let _landmarkerPromise = null;
+// PoseLandmarker requires strictly increasing timestamps for the LIFETIME of the
+// instance, not just within one video. Since the landmarker is a cached singleton (to
+// avoid re-loading the model per analysis), a second extract() call restarting at
+// mediaTime=0 would be LESS than the first video's last timestamp and MediaPipe throws
+// ("Packet timestamp mismatch"). A free-running counter, independent of any video's own
+// clock, sidesteps this — the real per-frame time is tracked separately in `timestamps`.
+let _mpClock = 0;
 async function getLandmarker() {
   if (_landmarkerPromise) return _landmarkerPromise;
   _landmarkerPromise = (async () => {
@@ -82,21 +97,54 @@ function loadVideo(url) {
   });
 }
 
-// rendered fps as the median inter-frame interval — robust to variable frame rate.
-function medianFps(timestamps) {
-  if (timestamps.length < 2) return 30;
-  const dts = [];
-  for (let i = 1; i < timestamps.length; i++) {
-    const dt = timestamps[i] - timestamps[i - 1];
-    if (dt > 0) dts.push(dt);
+function seekTo(video, t) {
+  return new Promise((resolve) => {
+    video.addEventListener("seeked", resolve, { once: true });
+    video.currentTime = t;
+  });
+}
+
+// Briefly play the video to observe the true native frame interval via
+// requestVideoFrameCallback's mediaTime, then pause. Extraction itself never runs in
+// real time — this probe just measures native fps so seek-stepping can match it.
+// Firefox has no rVFC; assume 30fps there (matches most phone/consumer video).
+async function probeFps(video) {
+  if (typeof video.requestVideoFrameCallback !== "function") return 30;
+  const times = [];
+  await new Promise((resolve) => {
+    const onFrame = (_now, meta) => {
+      times.push(meta.mediaTime);
+      if (times.length < 8) video.requestVideoFrameCallback(onFrame);
+      else resolve();
+    };
+    video.requestVideoFrameCallback(onFrame);
+    video.play().catch(resolve); // autoplay blocked -> fall through to the 30fps default
+  });
+  video.pause();
+  const diffs = [];
+  for (let i = 1; i < times.length; i++) {
+    const d = times[i] - times[i - 1];
+    if (d > 0) diffs.push(d);
   }
-  if (!dts.length) return 30;
-  dts.sort((a, b) => a - b);
-  const med = dts[dts.length >> 1];
+  if (!diffs.length) return 30;
+  diffs.sort((a, b) => a - b);
+  const med = diffs[diffs.length >> 1];
   return med > 0 ? 1 / med : 30;
 }
 
 // Extract a pose dict from a video object-URL. onProgress(fraction 0..1, note).
+//
+// Extraction is deliberately NOT bound to real-time playback: we pause, seek to each
+// target frame, wait for it to decode, then run inference (however long that takes).
+// This mirrors how the Python extractors read every frame from the file via cap.read()
+// (extract_pose.py / extract_pose_mediapipe.py), decoupled from wall-clock speed. An
+// earlier version drove extraction off requestVideoFrameCallback during real-time
+// playback, which silently dropped frames whenever inference (the "heavy" model) took
+// longer than one frame interval — the browser only delivers the *latest* rendered
+// frame to a busy callback, coalescing away everything in between. That produced
+// severely under-sampled, irregularly-spaced frames: miscounted gait events, a
+// visibly wrong skeleton overlay, and (via the median-based fps estimate feeding
+// PoseSequence.duration = n/fps) a computed duration far shorter than the real clip.
 export async function extract(videoUrl, view, onProgress = () => {}) {
   onProgress(0, "Loading pose model…");
   const [landmarker, video] = await Promise.all([getLandmarker(), loadVideo(videoUrl)]);
@@ -104,44 +152,23 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
   const height = video.videoHeight;
   const duration = video.duration || 0;
 
+  onProgress(0, "Measuring frame rate…");
+  const fps = await probeFps(video);
+  await seekTo(video, 0);
+
   const frames = [];
   const timestamps = [];
-  const useRVFC = typeof video.requestVideoFrameCallback === "function";
+  const dt = 1 / fps;
 
-  const pushFrame = (mediaTime) => {
-    const res = landmarker.detectForVideo(video, Math.max(0, mediaTime * 1000));
+  for (let t = 0; t < duration; t += dt) {
+    await seekTo(video, Math.min(t, duration));
+    const mediaTime = video.currentTime;
+    const res = landmarker.detectForVideo(video, ++_mpClock);
     const lm = res.landmarks && res.landmarks[0];
     frames.push(lm ? toCanonical(lm, width, height).map(round3) : ZERO_FRAME());
     timestamps.push(Math.round(mediaTime * 10000) / 10000);
-  };
-  const report = (t) => onProgress(duration ? Math.min(1, t / duration) : 0,
-                                   `Extracting pose… ${frames.length} frames`);
-
-  if (useRVFC) {
-    // requestVideoFrameCallback gives the real per-frame mediaTime — the browser twin
-    // of ffprobe's container PTS, correct on VFR phone video.
-    await new Promise((resolve) => {
-      const onFrame = (_now, meta) => {
-        pushFrame(meta.mediaTime);
-        report(meta.mediaTime);
-        if (!video.ended) video.requestVideoFrameCallback(onFrame);
-      };
-      video.addEventListener("ended", () => resolve(), { once: true });
-      video.requestVideoFrameCallback(onFrame);
-      video.play().catch(() => resolve()); // autoplay blocked -> nothing to extract
-    });
-  } else {
-    // Firefox: no rVFC. Step through by seeking at an assumed constant frame interval.
-    const fps = 30;
-    const dt = 1 / fps;
-    for (let t = 0; t < duration; t += dt) {
-      await new Promise((res) => {
-        video.addEventListener("seeked", res, { once: true });
-        video.currentTime = t;
-      });
-      pushFrame(video.currentTime);
-      report(video.currentTime);
-    }
+    onProgress(duration ? Math.min(1, mediaTime / duration) : 0,
+               `Extracting pose… ${frames.length} frames`);
   }
 
   onProgress(1, `Extracted ${frames.length} frames`);
@@ -149,7 +176,7 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
     schema: "gaitlab.pose/v1",
     source: "mediapipe-blazepose",
     view,
-    fps: medianFps(timestamps),
+    fps,
     width,
     height,
     keypoint_names: KEYPOINTS.slice(),
