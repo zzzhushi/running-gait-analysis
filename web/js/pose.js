@@ -104,26 +104,47 @@ function seekTo(video, t) {
   });
 }
 
-// Briefly play the video to observe the true native frame interval via
-// requestVideoFrameCallback's mediaTime, then pause. Extraction itself never runs in
-// real time — this probe just measures native fps so seek-stepping can match it.
-// Firefox has no rVFC; assume 30fps there (matches most phone/consumer video).
-async function probeFps(video) {
-  if (typeof video.requestVideoFrameCallback !== "function") return 30;
-  const times = [];
-  await new Promise((resolve) => {
-    const onFrame = (_now, meta) => {
-      times.push(meta.mediaTime);
-      if (times.length < 8) video.requestVideoFrameCallback(onFrame);
-      else resolve();
+// Record every native frame's true presentation time via a lightweight real-time
+// playthrough: the rVFC callback only pushes a timestamp, so it never falls behind and
+// never coalesces frames the way running inference in the callback would. This is how we
+// learn the real frame grid (count + VFR-correct timing) without dropping anything;
+// extraction then seeks to each of these times and runs the model with no time pressure.
+// Returns ascending mediaTimes, or null when rVFC is unavailable (Firefox).
+function collectFrameTimes(video) {
+  if (typeof video.requestVideoFrameCallback !== "function") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const times = [];
+    let done = false;
+    // Once finished, stop the rVFC self-loop and hand back a COPY. Otherwise the final
+    // callback re-arms itself, and when extraction later seeks the video (no longer
+    // "ended") it keeps firing and appending to the array we're iterating over.
+    const finish = () => {
+      if (done) return;
+      done = true;
+      video.pause();
+      resolve(times.length ? times.slice() : null);
     };
+    const onFrame = (_now, meta) => {
+      if (done) return;
+      times.push(meta.mediaTime);
+      if (video.ended) finish();
+      else video.requestVideoFrameCallback(onFrame);
+    };
+    video.addEventListener("ended", finish, { once: true });
     video.requestVideoFrameCallback(onFrame);
-    video.play().catch(resolve); // autoplay blocked -> fall through to the 30fps default
+    video.play().catch(finish); // autoplay blocked -> fall back below
   });
-  video.pause();
+}
+
+// fps as the median inter-frame interval of the frames we actually decoded. The engine
+// reconstructs real time as frame_index / fps (events.py cadence, duration = n/fps), so
+// the returned fps MUST match the true spacing of the emitted frames — otherwise cadence
+// scales by whatever the sampling error was. Deriving it from real mediaTimes (not the
+// probe) keeps cadence correct and identical run-to-run.
+function fpsFromTimestamps(ts) {
   const diffs = [];
-  for (let i = 1; i < times.length; i++) {
-    const d = times[i] - times[i - 1];
+  for (let i = 1; i < ts.length; i++) {
+    const d = ts[i] - ts[i - 1];
     if (d > 0) diffs.push(d);
   }
   if (!diffs.length) return 30;
@@ -135,16 +156,21 @@ async function probeFps(video) {
 // Extract a pose dict from a video object-URL. onProgress(fraction 0..1, note).
 //
 // Extraction is deliberately NOT bound to real-time playback: we pause, seek to each
-// target frame, wait for it to decode, then run inference (however long that takes).
-// This mirrors how the Python extractors read every frame from the file via cap.read()
+// target time, wait for it to decode, then run inference (however long that takes). This
+// mirrors how the Python extractors read every frame from the file via cap.read()
 // (extract_pose.py / extract_pose_mediapipe.py), decoupled from wall-clock speed. An
 // earlier version drove extraction off requestVideoFrameCallback during real-time
 // playback, which silently dropped frames whenever inference (the "heavy" model) took
-// longer than one frame interval — the browser only delivers the *latest* rendered
-// frame to a busy callback, coalescing away everything in between. That produced
-// severely under-sampled, irregularly-spaced frames: miscounted gait events, a
-// visibly wrong skeleton overlay, and (via the median-based fps estimate feeding
-// PoseSequence.duration = n/fps) a computed duration far shorter than the real clip.
+// longer than one frame interval — the browser delivers only the *latest* rendered frame
+// to a busy callback, coalescing away everything in between.
+//
+// We first learn the true frame grid (collectFrameTimes), then seek to each frame time
+// and run the model. Because video.currentTime after a seek reports the *requested* time
+// (not the decoded frame's PTS) and rVFC doesn't fire on a paused seek, the frame times
+// from the playthrough are the only reliable source of true per-frame timing — so we
+// record those as the timestamps and derive fps from them. That keeps the frame count
+// deterministic (≈ the file's real frame count, like RTMPose) and the engine's cadence
+// (frame_index / fps) correct. Firefox lacks rVFC → fall back to a fixed 30fps seek grid.
 export async function extract(videoUrl, view, onProgress = () => {}) {
   onProgress(0, "Loading pose model…");
   const [landmarker, video] = await Promise.all([getLandmarker(), loadVideo(videoUrl)]);
@@ -152,23 +178,25 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
   const height = video.videoHeight;
   const duration = video.duration || 0;
 
-  onProgress(0, "Measuring frame rate…");
-  const fps = await probeFps(video);
+  onProgress(0, "Scanning frames…");
+  let frameTimes = await collectFrameTimes(video);
+  if (!frameTimes || frameTimes.length < 4) {
+    frameTimes = [];
+    for (let t = 0; t < duration; t += 1 / 30) frameTimes.push(t);
+  }
   await seekTo(video, 0);
 
   const frames = [];
   const timestamps = [];
-  const dt = 1 / fps;
 
-  for (let t = 0; t < duration; t += dt) {
-    await seekTo(video, Math.min(t, duration));
-    const mediaTime = video.currentTime;
+  for (let i = 0; i < frameTimes.length; i++) {
+    const t = Math.min(frameTimes[i], duration);
+    await seekTo(video, t);
     const res = landmarker.detectForVideo(video, ++_mpClock);
     const lm = res.landmarks && res.landmarks[0];
     frames.push(lm ? toCanonical(lm, width, height).map(round3) : ZERO_FRAME());
-    timestamps.push(Math.round(mediaTime * 10000) / 10000);
-    onProgress(duration ? Math.min(1, mediaTime / duration) : 0,
-               `Extracting pose… ${frames.length} frames`);
+    timestamps.push(Math.round(t * 10000) / 10000);
+    onProgress((i + 1) / frameTimes.length, `Extracting pose… ${frames.length} frames`);
   }
 
   onProgress(1, `Extracted ${frames.length} frames`);
@@ -176,7 +204,7 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
     schema: "gaitlab.pose/v1",
     source: "mediapipe-blazepose",
     view,
-    fps,
+    fps: fpsFromTimestamps(timestamps),
     width,
     height,
     keypoint_names: KEYPOINTS.slice(),
