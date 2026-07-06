@@ -177,17 +177,27 @@ class Ctx:
         """(median step width %leg, whether the feet ever cross the midline) — one
         shared loop over both sides' strikes, since step_width and crossover are
         two readings off the same per-strike ankle separation."""
+        # A strike only counts as crossing if both ankles sit on the same side of the
+        # midline AND the inner foot is past it by more than a margin — a knife-edge
+        # `> 0` test flips this MED finding on a single noisy frame where an ankle lands
+        # right on the line. We also require at least two such strikes: a genuine
+        # crossover gait crosses repeatedly, one frame is noise.
+        CROSS_MARGIN = 3.0   # %leg the inner foot must clear the midline by
+        MIN_CROSS_STRIKES = 2
         def calc():
             seps: List[float] = []
-            crossover = False
+            cross_strikes = 0
             for side in ("l", "r"):
                 for s in self.ev.strikes[side]:
                     la = self.seq.xy(s, "l_ankle")
                     ra = self.seq.xy(s, "r_ankle")
                     mid = self.seq.xy(s, "mid_hip")[0]
                     seps.append(abs(la[0] - ra[0]) / self.leg * 100.0)
-                    if (la[0] - mid) * (ra[0] - mid) > 0:
-                        crossover = True
+                    if (la[0] - mid) * (ra[0] - mid) > 0:  # both ankles same side of midline
+                        depth = min(abs(la[0] - mid), abs(ra[0] - mid)) / self.leg * 100.0
+                        if depth > CROSS_MARGIN:
+                            cross_strikes += 1
+            crossover = cross_strikes >= MIN_CROSS_STRIKES
             return (med(seps) if seps else float("nan")), crossover
         return self._memo("step_width_crossover", calc)
 

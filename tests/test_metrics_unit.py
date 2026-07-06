@@ -10,9 +10,10 @@ import math
 
 import pytest
 
+from gaitlab.core.events import GaitEvents
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 from gaitlab.metrics.compute import compute
-from gaitlab.metrics.ctx import _leg_length, knee_flexion_at
+from gaitlab.metrics.ctx import Ctx, _leg_length, knee_flexion_at
 
 
 def pose_from_points(view, frames, fps=60, width=1080, height=1920):
@@ -79,3 +80,34 @@ def test_hip_extension_worst_side_is_min(synth):
     m = compute(synth("side-left", fps=60, duration=6, cadence=176, asymmetry=0.3, seed=11))
     ps = m["per_side"]
     assert m["values"]["hip_extension"] == pytest.approx(min(ps["l"]["hip_extension"], ps["r"]["hip_extension"]))
+
+
+# --- crossover detection: must ignore single noisy frames -------------------
+
+def _rear_ankles(pairs):
+    """Rear pose, one frame per (l_ankle_x, r_ankle_x). Midline at x=500, leg ≈ 200 px."""
+    frames = [{
+        "mid_hip": (500, 0),
+        "l_hip": (480, 0), "l_knee": (480, 100), "l_ankle": (lx, 200),
+        "r_hip": (520, 0), "r_knee": (520, 100), "r_ankle": (rx, 200),
+    } for lx, rx in pairs]
+    return pose_from_points("rear", frames)
+
+
+def _crossover(seq, strikes):
+    ev = GaitEvents()
+    ev.strikes = strikes
+    return Ctx(seq, ev, None).step_width_and_crossover()[1]
+
+
+def test_crossover_ignores_single_midline_touch():
+    # Three clean straddling strikes + one where the left ankle lands ~0.5% past the
+    # midline (noise). The old `> 0` test flagged crossover here; it must not now.
+    seq = _rear_ankles([(470, 530), (470, 530), (470, 530), (501, 530)])
+    assert _crossover(seq, {"l": [1, 3], "r": [0, 2]}) is False
+
+
+def test_crossover_flags_persistent_crossing():
+    # Both ankles clearly right of the midline on every strike (inner foot ~7% past it).
+    seq = _rear_ankles([(515, 535), (515, 535), (515, 535), (515, 535)])
+    assert _crossover(seq, {"l": [1, 3], "r": [0, 2]}) is True
