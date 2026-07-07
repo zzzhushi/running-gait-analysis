@@ -103,6 +103,13 @@ export default async function analyze(app, params) {
   requestAnimationFrame(() => { renderer.resize(); drawTimeline(tlCanvas, r); render(0); });
   const onResize = () => { renderer.resize(); drawTimeline(tlCanvas, r); render(Math.floor(state.frame)); };
   window.addEventListener("resize", onResize);
+  // The overlay transform is derived from the canvas's measured size. That one-time
+  // measure goes stale if the stage gets its real size *after* it (late layout, the
+  // player grid reflowing, a differing device pixel ratio) — leaving the skeleton scaled
+  // and offset off the video, since a plain "resize" listener only fires for the window.
+  // Observe the stage so the transform recomputes on the initial layout and any change.
+  const ro = new ResizeObserver(onResize);
+  ro.observe(stage);
 
   function phaseLabel(f) {
     for (const [s, e] of r.events.stance.l || []) {
@@ -174,6 +181,7 @@ export default async function analyze(app, params) {
   return () => {
     cancelAnimationFrame(state.raf);
     window.removeEventListener("resize", onResize);
+    ro.disconnect();
     if (video) video.pause();
   };
 }
