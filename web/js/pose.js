@@ -136,6 +136,27 @@ function collectFrameTimes(video) {
   });
 }
 
+// Drop sub-frame captures. A real-time playthrough on a display that refreshes faster
+// than the video (or a slightly VFR clip) yields some times spaced far closer than the
+// native frame period — e.g. 0.017s "half-frames" among 0.033s ones. Left in, they
+// inflate the count and drift the index→time mapping, so the overlay's seek-to-timestamp
+// lands on the wrong frame (a per-frame effect the cadence math, which reads the median
+// interval and frame indices, doesn't feel). Keep frames spaced >=60% of the median gap.
+function dedupeFrameTimes(times) {
+  if (times.length < 4) return times;
+  const gaps = [];
+  for (let i = 1; i < times.length; i++) gaps.push(times[i] - times[i - 1]);
+  gaps.sort((a, b) => a - b);
+  const medGap = gaps[gaps.length >> 1];
+  if (!(medGap > 0)) return times;
+  const minGap = medGap * 0.6;
+  const kept = [times[0]];
+  for (let i = 1; i < times.length; i++) {
+    if (times[i] - kept[kept.length - 1] >= minGap) kept.push(times[i]);
+  }
+  return kept;
+}
+
 // fps as the median inter-frame interval of the frames we actually decoded. The engine
 // reconstructs real time as frame_index / fps (events.py cadence, duration = n/fps), so
 // the returned fps MUST match the true spacing of the emitted frames — otherwise cadence
@@ -184,6 +205,7 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
     frameTimes = [];
     for (let t = 0; t < duration; t += 1 / 30) frameTimes.push(t);
   }
+  frameTimes = dedupeFrameTimes(frameTimes);
   await seekTo(video, 0);
 
   const frames = [];
