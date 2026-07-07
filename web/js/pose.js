@@ -64,13 +64,17 @@ const ZERO_FRAME = () => KEYPOINTS.map(() => [0.0, 0.0, 0.0]);
 const round3 = (p) => p.map((v) => Math.round(v * 1000) / 1000);
 
 let _landmarkerPromise = null;
-// PoseLandmarker requires strictly increasing timestamps for the LIFETIME of the
-// instance, not just within one video. Since the landmarker is a cached singleton (to
-// avoid re-loading the model per analysis), a second extract() call restarting at
-// mediaTime=0 would be LESS than the first video's last timestamp and MediaPipe throws
-// ("Packet timestamp mismatch"). A free-running counter, independent of any video's own
-// clock, sidesteps this — the real per-frame time is tracked separately in `timestamps`.
-let _mpClock = 0;
+// The timestamps fed to detectForVideo drive TWO things: (1) they must be strictly
+// increasing for the LIFETIME of the cached singleton landmarker — a second extract()
+// restarting at 0 would throw ("Packet timestamp mismatch") — and (2) MediaPipe's VIDEO
+// mode uses the deltas between them to drive its temporal landmark-smoothing filter.
+// An earlier version passed a counter incrementing by 1 ms per frame, which satisfied
+// (1) but wrecked (2): MediaPipe believed the video ran at 1000 fps and smoothed ~33x
+// too hard, so landmarks lagged the real limbs by ~2 frames and under-swung their true
+// motion (~85% amplitude, ~3x-too-smooth inter-frame movement) — a sluggish skeleton
+// that never matched the video. So: pass REAL video time in ms, offset per run by
+// _mpEpoch so successive runs stay monotonic.
+let _mpEpoch = 0;
 async function getLandmarker() {
   if (_landmarkerPromise) return _landmarkerPromise;
   _landmarkerPromise = (async () => {
@@ -210,16 +214,24 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
 
   const frames = [];
   const timestamps = [];
+  // Real per-frame time (ms) + a monotonic epoch so the smoothing filter sees true
+  // frame intervals while timestamps stay strictly increasing across runs.
+  const epoch = _mpEpoch;
+  let lastMs = -1;
 
   for (let i = 0; i < frameTimes.length; i++) {
     const t = Math.min(frameTimes[i], duration);
     await seekTo(video, t);
-    const res = landmarker.detectForVideo(video, ++_mpClock);
+    let ms = epoch + Math.round(t * 1000);
+    if (ms <= lastMs) ms = lastMs + 1; // guard vs rounding collisions
+    lastMs = ms;
+    const res = landmarker.detectForVideo(video, ms);
     const lm = res.landmarks && res.landmarks[0];
     frames.push(lm ? toCanonical(lm, width, height).map(round3) : ZERO_FRAME());
     timestamps.push(Math.round(t * 10000) / 10000);
     onProgress((i + 1) / frameTimes.length, `Extracting pose… ${frames.length} frames`);
   }
+  _mpEpoch = Math.max(_mpEpoch, lastMs + 1000); // next run starts past this one (monotonic)
 
   onProgress(1, `Extracted ${frames.length} frames`);
   return {
