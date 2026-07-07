@@ -25,6 +25,7 @@ class MetricKey(str, Enum):
     ELBOW_ANGLE             = "elbow_angle"
     # --- rear-view scored ---
     PELVIC_DROP             = "pelvic_drop"
+    HIP_ADDUCTION           = "hip_adduction"
     PRONATION               = "pronation"
     STEP_WIDTH              = "step_width"
     LATERAL_TRUNK_SWAY      = "lateral_trunk_sway"

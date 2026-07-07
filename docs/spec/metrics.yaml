@@ -144,6 +144,16 @@ metrics:
     scored: false
     per_side: true
     asym_direction: neutral
+  hip_adduction:
+    label: Hip adduction (estimate)
+    unit: deg
+    good: [null, 8]
+    warn: [null, 12]
+    confidence: low
+    views: [rear]
+    scored: false
+    per_side: true
+    asym_direction: higher_worse
   hip_extension:
     label: Hip extension (peak)
     unit: deg
@@ -315,6 +325,11 @@ composites:
     all_of: [foot_strike_angle > 12, overstride > good_hi]
     severity: med
     supersedes: [foot_strike_angle]
+  lateral_chain:
+    view: rear
+    all_of: [pelvic_drop > good_hi, hip_adduction > good_hi]
+    severity: med
+    supersedes: [pelvic_drop, hip_adduction]
   overstriding:
     view: side
     all_of: [overstride > good_hi, hip_extension < good_lo, cadence < good_lo]
@@ -332,9 +347,9 @@ asymmetry:
     warn: [null, 10]
   suppression: If both sides are individually within their metric's good band, the flag is suppressed.
   metrics: {arm_swing: neutral, contact_time_ms: higher_worse, elbow_angle: neutral, foot_strike_angle: neutral,
-    heel_recovery: neutral, hip_extension: higher_better, knee_drive: higher_better, knee_flexion_midstance: higher_better,
-    knee_flexion_contact: neutral, overstride: higher_worse, pelvic_drop: higher_worse, pronation: higher_worse,
-    step_length: higher_better, stride_length: higher_better}
+    heel_recovery: neutral, hip_adduction: higher_worse, hip_extension: higher_better, knee_drive: higher_better,
+    knee_flexion_midstance: higher_better, knee_flexion_contact: neutral, overstride: higher_worse, pelvic_drop: higher_worse,
+    pronation: higher_worse, step_length: higher_better, stride_length: higher_better}
 scoring:
   per_metric: {good: 100, warn_edge: 45, deep_bad: 17.5, nan: 50, frac_clamp: 1.5, slope: 55}
   overall: {base: mean of scored-metric scores for the view, penalty: 'clamp(mean(flagged asymmetry diffs)

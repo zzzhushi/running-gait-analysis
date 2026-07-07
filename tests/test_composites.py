@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from gaitlab.coaching import feedback as fb
 
 
@@ -61,8 +59,12 @@ def test_composite_ranks_above_components(make_values):
     assert items[0]["severity"] == "high"
 
 
-@pytest.mark.xfail(reason="lateral-chain composite deferred: needs knee valgus, rejected for 2-D rear (§7.3)")
-def test_lateral_chain_composite_pending(make_values):
-    values = make_values("rear", pelvic_drop=12)
+def test_lateral_chain_composite_fires_and_supersedes(make_values):
+    # hip_adduction is a hedged, low-confidence estimate (§7.3 rejects true knee valgus
+    # from a single rear camera) — the composite still fires but at "med", not "high".
+    values = make_values("rear", pelvic_drop=12, hip_adduction=10)
     items, _s, _g = fb.build(values, {}, [], "rear", {})
     assert "lateral_chain" in _metrics(items)
+    assert {"pelvic_drop", "hip_adduction"}.isdisjoint(_metrics(items))
+    lc = next(i for i in items if i["metric"] == "lateral_chain")
+    assert lc["severity"] == "med"

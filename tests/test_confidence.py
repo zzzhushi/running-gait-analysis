@@ -17,6 +17,14 @@ def test_pelvic_drop_confidence_is_value_dependent():
     assert value_confidence(d, 8.0) == "high"       # clears the floor
 
 
+def test_hip_adduction_stays_low_regardless():
+    # Same footing as pronation — §7.3 rejects true knee valgus from a single rear
+    # camera, so confidence is pinned "low" at any magnitude, never value-dependent.
+    d = METRIC_DEFS[MetricKey.HIP_ADDUCTION]
+    assert value_confidence(d, 1.0) == "low"
+    assert value_confidence(d, 15.0) == "low"
+
+
 def test_pronation_stays_low_regardless():
     d = METRIC_DEFS[MetricKey.PRONATION]
     assert value_confidence(d, 2.0) == "low"
