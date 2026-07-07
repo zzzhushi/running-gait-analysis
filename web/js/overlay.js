@@ -3,6 +3,12 @@
 
 const AXIAL = "#7f8c9b", LEFTC = "#4dabf7", RIGHTC = "#f59f00";
 
+// Don't draw joints the pose model isn't confident about. On a rear view the hands are
+// occluded, so wrists come back with ~0.2 confidence at essentially guessed positions —
+// drawing them made the forearm lines flail off the body ("arms don't match"). Below this
+// the joint (and any bone to it) is skipped, so the skeleton shows only what's tracked.
+const MIN_DRAW_CONF = 0.35;
+
 const BONES = [
   ["nose", "neck", AXIAL], ["neck", "mid_hip", AXIAL],
   ["mid_hip", "l_hip", AXIAL], ["mid_hip", "r_hip", AXIAL],
@@ -66,7 +72,7 @@ export class SkeletonRenderer {
     const i = this.idx[name];
     if (i == null) return null;
     const p = this.pose.frames[frame] && this.pose.frames[frame][i];
-    if (!p || p[2] < 0.1) return null;
+    if (!p || p[2] < MIN_DRAW_CONF) return null;
     return [p[0] * this.tf.s + this.tf.ox, p[1] * this.tf.s + this.tf.oy];
   }
 
