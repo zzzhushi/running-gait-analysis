@@ -1,6 +1,7 @@
 import * as api from "../api.js";
 import { el, fmt } from "../format.js";
 import { SkeletonRenderer, drawTimeline } from "../overlay.js";
+import { BUILD_VERSION } from "../config.js";
 
 export default async function analyze(app, params) {
   const id = params.id;
@@ -91,14 +92,42 @@ export default async function analyze(app, params) {
   const series = r.series || {};
   const state = { frame: 0, playing: false, speed: 1, last: performance.now(), raf: 0 };
 
-  // Debug overlay — toggle with ?debug in the URL. Shows live video.currentTime vs
-  // matched pose timestamp so you can see whether drift is constant or compounding.
+  // Debug overlay — toggle with ?debug in the URL. Shows the live render state so a
+  // screenshot pins down overlay-alignment bugs: device pixel ratio, canvas vs video
+  // sizes, the transform actually in use vs the one the current canvas size implies
+  // (a mismatch = a stale transform), and time-sync drift. Also offers pose/result
+  // downloads so the exact failing input can be reproduced off the reporter's machine.
   const debugMode = location.search.includes("debug");
+  const dbgPre = debugMode ? el("pre", { style: "margin:0;white-space:pre" }, "") : null;
+  const download = (name, obj) => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: "application/json" }));
+    const a = el("a", { href: url, download: name, style: "color:#6cf;margin-right:10px" }, name);
+    return a;
+  };
   const dbg = debugMode ? el("div", {
-    style: "position:absolute;top:4px;left:4px;background:rgba(0,0,0,.75);color:#0f0;" +
-           "font:11px monospace;padding:4px 7px;border-radius:4px;z-index:99;pointer-events:none"
-  }, "") : null;
+    style: "position:absolute;top:4px;left:4px;background:rgba(0,0,0,.8);color:#0f0;" +
+           "font:11px/1.45 monospace;padding:6px 8px;border-radius:4px;z-index:99;max-width:92%",
+  }, [dbgPre, el("div", { style: "margin-top:5px" }, [
+    download("pose.json", pose), download("result.json", r),
+  ])]) : null;
   if (dbg) stage.style.position = "relative", stage.append(dbg);
+  function debugText(f) {
+    const cr = canvas.getBoundingClientRect();
+    const t = renderer.tf || {};
+    // What the transform SHOULD be for the current canvas size (object-fit: contain of
+    // the pose frame). If this differs from the live transform, it's stale.
+    const s = Math.min(cr.width / (pose.width || 1), cr.height / (pose.height || 1));
+    const want = { s, ox: (cr.width - s * (pose.width || 1)) / 2, oy: (cr.height - s * (pose.height || 1)) / 2 };
+    const vt = video ? video.currentTime : 0, pt = timeAtFrame(f);
+    return [
+      `build ${BUILD_VERSION}   dpr ${window.devicePixelRatio}`,
+      `canvas css ${Math.round(cr.width)}x${Math.round(cr.height)}  backing ${canvas.width}x${canvas.height}`,
+      `pose ${pose.width}x${pose.height}  video ${video ? video.videoWidth + "x" + video.videoHeight : "—"}`,
+      `tf   s=${(t.s || 0).toFixed(3)} ox=${Math.round(t.ox || 0)} oy=${Math.round(t.oy || 0)}`,
+      `want s=${want.s.toFixed(3)} ox=${Math.round(want.ox)} oy=${Math.round(want.oy)}  ${Math.abs((t.s || 0) - want.s) > 0.005 ? "<< STALE" : "ok"}`,
+      `frame ${f}/${n - 1}  vt=${vt.toFixed(3)}s ts=${pt.toFixed(3)}s  drift=${((vt - pt) * 1000).toFixed(0)}ms`,
+    ].join("\n");
+  }
 
   requestAnimationFrame(() => { renderer.resize(); drawTimeline(tlCanvas, r); render(0); });
   const onResize = () => { renderer.resize(); drawTimeline(tlCanvas, r); render(Math.floor(state.frame)); };
@@ -134,12 +163,7 @@ export default async function analyze(app, params) {
     else if (state.playing) { state.frame += dt * fps * state.speed; if (state.frame >= n - 1) state.frame = 0; }
     const f = Math.floor(state.frame);
     render(f);
-    if (dbg && video) {
-      const vt = video.currentTime;
-      const pt = timeAtFrame(f);
-      const delta = (vt - pt) * 1000;
-      dbg.textContent = `video.currentTime: ${vt.toFixed(4)}s\npose ts[${f}]:     ${pt.toFixed(4)}s\ndelta: ${delta > 0 ? "+" : ""}${delta.toFixed(1)}ms`;
-    }
+    if (dbgPre) dbgPre.textContent = debugText(f);
     state.raf = requestAnimationFrame(loop);
   }
   state.raf = requestAnimationFrame(loop);

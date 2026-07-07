@@ -56,11 +56,14 @@ def cache_bust(version: str) -> None:
         if new != text:
             js.write_text(new)
             n += 1
-    # the engine-zip URL fetched at runtime (a plain string in config.js)
+    # the engine-zip URL fetched at runtime + the visible build stamp (both in config.js)
     cfg = WEB / "js" / "config.js"
-    cfg.write_text(re.sub(r'(["\'])(\.\/py\/gaitlab\.zip)(["\'])',
-                          lambda m: m.group(1) + _bust(m.group(2), version) + m.group(3),
-                          cfg.read_text()))
+    text = re.sub(r'(["\'])(\.\/py\/gaitlab\.zip)(["\'])',
+                  lambda m: m.group(1) + _bust(m.group(2), version) + m.group(3),
+                  cfg.read_text())
+    text = text.replace('export const BUILD_VERSION = "dev";',
+                        f'export const BUILD_VERSION = "{version}";')
+    cfg.write_text(text)
     # index.html entry script + stylesheet
     html = WEB / "index.html"
     doc = re.sub(r'((?:src|href)=["\'])(\.\/(?:js\/main\.js|css\/app\.css))(["\'])',

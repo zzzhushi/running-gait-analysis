@@ -6,7 +6,7 @@ import trends from "./screens/trends.js";
 import combine from "./screens/combine.js";
 import { el } from "./format.js";
 import * as api from "./api.js";
-import { IS_STATIC } from "./config.js";
+import { IS_STATIC, BUILD_VERSION } from "./config.js";
 
 const HOME = IS_STATIC ? "#/upload" : "#/library";
 
@@ -114,6 +114,11 @@ async function initHeader() {
 }
 
 document.body.classList.toggle("static", IS_STATIC);
+// Build stamp: log it and append to the footer so you can confirm a browser picked up a
+// fresh deploy (compare against the sha shown in the GitHub Actions run).
+console.log(`GaitLab build ${BUILD_VERSION}`);
+const foot = document.querySelector(".foot");
+if (foot) foot.append(el("span", { style: "opacity:.5" }, ` · build ${BUILD_VERSION}`));
 if (!location.hash) location.hash = HOME;
 else route();
 initHeader();

@@ -11,6 +11,11 @@ const _override = _params.get("runtime") || (typeof window !== "undefined" && wi
 export const RUNTIME = _override === "server" ? "server" : "static";
 export const IS_STATIC = RUNTIME === "static";
 
+// Build stamp — replaced with the short commit sha at deploy time by scripts/build_web.py
+// (stays "dev" locally). Shown in the footer and logged on boot so you can confirm which
+// code a browser is actually running after a deploy.
+export const BUILD_VERSION = "dev";
+
 // Pinned CDN versions — bump deliberately, keep in sync with .github/workflows/pages.yml.
 export const PYODIDE_VERSION = "0.26.4";
 export const PYODIDE_INDEX_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
