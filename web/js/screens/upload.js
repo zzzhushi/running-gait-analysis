@@ -79,7 +79,7 @@ export default async function upload(app) {
   // ---------------------------------------------------------------- run fields
   const labelInput   = el("input", { type: "text", placeholder: "e.g. Tuesday tempo — side" });
   // Static: pick a local file (never uploaded). Server: choose a cached clip on disk.
-  const fileInput    = el("input", { type: "file", accept: "video/*", capture: "environment" });
+  const fileInput    = el("input", { type: "file", accept: "video/*" });
   const videoSel     = el("select", {}, [el("option", { value: "" }, "— pick a video —")]);
   const videoField   = IS_STATIC ? fileInput : videoSel;
   const viewSel      = el("select", {}, ["side-left", "side-right", "rear", "front"]
