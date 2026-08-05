@@ -447,7 +447,10 @@ def main():
 
     _init_db()
     seed_if_empty()
-    url = f"http://localhost:{args.port}"
+    # config.js defaults to the static (Pages) runtime; local dev opts in with
+    # ?runtime=server. Without it the SPA hides Library/Trends/Combine and never reads
+    # the SQLite runs seeded just above, so the app looks empty despite the demo data.
+    url = f"http://localhost:{args.port}/?runtime=server"
     print(f"GaitLab running at {url}  (Ctrl-C to stop)")
     if not args.no_open:
         try:
