@@ -24,3 +24,20 @@ jobs:
 
       - name: Spec docs in sync with the code registry
         run: python scripts/gen_spec.py --check
+
+  # The JS mapping tests + the Pyodide-vs-Python parity check. This mirrors the
+  # test-web job in pages.yml, which previously ran them ONLY on push to main —
+  # so a failing JS assertion could not fail a PR, and was first caught after
+  # merge, where it blocked the Pages deploy instead. Gate PRs on it too.
+  test-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: npm test  # pretest builds web/py/gaitlab.zip; runs vitest + parity
