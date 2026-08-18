@@ -79,16 +79,22 @@ describe("fpsFromTimestamps", () => {
     expect(fpsFromTimestamps(grid(301, 1 / 30))).toBeCloseTo(30, 6);
   });
 
+  // Drop every 6th frame while KEEPING the first and last, so the surviving span is a
+  // clean 10 s and the expected rate is exactly 250/10 = 25 with no edge effects to
+  // reason about. (Dropping index 0 and the last index instead shortens the span and
+  // makes the true answer 25.067 — a fine result, but a needlessly fiddly assertion.)
+  const droppedGrid = () => grid(301, 1 / 30).filter((_, i) => i % 6 !== 5);
+
   it("reports the AVERAGE rate when frames are missing, not the surviving gap", () => {
-    // A 30 fps grid with every 6th frame dropped: surviving frames are still mostly
-    // 1/30 apart, so a median-gap reading would still say 30 and overstate the rate.
-    const ts = grid(301, 1 / 30).filter((_, i) => i % 6 !== 0);
-    expect(fpsFromTimestamps(ts)).toBeCloseTo(25, 1);   // 5 of every 6 frames kept
+    // Survivors are still mostly 1/30 apart, so a median-gap reading would say ~30 and
+    // overstate the rate by 20% — which is exactly how cadence got inflated.
+    const ts = droppedGrid();
+    expect(fpsFromTimestamps(ts)).toBeCloseTo(25, 6);   // 5 of every 6 frames kept
     expect(fpsFromTimestamps(ts)).toBeLessThan(29);     // must NOT come back as ~30
   });
 
   it("keeps index/fps reconstructing the true clip duration", () => {
-    const ts = grid(301, 1 / 30).filter((_, i) => i % 6 !== 0);
+    const ts = droppedGrid();
     const span = ts[ts.length - 1] - ts[0];
     expect((ts.length - 1) / fpsFromTimestamps(ts)).toBeCloseTo(span, 6);
   });
