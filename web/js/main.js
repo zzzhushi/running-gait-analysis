@@ -7,6 +7,7 @@ import combine from "./screens/combine.js";
 import { el } from "./format.js";
 import * as api from "./api.js";
 import { IS_STATIC, BUILD_VERSION } from "./config.js";
+import { openLicenses } from "./licenses.js";
 
 const HOME = IS_STATIC ? "#/upload" : "#/library";
 
@@ -118,7 +119,16 @@ document.body.classList.toggle("static", IS_STATIC);
 // fresh deploy (compare against the sha shown in the GitHub Actions run).
 console.log(`GaitLab build ${BUILD_VERSION}`);
 const foot = document.querySelector(".foot");
-if (foot) foot.append(el("span", { style: "opacity:.5" }, ` · build ${BUILD_VERSION}`));
+if (foot) {
+  // Attribution entry point (#21) — the app ships third-party code and an ML model to
+  // every visitor, so the notice has to be reachable from every screen.
+  foot.append(
+    " · ",
+    el("a", { href: "#", class: "lic-link", onclick: (e) => { e.preventDefault(); openLicenses(); } },
+      "About & licenses"),
+    el("span", { style: "opacity:.5" }, ` · build ${BUILD_VERSION}`),
+  );
+}
 if (!location.hash) location.hash = HOME;
 else route();
 initHeader();

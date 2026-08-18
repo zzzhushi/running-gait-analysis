@@ -218,3 +218,27 @@ table.cmp td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .player { grid-template-columns: 1fr; }
   .chart-row { grid-template-columns: 1fr; }
 }
+
+/* ---------- about & licenses dialog (#21) ---------- */
+.foot .lic-link { color: var(--muted); text-decoration: underline; }
+.foot .lic-link:hover { color: var(--text); }
+.lic-dlg {
+  max-width: 540px; width: calc(100% - 32px); border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--panel); color: var(--text);
+  padding: 20px 22px; box-shadow: var(--shadow);
+}
+.lic-dlg::backdrop { background: rgba(0,0,0,.6); }
+.lic-dlg h2 { margin: 0 0 10px; font-size: 18px; }
+.lic-dlg h3 { margin: 18px 0 8px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.lic-dlg a { color: var(--accent); }
+.lic-own, .lic-priv { margin: 0 0 8px; font-size: 13px; line-height: 1.5; }
+.lic-priv { color: var(--muted); }
+.lic-row { padding: 9px 0; border-top: 1px solid var(--line); }
+.lic-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 14px; }
+.lic-ver { color: var(--muted); font-size: 12px; }
+.lic-tag {
+  margin-left: auto; font-size: 11px; padding: 2px 7px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel2); text-decoration: none;
+}
+.lic-role { color: var(--muted); font-size: 12.5px; margin-top: 3px; line-height: 1.45; }
+.lic-dlg form { margin-top: 18px; text-align: right; }
