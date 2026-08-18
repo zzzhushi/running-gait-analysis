@@ -2,7 +2,7 @@
 // and assert the canonical 22-keypoint frame: pixel scaling, derived neck/mid_hip/head,
 // and zeroed small toes. No browser, no video, no model.
 import { describe, it, expect } from "vitest";
-import { toCanonical, KEYPOINTS, BLAZEPOSE } from "../js/pose.js";
+import { toCanonical, KEYPOINTS, BLAZEPOSE, fpsFromTimestamps } from "../js/pose.js";
 
 const W = 1000;
 const H = 2000;
@@ -65,5 +65,37 @@ describe("toCanonical", () => {
     delete lm[BLAZEPOSE.nose].visibility;
     const f = toCanonical(lm, W, H);
     expect(f[idx("nose")][2]).toBe(1.0);
+  });
+});
+
+// The fps we hand the engine is a time base, not a frame-spacing statistic: the engine
+// maps frame INDEX back to wall-clock as index/fps, so this must be the average rate over
+// the clip. Reporting 1/median(gap) instead silently inflates cadence in proportion to
+// however many frames the real-time playthrough dropped — a real 165 spm came back as 200.
+describe("fpsFromTimestamps", () => {
+  const grid = (n, step, from = 0) => Array.from({ length: n }, (_, i) => from + i * step);
+
+  it("returns the nominal rate for an evenly spaced grid", () => {
+    expect(fpsFromTimestamps(grid(301, 1 / 30))).toBeCloseTo(30, 6);
+  });
+
+  it("reports the AVERAGE rate when frames are missing, not the surviving gap", () => {
+    // A 30 fps grid with every 6th frame dropped: surviving frames are still mostly
+    // 1/30 apart, so a median-gap reading would still say 30 and overstate the rate.
+    const ts = grid(301, 1 / 30).filter((_, i) => i % 6 !== 0);
+    expect(fpsFromTimestamps(ts)).toBeCloseTo(25, 1);   // 5 of every 6 frames kept
+    expect(fpsFromTimestamps(ts)).toBeLessThan(29);     // must NOT come back as ~30
+  });
+
+  it("keeps index/fps reconstructing the true clip duration", () => {
+    const ts = grid(301, 1 / 30).filter((_, i) => i % 6 !== 0);
+    const span = ts[ts.length - 1] - ts[0];
+    expect((ts.length - 1) / fpsFromTimestamps(ts)).toBeCloseTo(span, 6);
+  });
+
+  it("falls back to 30 rather than dividing by zero on degenerate input", () => {
+    expect(fpsFromTimestamps([])).toBe(30);
+    expect(fpsFromTimestamps([1.5])).toBe(30);
+    expect(fpsFromTimestamps([2, 2, 2])).toBe(30);     // zero span
   });
 });
