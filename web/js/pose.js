@@ -161,12 +161,25 @@ function dedupeFrameTimes(times) {
   return kept;
 }
 
-// fps as the median inter-frame interval of the frames we actually decoded. The engine
-// reconstructs real time as frame_index / fps (events.py cadence, duration = n/fps), so
-// the returned fps MUST match the true spacing of the emitted frames — otherwise cadence
-// scales by whatever the sampling error was. Deriving it from real mediaTimes (not the
-// probe) keeps cadence correct and identical run-to-run.
-function fpsFromTimestamps(ts) {
+// fps as the AVERAGE rate of the frames we actually decoded: (n-1) / (last - first).
+//
+// The engine reconstructs real time from frame INDICES (events.py: step_s =
+// median(step_in_frames) / fps), so the fps we report has to be the rate that maps index
+// back onto the wall clock across the whole clip. That is the average rate, not the
+// median inter-frame gap.
+//
+// This used to return 1/median(gap), which is only the same thing when no frames are
+// missing. The real-time playthrough in collectFrameTimes() drops frames whenever the
+// compositor is busy, and drops get likelier the longer the clip runs. A drop leaves the
+// median gap untouched (the surviving frames are still mostly adjacent) while the true
+// average rate falls, so index/fps compresses the timeline and cadence scales up by
+// exactly the drop factor. Measured on a 40 s clip: ~17% of frames dropped, median gap
+// still implied 30 fps, and a real 165 spm was reported as 200.
+export function fpsFromTimestamps(ts) {
+  if (ts.length >= 2) {
+    const span = ts[ts.length - 1] - ts[0];
+    if (span > 0) return (ts.length - 1) / span;
+  }
   const diffs = [];
   for (let i = 1; i < ts.length; i++) {
     const d = ts[i] - ts[i - 1];
