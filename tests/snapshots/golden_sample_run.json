@@ -1,5 +1,6 @@
 {
   "asymmetry": {
+    "MetricKey.HIP_ADDUCTION": "good",
     "MetricKey.PELVIC_DROP": "bad",
     "MetricKey.PRONATION": "bad"
   },
@@ -16,6 +17,10 @@
     "head_lateral_sway": {
       "status": "info",
       "value": 4.905
+    },
+    "hip_adduction": {
+      "status": "good",
+      "value": 1.951
     },
     "lateral_trunk_sway": {
       "status": "good",

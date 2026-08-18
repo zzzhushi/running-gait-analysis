@@ -14,6 +14,7 @@ from gaitlab.core.events import GaitEvents
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 from gaitlab.metrics.compute import compute
 from gaitlab.metrics.ctx import Ctx, _leg_length, knee_flexion_at
+from gaitlab.metrics.definitions.hip_adduction import _compute as hip_adduction_compute
 
 
 def pose_from_points(view, frames, fps=60, width=1080, height=1920):
@@ -80,6 +81,23 @@ def test_hip_extension_worst_side_is_min(synth):
     m = compute(synth("side-left", fps=60, duration=6, cadence=176, asymmetry=0.3, seed=11))
     ps = m["per_side"]
     assert m["values"]["hip_extension"] == pytest.approx(min(ps["l"]["hip_extension"], ps["r"]["hip_extension"]))
+
+
+# --- hip adduction: sign is toward the midline, not raw left/right -----------
+
+def _hip_adduction_at(knee_x):
+    """Rear pose, one midstance frame; left leg, hip at x=480, midline at x=500."""
+    seq = pose_from_points("rear", [{"mid_hip": (500, 0), "l_hip": (480, 0), "l_knee": (knee_x, 100)}])
+    ev = GaitEvents(stance={"l": [(0, 0)], "r": []})
+    return hip_adduction_compute(Ctx(seq, ev, None), "l")
+
+
+def test_hip_adduction_positive_when_knee_drifts_toward_midline():
+    assert _hip_adduction_at(500) > 0  # knee moves right, toward the midline
+
+
+def test_hip_adduction_negative_when_knee_drifts_away_from_midline():
+    assert _hip_adduction_at(460) < 0  # knee moves further left, away from the midline
 
 
 # --- crossover detection: must ignore single noisy frames -------------------
