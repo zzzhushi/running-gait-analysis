@@ -34,6 +34,14 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Imported here rather than inside main(): these were function-local, so when the
+# core/ refactor moved them the stale paths only surfaced at Step 3/3 — after the
+# multi-minute pose extraction had already run. At module level, tests/test_imports.py
+# catches it instead.
+from gaitlab import analyze  # noqa: E402
+from gaitlab.core.events import detect_events  # noqa: E402
+from gaitlab.core.schema import PoseSequence  # noqa: E402
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 SIDE_EXPECTED = {
@@ -158,9 +166,6 @@ def main():
 
     # ── 3. Analyze ───────────────────────────────────────────────────────────
     print(f"{ANSI_INFO} Step 3/3 — running gaitlab engine…")
-    from gaitlab.schema import PoseSequence
-    from gaitlab import analyze
-
     profile = {}
     if args.height:  profile["height_cm"]    = args.height
     if args.leg:     profile["leg_length_cm"] = args.leg
@@ -187,7 +192,6 @@ def main():
         print()
 
     # Gait events
-    from gaitlab.events import detect_events
     ev = detect_events(seq)
     n_l = len(ev.strikes.get("l", []))
     n_r = len(ev.strikes.get("r", []))
