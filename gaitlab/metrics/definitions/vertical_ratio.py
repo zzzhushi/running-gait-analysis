@@ -9,14 +9,14 @@ from ..spec import MetricDef, register
 
 
 def _compute(ctx, side=None):
-    if not (ctx.cal["px_per_cm"] and ctx.cal["speed_mps"]):
+    if not (ctx.cal.px_per_cm and ctx.cal.speed_mps):
         return None
     cadence = ctx.ev.cadence_spm
     if cadence != cadence or cadence <= 0:
         return None
-    vo_cm = ctx.vertical_oscillation_px() / ctx.cal["px_per_cm"]
+    vo_cm = ctx.vertical_oscillation_px() / ctx.cal.px_per_cm
     step_time = 60.0 / cadence
-    step_len_m = ctx.cal["speed_mps"] * step_time
+    step_len_m = ctx.cal.speed_mps * step_time
     if step_len_m <= 0:
         return None
     return (vo_cm / 100.0) / step_len_m * 100.0

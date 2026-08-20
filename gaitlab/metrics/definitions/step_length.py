@@ -8,12 +8,12 @@ from ..spec import MetricDef, register
 
 
 def _compute(ctx, side):
-    if not ctx.cal["speed_mps"]:
+    if not ctx.cal.speed_mps:
         return None
     steps = step_times(ctx.ev, side, ctx.seq.fps)
     if not steps:
         return None
-    return ctx.cal["speed_mps"] * med(steps)
+    return ctx.cal.speed_mps * med(steps)
 
 
 register(MetricDef(
