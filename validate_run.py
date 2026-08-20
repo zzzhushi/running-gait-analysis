@@ -45,7 +45,7 @@ SIDE_EXPECTED = {
     "knee_drive":           (5,   50,  "°"),
     "elbow_angle":          (60,  140, "°"),
     "duty_factor":          (20,  65,  "%"),
-    "contact_time_ms":      (100, 500, "ms"),
+    "contact_time":         (100, 500, "ms"),
     "vertical_oscillation": (2,   20,  "%leg"),
     "flight_time":          (0,   400, "ms"),
     "heel_recovery":        (5,   80,  "%leg"),
@@ -158,7 +158,7 @@ def main():
 
     # ── 3. Analyze ───────────────────────────────────────────────────────────
     print(f"{ANSI_INFO} Step 3/3 — running gaitlab engine…")
-    from gaitlab.schema import PoseSequence
+    from gaitlab.core.schema import PoseSequence
     from gaitlab import analyze
 
     profile = {}
@@ -167,7 +167,9 @@ def main():
     if args.speed:   profile["speed_kmh"]     = args.speed
     if args.sex:     profile["sex"]           = args.sex
 
-    seq    = PoseSequence(**{k: pose[k] for k in ("fps","width","height","view","keypoint_names","frames")})
+    # Use the canonical constructor: hand-picking keys silently dropped `timestamps`,
+    # so a variable-frame-rate clip was analysed on the constant-rate f/fps model.
+    seq    = PoseSequence.from_pose_dict(pose)
     result = analyze(seq, label=os.path.basename(args.video), profile=profile or None).to_dict()
     print()
 
@@ -187,7 +189,7 @@ def main():
         print()
 
     # Gait events
-    from gaitlab.events import detect_events
+    from gaitlab.core.events import detect_events
     ev = detect_events(seq)
     n_l = len(ev.strikes.get("l", []))
     n_r = len(ev.strikes.get("r", []))

@@ -49,8 +49,17 @@ def compute(per_side: Dict[str, Dict[str, float]], targets: Optional[Dict] = Non
         # diff_pct explodes when values are near zero (e.g. L=0deg R=3deg -> 200%).
         # Suppress the flag when both sides are individually within the good target band:
         # if both values are healthy, a % difference between them isn't clinically meaningful.
+        #
+        # Only ask that of a metric that HAS a good band. `status()` returns "good"
+        # unconditionally when good == (None, None) — that is deliberate for metrics where
+        # no value is inherently better (see definitions/foot_strike_angle.py), but it made
+        # this gate always fire for them, so every asymmetry on a band-less metric was
+        # downgraded to "good" however large. On the real-clip fixture that displayed an
+        # 82% foot-strike and a 69% knee-flexion-at-contact difference as "good" while a
+        # 6.5% difference on a banded metric showed "warn".
         indiv_t = _targets.get(key)
-        if indiv_t is not None and status != "good":
+        has_band = indiv_t is not None and tuple(indiv_t.good) != (None, None)
+        if has_band and status != "good":
             if indiv_t.status(l) == "good" and indiv_t.status(r) == "good":
                 status = "good"
         out.append({

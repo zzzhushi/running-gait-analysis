@@ -1,8 +1,10 @@
 # Local data (SQLite DB + any stored media)
 /data/
 
-# Pose extraction outputs
+# Pose extraction outputs (tests/data/ fixtures are committed on purpose — see
+# tests/data/README.md)
 *.pose.json
+!/tests/data/*.pose.json
 
 # Python
 __pycache__/

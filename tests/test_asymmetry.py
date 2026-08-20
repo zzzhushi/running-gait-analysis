@@ -55,3 +55,35 @@ def test_overall_diff_averages_flagged_only():
     ]
     assert A.overall_diff(asym) == pytest.approx(16.0)
     assert A.overall_diff([]) == 0.0
+
+
+def test_bandless_metric_is_not_auto_suppressed():
+    """A metric with no good band must still be able to flag a left/right imbalance.
+
+    `MetricDef.status()` returns "good" unconditionally when good == (None, None) — that is
+    deliberate for metrics where no value is inherently better (foot-strike angle). The
+    "both sides individually healthy" suppression must not read that sentinel as evidence
+    of health, or every asymmetry on such a metric is silently downgraded however large.
+    Regression guard: an 82% foot-strike difference once displayed as "good".
+    """
+    from gaitlab.metrics.defs import METRIC_DEFS
+
+    defn = METRIC_DEFS[MetricKey.FOOT_STRIKE_ANGLE]
+    assert tuple(defn.good) == (None, None), "fixture assumption: this metric has no band"
+    assert defn.status(999.0) == "good", "fixture assumption: status() is an always-good sentinel"
+
+    per_side = {"l": {"foot_strike_angle": 15.0}, "r": {"foot_strike_angle": 6.0}}
+    out = A.compute(per_side)
+    fsa = [a for a in out if a["key"] == MetricKey.FOOT_STRIKE_ANGLE][0]
+    assert fsa["diff_pct"] > 80.0
+    assert fsa["status"] != "good", "large asymmetry on a band-less metric was suppressed"
+
+
+def test_banded_metric_still_suppressed_when_both_sides_healthy():
+    """The suppression itself is intended behaviour where a band exists — keep it."""
+    # knee drive good band is (20, None); both sides comfortably inside it.
+    per_side = {"l": {"knee_drive": 26.0}, "r": {"knee_drive": 30.0}}
+    out = A.compute(per_side)
+    kd = [a for a in out if a["key"] == MetricKey.KNEE_DRIVE][0]
+    assert kd["diff_pct"] > 10.0
+    assert kd["status"] == "good"
