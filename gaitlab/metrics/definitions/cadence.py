@@ -32,9 +32,9 @@ def _trigger(defn, value, values, targets):
 
 
 def _personalize(defn, profile):
-    height = profile.get("height_cm")
-    leg = profile.get("leg_length_cm")
-    speed = profile.get("speed_kmh")
+    height = profile.height_cm
+    leg = profile.leg_length_cm
+    speed = profile.speed_kmh
     h = (leg / 0.48) if leg else height
     if not h:
         return defn

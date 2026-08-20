@@ -41,7 +41,7 @@ def _value_confidence(value):
 
 
 def _personalize(defn, profile):
-    if (profile.get("sex") or "").lower() != "female":
+    if (profile.sex or "").lower() != "female":
         return defn
     return replace(defn, good=(None, 7), warn=(None, 11),
                     note=defn.note + " (Range set for female norms, which typically show a little more pelvic motion.)")
