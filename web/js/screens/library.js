@@ -21,7 +21,7 @@ export default async function library(app) {
       el("p", {}, "No runs yet."),
       el("button", {
         class: "btn btn-accent",
-        onclick: async () => { await api.reseed(); location.reload(); },
+        onclick: async () => { await api.reseed(activeUser?.id); location.reload(); },
       }, "Load demo runs"),
     ]));
     return;
