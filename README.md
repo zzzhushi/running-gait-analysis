@@ -120,7 +120,7 @@ your video
 | Pose (browser) | MediaPipe Tasks Vision, WebAssembly | none |
 | Pose (local) | RTMPose via `rtmlib` (Apache-2.0), CPU | `pip install -r requirements.txt` |
 | Analysis engine (`gaitlab/`) | pure Python, stdlib only | none |
-| Server (`server.py`) | stdlib `http.server` + `sqlite3` | none |
+| Local app (`server.py` + `gaitlab_local/`) | stdlib `http.server` + `sqlite3` | none |
 | UI (`web/`) | vanilla JS ES modules + Canvas + SVG | none (no build step) |
 
 **The same Python engine runs both server-side and in the browser** — in the browser it runs
@@ -130,6 +130,11 @@ the browser build can't silently drift from the local one.
 
 The pose source is **swappable**: anything that emits the normalized format
 ([`gaitlab/core/schema.py`](gaitlab/core/schema.py)) feeds the same engine.
+
+Local persistence, pose caching, ingestion, and HTTP routes live in the sibling
+`gaitlab_local/` package. It intentionally sits outside `gaitlab/` so the GitHub Pages
+Python bundle contains only the portable engine. See [Architecture](docs/architecture.md)
+for the two runtime and dependency flows.
 
 ## Analyze your own video locally
 
@@ -201,11 +206,12 @@ make serve-static          # build and serve the static (browser) build locally
 
 ```
 gaitlab/            pure-Python analysis engine (schema, events, metrics, asymmetry, feedback)
+gaitlab_local/      local-only application boundary (HTTP, SQLite, cache, ingestion)
 extractor/          RTMPose video → pose JSON (the one optional pip install)
-server.py           local stdlib server: serves the UI + JSON API, SQLite storage
+server.py           local CLI/composition entry point
 web/                browser UI (vanilla JS + Canvas), no build step
-tests/              pytest suite for the engine
-docs/               PRD, technical requirements, evidence references, generated metric spec
+tests/              pytest suite for the engine and local application boundaries
+docs/               architecture, PRD, technical requirements, references, generated metric spec
 ```
 
 ## License

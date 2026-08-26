@@ -5,27 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GaitLab — Running Gait Analysis</title>
   <link rel="stylesheet" href="./css/app.css" />
-  <style>
-    /* MVP static build: keep the code in place but hide surfaces not yet wired
-       (Library / Trends / Combine / user switcher). main.js sets body.static. */
-    body.static .topnav a[data-nav="#/library"],
-    body.static .topnav a[data-nav="#/trends"],
-    body.static .topnav a[data-nav="#/combine"],
-    body.static #user-area { display: none; }
-  </style>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand" data-nav="#/library">
+    <div class="brand" data-nav="#/upload">
       <span class="brand-mark">⏱</span>
       <span class="brand-name">GaitLab</span>
       <span class="brand-tag">running gait analysis</span>
     </div>
     <nav class="topnav">
-      <a data-nav="#/library">Library</a>
-      <a data-nav="#/trends">Trends</a>
-      <a data-nav="#/combine">Combine</a>
-      <div id="user-area"></div>
+      <a data-nav="#/library" data-capability="history" hidden>Library</a>
+      <a data-nav="#/trends" data-capability="history" hidden>Trends</a>
+      <a data-nav="#/combine" data-capability="history" hidden>Combine</a>
+      <div id="user-area" data-capability="users" hidden></div>
       <a class="btn btn-accent" data-nav="#/upload">+ New analysis</a>
     </nav>
   </header>
@@ -33,7 +25,7 @@
   <main id="app"><div class="loading">Loading…</div></main>
 
   <footer class="foot">
-    Runs entirely in your browser · no account, no upload · pose by MediaPipe (in-browser)
+    <span id="runtime-note">Runs entirely in your browser · no account, no upload · pose by MediaPipe (in-browser)</span>
   </footer>
 
   <script type="module" src="./js/main.js"></script>
