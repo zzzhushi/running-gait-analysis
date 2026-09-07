@@ -66,6 +66,10 @@ class SQLiteRepository:
         conn = self.connect()
         try:
             with conn:
+                # Legacy sqlite3 transaction control opens an implicit transaction only
+                # for DML, so the DDL below would otherwise autocommit statement by
+                # statement and an interrupted migration could not be rolled back.
+                conn.execute("BEGIN")
                 version = self._detect_version(conn)
                 if version > SCHEMA_VERSION:
                     raise UnsupportedSchemaVersion(

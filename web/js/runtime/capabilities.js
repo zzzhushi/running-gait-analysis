@@ -24,7 +24,20 @@ export function homeRoute(capabilities) {
   return capabilities.history ? "#/library" : "#/upload";
 }
 
+// Route name -> the capability it needs, or null when it works in every runtime.
+// main.js filters its route table through enabledRouteNames(), so this is the one
+// place a new screen declares what it depends on.
+export const ROUTE_CAPABILITIES = Object.freeze({
+  library: "history",
+  upload: null,
+  trends: "history",
+  combine: "history",
+  report: null,
+  analyze: null,
+});
+
 export function enabledRouteNames(capabilities) {
-  if (!capabilities.history) return ["upload", "report", "analyze"];
-  return ["library", "upload", "trends", "combine", "report", "analyze"];
+  return Object.entries(ROUTE_CAPABILITIES)
+    .filter(([, capability]) => capability === null || capabilities[capability])
+    .map(([name]) => name);
 }

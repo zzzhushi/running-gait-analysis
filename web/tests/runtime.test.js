@@ -158,7 +158,7 @@ describe("capability-driven UI contract", () => {
     expect(client.listRuns).toHaveBeenCalledWith("runner-42");
   });
 
-  it("resolves a default user before Combine queries and never widens to all runs", async () => {
+  it("resolves a default user before Combine queries", async () => {
     const client = {
       capabilities: { users: true },
       getActiveUser: vi.fn(() => null),
@@ -170,15 +170,23 @@ describe("capability-driven UI contract", () => {
     await listRunsForActiveUser(client);
     expect(client.setActiveUser).toHaveBeenCalledWith({ id: "runner-1", name: "First runner" });
     expect(client.listRuns).toHaveBeenCalledWith("runner-1");
+  });
 
+  it("falls back to every run when no user owns them, like Library and Trends", async () => {
+    // A migrated v1 database has runs but no users, and delete_user sets user_id to
+    // NULL. Scoping to a nonexistent active user hid those runs in Combine only.
     const withoutUsers = {
       capabilities: { users: true },
       getActiveUser: vi.fn(() => null),
       listUsers: vi.fn().mockResolvedValue([]),
       setActiveUser: vi.fn(),
-      listRuns: vi.fn(),
+      listRuns: vi.fn().mockResolvedValue([{ id: "orphaned-run" }]),
     };
-    await expect(listRunsForActiveUser(withoutUsers)).resolves.toEqual([]);
-    expect(withoutUsers.listRuns).not.toHaveBeenCalled();
+
+    await expect(listRunsForActiveUser(withoutUsers)).resolves.toEqual([
+      { id: "orphaned-run" },
+    ]);
+    expect(withoutUsers.listRuns).toHaveBeenCalledWith(undefined);
+    expect(withoutUsers.setActiveUser).not.toHaveBeenCalled();
   });
 });

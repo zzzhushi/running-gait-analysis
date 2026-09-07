@@ -10,6 +10,7 @@ from gaitlab import analyze, synthetic
 from gaitlab.coaching import narrative
 from gaitlab.core.schema import PoseSequence, PoseValidationError
 
+from .cache import InvalidPoseCache
 from .ingest import VideoIngestor
 from .repository import SQLiteRepository
 
@@ -41,6 +42,17 @@ class LocalApplication:
         self._analyze = analyze_fn
         self._demo_runs = demo_runs_fn
         self._narrative = narrative_fn
+
+    def _require_user(self, user_id: str | None) -> None:
+        """Reject an unknown user before doing expensive or destructive work.
+
+        ``runs.user_id`` is a real foreign key and connections run with
+        ``PRAGMA foreign_keys = ON``, so an unknown id would otherwise surface as an
+        opaque sqlite3.IntegrityError (HTTP 500) *after* the analysis or extraction
+        had already been paid for.
+        """
+        if user_id is not None and self.repository.get_user(user_id) is None:
+            raise NotFoundError("user not found")
 
     # -- runs --------------------------------------------------------------
     def list_runs(self, user_id: str | None = None) -> list[dict]:
@@ -74,6 +86,7 @@ class LocalApplication:
         profile: Mapping[str, Any] | None = None,
         user_id: str | None = None,
     ) -> dict:
+        self._require_user(user_id)
         try:
             result_obj = self._analyze(sequence, label=label, profile=profile)
         except PoseValidationError as exc:
@@ -101,8 +114,7 @@ class LocalApplication:
             return 0
 
         if user_id is not None:
-            if self.repository.get_user(user_id) is None:
-                raise NotFoundError("user not found")
+            self._require_user(user_id)
         else:
             demo_user = self.repository.find_user_by_name("Demo")
             if demo_user is None:
@@ -173,8 +185,12 @@ class LocalApplication:
         profile: Mapping[str, Any] | None = None,
         user_id: str | None = None,
     ) -> dict:
+        # Checked before extraction: a stale user_id must not cost a full RTMPose run.
+        self._require_user(user_id)
         try:
             ingested = self.ingestor.ingest(video_stem, view, force=force)
+        except InvalidPoseCache:
+            raise  # a corrupt cache on this machine is not the caller's fault
         except ValueError as exc:
             raise InvalidInput(str(exc)) from exc
         stored = self.store_sequence(

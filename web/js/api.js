@@ -10,23 +10,13 @@ import { createStaticRuntime } from "./runtime/static.js";
 const adapter = RUNTIME === "server"
   ? createServerRuntime()
   : createStaticRuntime({ engine });
-const api = createRuntimeApi(adapter);
 
-export const runtimeName = api.runtimeName;
-export const capabilities = api.capabilities;
-export const listRuns = api.listRuns;
-export const getRun = api.getRun;
-export const analyzePose = api.analyzePose;
-export const deleteRun = api.deleteRun;
-export const reseed = api.reseed;
-export const narrative = api.narrative;
-export const listUsers = api.listUsers;
-export const createUser = api.createUser;
-export const updateUser = api.updateUser;
-export const deleteUser = api.deleteUser;
-export const getActiveUser = api.getActiveUser;
-export const setActiveUser = api.setActiveUser;
-export const listVideos = api.listVideos;
-export const ingest = api.ingest;
-export const setVideoUrl = api.setVideoUrl;
-export const getVideoUrl = api.getVideoUrl;
+// Named re-exports, so screens keep importing operations rather than an adapter.
+// Anything the active runtime does not implement still resolves here and rejects
+// with UnsupportedRuntimeOperation when called -- see ./runtime/facade.js.
+export const {
+  runtimeName, capabilities,
+  listRuns, getRun, analyzePose, deleteRun, reseed, narrative,
+  listUsers, createUser, updateUser, deleteUser, getActiveUser, setActiveUser,
+  listVideos, ingest, setVideoUrl, getVideoUrl,
+} = createRuntimeApi(adapter);

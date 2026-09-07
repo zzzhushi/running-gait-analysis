@@ -6,6 +6,7 @@ import json
 import mimetypes
 import os
 import shutil
+import traceback
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
@@ -105,7 +106,12 @@ def make_handler(
                     {"error": str(exc), "extractor_log": exc.log}, 500
                 )
             else:
-                self._json({"error": str(exc)}, 500)
+                # Unexpected: the console is the operator's only channel here, since
+                # log_message is silenced. Keep the wire response free of internals.
+                traceback.print_exc()
+                self._json(
+                    {"error": f"internal server error ({type(exc).__name__})"}, 500
+                )
 
         # -- routes --------------------------------------------------------
         def do_GET(self) -> None:

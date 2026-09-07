@@ -78,6 +78,32 @@ capabilities, so screens can hide server-only history, users, disk ingestion, se
 and narratives in the static runtime instead of discovering the boundary through
 failed requests.
 
+## Data ownership and recovery
+
+Everything durable lives under `data/`: `gaitlab.db` (runs and users), `data/pose/*.pose.json`
+(extracted poses), and `data/video/` (your source clips).
+
+The pose cache is disposable by design. `PoseCache` extracts to a temporary file and only
+promotes a parsed, validated pose over the stable path, so a failed or timed-out retry
+leaves the previous good cache intact. Deleting a `.pose.json` costs one re-extraction and
+nothing else.
+
+The database is not disposable, and `initialize` treats it that way:
+
+- v1 (the original run-only schema) is migrated in place inside a single explicit
+  transaction, so an interrupted migration rolls back to a clean v1 rather than leaving a
+  half-applied schema behind.
+- A schema it does not recognize, or one written by a newer version, raises instead of
+  dropping tables. The pre-refactor server wiped and recreated on any version mismatch.
+- Recovery is therefore manual and non-destructive: if startup reports an unrecognized
+  schema, nothing has been changed. Move `data/gaitlab.db` aside to start fresh, or open it
+  and inspect it — the server will not delete it for you.
+
+`runs.user_id` is a real foreign key and every connection runs with
+`PRAGMA foreign_keys = ON`. Deleting a user nulls that column rather than cascading, so
+run history outlives the profile it was recorded under. Those unassigned runs stay visible
+in Library, Trends, and Combine, which all scope to the active user only when there is one.
+
 ## Boundary rules
 
 - `gaitlab/` must not import `gaitlab_local`, `server.py`, `extractor/`, or web code.

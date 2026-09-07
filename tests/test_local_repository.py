@@ -8,7 +8,7 @@ import sqlite3
 import pytest
 
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
-from gaitlab_local.application import LocalApplication
+from gaitlab_local.application import LocalApplication, NotFoundError
 from gaitlab_local.repository import (
     SchemaError,
     SQLiteRepository,
@@ -210,3 +210,92 @@ def test_startup_seed_preserves_the_original_seed_only_when_empty_contract(tmp_p
     assert application.seed_demo_runs(only_if_empty=True) == 0
     assert repository.find_user_by_name("Demo") is None
     assert repository.count_runs() == 1
+
+
+def test_interrupted_v1_migration_rolls_back_and_stays_recoverable(tmp_path, monkeypatch):
+    """A crash mid-migration must not strand the database in an unreadable shape.
+
+    DDL is only rolled back because ``initialize`` opens an explicit transaction;
+    without it SQLite autocommits each CREATE/ALTER and the half-migrated schema is
+    rejected forever by ``_detect_version``.
+    """
+    db_path = tmp_path / "gaitlab.db"
+    legacy_result = _result("Legacy run", _sequence(source="legacy"))
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """CREATE TABLE runs (
+                id TEXT PRIMARY KEY,
+                created_at TEXT,
+                label TEXT,
+                view TEXT,
+                source TEXT,
+                score REAL,
+                grade TEXT,
+                cadence REAL,
+                n_findings INTEGER,
+                result_json TEXT
+            )"""
+        )
+        conn.execute(
+            "INSERT INTO runs VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (
+                "legacy-1",
+                "2025-01-01T00:00:00+00:00",
+                "Legacy run",
+                "side-left",
+                "legacy",
+                88.0,
+                "B",
+                172.0,
+                1,
+                json.dumps(legacy_result),
+            ),
+        )
+
+    def explode(conn, version):
+        raise RuntimeError("interrupted after the schema statements")
+
+    monkeypatch.setattr(SQLiteRepository, "_write_version", staticmethod(explode))
+    with pytest.raises(RuntimeError, match="interrupted"):
+        SQLiteRepository(db_path).initialize()
+
+    # The partial schema is gone, so the next start migrates from a clean v1 again.
+    with sqlite3.connect(db_path) as conn:
+        tables = {
+            row[0]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    assert "users" not in tables
+    assert "speed_kmh" not in _run_columns(db_path)
+
+    monkeypatch.undo()
+    repository = SQLiteRepository(db_path)
+    repository.initialize()
+
+    assert repository.get_run("legacy-1") == legacy_result
+
+
+def _run_columns(db_path):
+    with sqlite3.connect(db_path) as conn:
+        return {row[1] for row in conn.execute("PRAGMA table_info(runs)")}
+
+
+def test_an_unknown_user_is_rejected_before_the_run_is_analyzed(tmp_path):
+    repository = SQLiteRepository(tmp_path / "gaitlab.db")
+    repository.initialize()
+    analyzed = []
+
+    def analyze(sequence, *, label="", profile=None):
+        analyzed.append(label)
+        return _result(label, sequence)
+
+    application = LocalApplication(
+        repository, _UnusedIngestor(), analyze_fn=analyze
+    )
+
+    with pytest.raises(NotFoundError, match="user not found"):
+        application.store_sequence("Orphan", _sequence(), user_id="deleted-user")
+
+    # The old code let this reach SQLite and fail the foreign key *after* analysis.
+    assert analyzed == []
+    assert repository.count_runs() == 0

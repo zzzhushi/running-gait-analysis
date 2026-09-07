@@ -44,8 +44,11 @@ export async function listRunsForActiveUser(client) {
     activeUser = users[0] || null;
     if (activeUser) client.setActiveUser(activeUser);
   }
-  // An absent user must not widen this query to every user's runs.
-  return activeUser?.id ? client.listRuns(activeUser.id) : [];
+  // Same rule as Library and Trends: scope to the active user when there is one,
+  // otherwise show everything. Returning [] here hid runs that no user owns --
+  // every row a v1 migration produces, plus runs orphaned by delete_user, which
+  // sets user_id = NULL -- even though Library listed them a click earlier.
+  return client.listRuns(activeUser?.id);
 }
 
 function sel(runs, fallback) {

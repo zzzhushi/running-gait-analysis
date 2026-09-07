@@ -10,5 +10,5 @@ export function normalizeAnalysisResponse(payload) {
   if (!payload.result || typeof payload.result !== "object" || Array.isArray(payload.result)) {
     throw new TypeError("Analysis response is missing its result");
   }
-  return { ...payload, result: payload.result };
+  return { ...payload };
 }
