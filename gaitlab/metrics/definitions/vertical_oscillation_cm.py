@@ -9,9 +9,9 @@ from ..spec import MetricDef, register
 
 
 def _compute(ctx, side=None):
-    if not ctx.cal["px_per_cm"]:
+    if not ctx.cal.px_per_cm:
         return None
-    return ctx.vertical_oscillation_px() / ctx.cal["px_per_cm"]
+    return ctx.vertical_oscillation_px() / ctx.cal.px_per_cm
 
 
 register(MetricDef(

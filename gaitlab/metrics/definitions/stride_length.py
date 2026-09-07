@@ -8,9 +8,9 @@ from ..spec import MetricDef, register
 
 
 def _compute(ctx, side):
-    if not ctx.cal["speed_mps"] or side not in ctx.ev.stride_time:
+    if not ctx.cal.speed_mps or side not in ctx.ev.stride_time:
         return None
-    return ctx.cal["speed_mps"] * ctx.ev.stride_time[side]
+    return ctx.cal.speed_mps * ctx.ev.stride_time[side]
 
 
 register(MetricDef(

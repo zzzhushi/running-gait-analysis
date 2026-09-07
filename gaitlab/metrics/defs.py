@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 from . import definitions  # noqa: F401  (import side effect: registers every metric)
+from ..core.profile import RunnerProfile
 from .keys import MetricKey
 from .spec import BAD, GOOD, WARN, MetricDef, all_metrics
 
@@ -26,9 +27,14 @@ def value_confidence(defn: MetricDef, value: float) -> str:
     return defn.value_confidence(value)
 
 
-def personalize(profile: Optional[dict]) -> Dict[MetricKey, MetricDef]:
+def personalize(profile) -> Dict[MetricKey, MetricDef]:
     """A copy of METRIC_DEFS with any metric's bands adjusted for the runner's
-    profile (see each metric's `personalize_fn`, e.g. cadence and pelvic_drop)."""
+    profile (see each metric's `personalize_fn`, e.g. cadence and pelvic_drop).
+
+    Accepts a RunnerProfile or the wire dict; personalize_fn implementations read
+    attributes, so the dict form is converted here rather than in each of them.
+    """
     if not profile:
         return dict(METRIC_DEFS)
-    return {key: defn.personalize(profile) for key, defn in METRIC_DEFS.items()}
+    runner = profile if isinstance(profile, RunnerProfile) else RunnerProfile.from_dict(profile)
+    return {key: defn.personalize(runner) for key, defn in METRIC_DEFS.items()}

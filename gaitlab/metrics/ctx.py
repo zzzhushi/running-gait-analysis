@@ -14,6 +14,7 @@ from typing import Dict, List, Optional
 
 from ..core import geometry as geo
 from ..core.events import GaitEvents
+from ..core.profile import Calibration, RunnerProfile
 from ..core.schema import PoseSequence
 
 
@@ -79,22 +80,18 @@ def _body_px_height(seq: PoseSequence) -> float:
     return med(hs)
 
 
-def _calibration(seq: PoseSequence, calibration: Optional[Dict], leg_px: float) -> Dict:
-    out = {"px_per_cm": None, "speed_mps": None}
-    if not calibration:
-        return out
-    leg_cm = calibration.get("leg_length_cm")
-    h = calibration.get("height_cm")
-    if leg_cm and leg_px > 0:           # real leg length is the most reliable scale
-        out["px_per_cm"] = leg_px / float(leg_cm)
-    elif h:
-        bph = _body_px_height(seq)
-        if bph and bph > 0:
-            out["px_per_cm"] = bph / float(h)
-    spd = calibration.get("speed_kmh")
-    if spd:
-        out["speed_mps"] = float(spd) / 3.6
-    return out
+def _calibration(seq: PoseSequence, calibration, leg_px: float) -> Calibration:
+    """Resolve a profile (or the legacy dict form) into the derived Calibration.
+
+    The scale rules live on RunnerProfile; this only supplies the two pixel
+    measurements they need, and computes the height-based one lazily so a
+    leg-length profile never pays for the median-height scan.
+    """
+    profile = calibration if isinstance(calibration, RunnerProfile) else RunnerProfile.from_dict(calibration)
+    if not profile:
+        return Calibration()
+    body_px = None if profile.leg_length_cm else _body_px_height(seq)
+    return profile.calibrate(leg_px, body_px)
 
 
 class Ctx:
