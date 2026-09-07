@@ -27,7 +27,7 @@ FIELDS = ("sex", "height_cm", "leg_length_cm", "speed_kmh")
 
 @dataclass(frozen=True)
 class Calibration:
-    """Pixel-to-centimetre scale and treadmill speed in SI.
+    """Pixel-to-centimeter scale and treadmill speed in SI.
 
     Either may be None when the profile lacks the inputs to derive it; every
     metric that needs one checks first and returns None (see
