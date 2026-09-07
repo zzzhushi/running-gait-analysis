@@ -22,19 +22,18 @@ DEFAULT_MODEL = "llama3.2"
 def build_prompt(result: dict) -> str:
     s = result.get("summary", {})
     lines = [
-        "You are a friendly, concise running coach. In 3-4 short sentences of plain language,",
-        "summarize this gait analysis: encouraging but honest. Use ONLY the numbers given; do",
-        "not invent any. End with one line 'Focus this week:' naming the single highest-priority cue.",
+        "Summarize this descriptive 2-D running analysis in 3-4 short sentences.",
+        "Use only the supplied observations. Do not diagnose, rank form, infer forces, prescribe",
+        "treatment, or turn population reference values into targets.",
         "",
-        f"View: {s.get('view')}. Cadence: {s.get('cadence')} spm. "
-        f"Overall grade {s.get('grade')} ({s.get('overall_score')}/100).",
+        f"View: {s.get('view')}. Cadence: {s.get('cadence')} spm. Analysis mode: descriptive research.",
     ]
     findings = result.get("feedback", [])
     if findings:
         lines.append("Findings (most important first):")
         for f in findings[:5]:
             lines.append(f"- [{f.get('severity')}] {f.get('title')}: {f.get('detail')}")
-    asym = [a for a in result.get("asymmetry", []) if a.get("status") in ("warn", "bad")]
+    asym = [a for a in result.get("asymmetry", []) if a.get("interpretation") == "exceeds_mdc"]
     if asym:
         lines.append("Notable left/right differences:")
         for a in asym[:3]:

@@ -16,58 +16,25 @@ def _compute(ctx, side):
     return med(vals)
 
 
-def _trigger(defn, value, values, targets):
-    if value != value:
-        return None
-    t = targets.get(defn.key, defn)
-    st = t.status(value)
-    if st == "good":
-        return None
-    return "high", ("high" if st == "bad" else "med")
-
-
 register(MetricDef(
     key=MetricKey.OVERSTRIDE,
-    label="Overstride",
+    label="Forward foot placement at contact",
     unit="%leg",
-    good=(None, 8),
-    warn=(None, 15),
-    note="Foot should land close to under your hips. Landing far ahead (>~8% of leg length) brakes you.",
-    confidence="high",
+    good=(None, None),
+    warn=(None, None),
+    note="Sagittal ankle position relative to the same-side hip at estimated contact, normalized to leg length; this is not center of mass, braking force, or an injury threshold.",
+    confidence="low",
+    evidence_level="experimental",
+    reference_ids=("Hensley2022",),
     views=("side",),
-    scored=True,
+    scored=False,
     per_side=True,
     asym_direction="higher_worse",
     compute=_compute,
     per_side_compute=True,
     aggregate="worst_high",
     keypoints=("l_hip", "l_ankle", "r_hip", "r_ankle"),
+    event_phase="strike",
     foi="l_strike",
     card_per_side_key="overstride",
-    trigger_fn=_trigger,
-    finding_text={
-        "high": {
-            "title": "You're overstriding",
-            "detail": (
-                "Your foot lands about {value:.0f}% of a leg-length ahead of your hips. Landing "
-                "that far out in front creates a braking force on every step and raises impact loading."
-            ),
-            "cue": "Let your foot land closer to under your hips, and lean slightly from the ankles — not the waist.",
-            "drill": "High-cadence strides: 6×20s focusing on quick feet landing beneath you.",
-        },
-    },
-    exercises=[
-        {"name": "High-cadence strides",
-         "why": "Pulls the foot-strike back under your hips.",
-         "dose": "6×20s focusing on landing beneath you",
-         "progression": "Blend into tempo running."},
-        {"name": "Falling-start runs",
-         "why": "Teaches leaning from the ankles, not reaching.",
-         "dose": "6×20m from a tall lean",
-         "progression": "Carry the lean into a relaxed cruise."},
-        {"name": "Wall posture drill",
-         "why": "Builds the tall, forward-from-the-ankle position.",
-         "dose": "3×30s holds",
-         "progression": "Add a marching knee-drive."},
-    ],
 ))

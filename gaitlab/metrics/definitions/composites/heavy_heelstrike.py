@@ -1,9 +1,6 @@
-"""Heavy heel-strike with overstriding — heel contact alone isn't a fault, but
-combined with overstriding it amplifies braking and impact.
+"""Exploratory co-occurrence of rearfoot contact and forward foot placement.
 
-foot_strike_angle has no good/warn band by design (no strike pattern is
-inherently good or bad on its own — see its module), so its condition uses an
-explicit literal rather than a band reference.
+The heuristic does not infer loading, braking, injury risk, or a fault.
 """
 
 from __future__ import annotations
@@ -16,15 +13,16 @@ register_composite(Composite(
     view="side",
     all_of=(
         cond(MetricKey.FOOT_STRIKE_ANGLE, ">", value=12),
-        cond(MetricKey.OVERSTRIDE, ">", band="good_hi"),
+        cond(MetricKey.OVERSTRIDE, ">", value=8),
     ),
-    severity="med",
-    title="Heavy heel-strike with overstriding",
+    severity="low",
+    title="Exploratory pattern: rearfoot contact with forward placement",
     detail=(
-        "You land clearly on the heel with the foot well ahead of you. Heel contact itself isn't bad, "
-        "but combined with overstriding it amplifies braking and impact."
+        "Rearfoot contact and forward foot placement crossed the prototype cutoffs in the same stride. "
+        "Video alone does not establish braking or impact force."
     ),
-    cue="Fixing the overstride (land under your hips) usually softens the heel-strike on its own.",
-    drill="High-cadence strides focusing on landing beneath you.",
-    supersedes=("foot_strike_angle",),
+    cue="Confirm camera level and review the contact frame before interpreting this pattern.",
+    drill="",
+    supersedes=(),
+    min_confidence="low",
 ))

@@ -1,52 +1,40 @@
-"""Personalization formulas (gaitlab.metrics.defs.personalize)."""
-
-from __future__ import annotations
+"""Published context equations replace invented personalized target bands."""
 
 import pytest
 
 from gaitlab.metrics.defs import METRIC_DEFS, personalize
 from gaitlab.metrics.keys import MetricKey
+from gaitlab.metrics.reference_models import population_reference
 
 
-def _center(good):
-    return sum(good) / 2.0
+def test_definitions_have_no_personalized_good_bands():
+    for profile in (None, {"height_cm": 155}, {"sex": "female", "height_cm": 170}):
+        definitions = personalize(profile)
+        assert all(definition.good == (None, None) for definition in definitions.values())
 
 
-def test_cadence_center_formula_exact():
-    # center = 188 - 0.615*(stature-157); good = round(center)±7
-    good = personalize({"height_cm": 170})[MetricKey.CADENCE].good
-    expected_center = 188.0 - 0.615 * (170 - 157)
-    assert _center(good) == pytest.approx(expected_center, abs=1.0)
-    assert good[1] - good[0] == pytest.approx(14, abs=1)   # ±7 band
+def test_cadence_population_equation_exact():
+    profile = {"age_years": 30, "height_cm": 160, "speed_kmh": 12}
+    reference = population_reference("cadence", profile)
+    expected = 203.056 + 0.193 * 30 - 44.242 * 1.6 + 3.067 * 12
+    assert reference["value"] == pytest.approx(expected, abs=0.01)
+    assert reference["label"] == "population estimate"
+    assert "not an optimal" in reference["caveat"]
 
 
-def test_cadence_higher_for_shorter_runner():
-    short = _center(personalize({"height_cm": 155})[MetricKey.CADENCE].good)
-    tall = _center(personalize({"height_cm": 188})[MetricKey.CADENCE].good)
-    assert short > tall
+def test_equation_requires_exact_predictors_and_never_guesses_sex():
+    assert population_reference("cadence", {"height_cm": 160}) is None
+    complete = {"sex": "female", "body_mass_kg": 55, "height_cm": 160, "speed_kmh": 12}
+    assert population_reference("contact_time", complete) is not None
+    assert population_reference("contact_time", dict(complete, sex="nonbinary")) is None
 
 
-def test_cadence_speed_nudge_and_clamp():
-    base = _center(personalize({"height_cm": 170})[MetricKey.CADENCE].good)
-    fast = _center(personalize({"height_cm": 170, "speed_kmh": 16})[MetricKey.CADENCE].good)
-    assert fast > base                       # +1.2 per km/h over 10
-    # clamp: a very tall, slow runner cannot go below 160 center
-    slow_tall = _center(personalize({"height_cm": 210})[MetricKey.CADENCE].good)
-    assert slow_tall >= 160 - 7
+def test_card_reference_is_context_not_target(synth):
+    from gaitlab import analyze
 
-
-def test_leg_length_preferred_over_height():
-    # leg length maps to stature via /0.48; should still center sensibly and be personalized
-    g = personalize({"leg_length_cm": 80})[MetricKey.CADENCE].good
-    assert g != METRIC_DEFS[MetricKey.CADENCE].good
-
-
-def test_female_pelvic_drop_band_widened():
-    base = METRIC_DEFS[MetricKey.PELVIC_DROP].good
-    fem = personalize({"sex": "female"})[MetricKey.PELVIC_DROP].good
-    assert fem[1] > base[1]
-    assert fem == (None, 7)
-
-
-def test_no_profile_returns_base_defs():
-    assert personalize(None)[MetricKey.CADENCE].good == METRIC_DEFS[MetricKey.CADENCE].good
+    profile = {"age_years": 30, "height_cm": 160, "speed_kmh": 12}
+    result = analyze(synth("side-left", duration=6), profile=profile).to_dict()
+    cadence = next(card for card in result["metrics"] if card["key"] == "cadence")
+    assert cadence["status"] == "info"
+    assert cadence["reference"]["label"] == "population estimate"
+    assert METRIC_DEFS[MetricKey.CADENCE].scored is False

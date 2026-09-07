@@ -1,6 +1,6 @@
 import * as api from "../api.js";
-import { el, fmt, scoreClass } from "../format.js";
-import { metricCard, asymRow, findingCard, planSection, qualityPanel } from "./report.js";
+import { el, fmt } from "../format.js";
+import { metricCard, asymRow, findingCard, qualityPanel } from "./report.js";
 
 // Multi-view fusion: merge a side run (sagittal) and a rear run (frontal) of the same
 // session into one report. Pure client-side composition of two stored AnalysisResults.
@@ -39,18 +39,17 @@ export default async function combine(app) {
 
 function sel(runs, fallback) {
   return el("select", { style: "max-width:260px" },
-    runs.map((r) => el("option", { value: r.id }, (r.label || fallback) + " · " + fmt(r.score, 0))));
+    runs.map((r) => el("option", { value: r.id }, r.label || fallback)));
 }
 
 function renderCombined(side, rear, sideId, rearId) {
-  const score = (side.summary.overall_score + rear.summary.overall_score) / 2;
   const wrap = el("div", {});
 
   wrap.append(el("div", { class: "scorecard" }, [
-    el("div", { class: "big " + scoreClass(score) }, fmt(score, 0)),
+    el("div", { class: "big" }, "2-D"),
     el("div", { class: "sc-meta" }, [
       el("h2", {}, "Combined — side + rear"),
-      el("p", {}, `${fmt(side.summary.cadence, 0)} spm · combined score ${fmt(score, 0)}/100 · sagittal + frontal`),
+      el("p", {}, `${fmt(side.summary.cadence, 0)} spm · descriptive sagittal + frontal observations`),
     ]),
     el("div", { style: "margin-left:auto;display:flex;gap:8px" }, [
       el("a", { class: "btn btn-sm", href: "#/report/" + sideId }, "Side report"),
@@ -74,7 +73,7 @@ function renderCombined(side, rear, sideId, rearId) {
 
   const asym = (side.asymmetry || []).concat(rear.asymmetry || []);
   if (asym.length) {
-    wrap.append(el("h3", { class: "sectitle" }, "Left / right symmetry"));
+    wrap.append(el("h3", { class: "sectitle" }, "Left / right comparison"));
     const a = el("div", { class: "asym" });
     asym.forEach((x) => a.append(asymRow(x)));
     wrap.append(a);
@@ -86,18 +85,10 @@ function renderCombined(side, rear, sideId, rearId) {
   if (real.length) findings = real;
   const order = { high: 0, med: 1, low: 2, good: 3 };
   findings.sort((a, b) => order[a.severity] - order[b.severity]);
-  wrap.append(el("h3", { class: "sectitle" }, "Coach feedback (both views)"));
+  wrap.append(el("h3", { class: "sectitle" }, "Observations (both views)"));
   const fl = el("div", { class: "findings" });
   findings.forEach((f) => fl.append(findingCard(f, f._id)));
   wrap.append(fl);
-
-  const plan = [];
-  const seen = new Set();
-  (side.plan || []).concat(rear.plan || []).forEach((g) => {
-    if (!seen.has(g.key)) { seen.add(g.key); plan.push(g); }
-  });
-  const ps = planSection(plan);
-  if (ps) wrap.append(ps);
 
   return wrap;
 }

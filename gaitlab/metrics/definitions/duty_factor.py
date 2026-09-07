@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ..keys import MetricKey
+from ..reference_models import population_reference
 from ..spec import MetricDef, register
 
 
@@ -14,47 +15,23 @@ def _compute(ctx, side):
     return float("nan")
 
 
-def _trigger(defn, value, values, targets):
-    t = targets.get(defn.key, defn)
-    if t.status(value) != "bad":
-        return None
-    return "high", "low"
-
-
 register(MetricDef(
     key=MetricKey.DUTY_FACTOR,
     label="Duty factor",
     unit="%",
-    good=(None, 40),
-    warn=(None, 48),
-    note="Share of the stride your foot is on the ground. Lower is springier/faster (fps-limited estimate).",
-    confidence="high",
+    good=(None, None),
+    warn=(None, None),
+    note="Observed contact time as a percentage of stride time. Compare only at matched running speed.",
+    confidence="low",
+    evidence_level="experimental",
+    reference_ids=("Patoz2021", "Malisoux2023"),
     views=("side",),
-    scored=True,
+    scored=False,
     compute=_compute,
     per_side_compute=True,
     aggregate="max",
+    keypoints=("l_ankle", "r_ankle", "l_heel", "r_heel", "l_big_toe", "r_big_toe"),
+    event_phase="events",
     card_per_side_key="duty_factor",
-    trigger_fn=_trigger,
-    finding_text={
-        "high": {
-            "title": "Long duty factor",
-            "detail": (
-                "Your foot is on the ground for ~{value:.0f}% of each stride. A shorter, springier "
-                "contact tends to be faster and more economical."
-            ),
-            "cue": "Quicker, lighter contacts — think 'off the ground fast'.",
-            "drill": "Pogo hops and short hill sprints for reactive strength.",
-        },
-    },
-    exercises=[
-        {"name": "Pogo hops",
-         "why": "Reactive strength to shorten ground contact.",
-         "dose": "3×10",
-         "progression": "Single-leg / depth pogos."},
-        {"name": "Short hill sprints",
-         "why": "Power and a springier contact.",
-         "dose": "6×10s steep hill, walk back",
-         "progression": "Add reps over weeks."},
-    ],
+    reference_fn=lambda profile: population_reference("duty_factor", profile),
 ))

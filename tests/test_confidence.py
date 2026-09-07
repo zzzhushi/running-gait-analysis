@@ -1,54 +1,55 @@
-"""Per-metric confidence: value-dependent tiers + keypoint-tracking propagation."""
+"""Metric confidence combines evidence, tracking, events, and protocol."""
 
-from __future__ import annotations
-
-import pytest
-
-from gaitlab.analyze import analyze, metric_confidence
+from gaitlab.analyze import analyze, metric_confidence_detail
+from gaitlab.core.events import GaitEvents
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 from gaitlab.metrics.defs import METRIC_DEFS, value_confidence
 from gaitlab.metrics.keys import MetricKey
 
 
-def test_pelvic_drop_confidence_is_value_dependent():
-    d = METRIC_DEFS[MetricKey.PELVIC_DROP]
-    assert value_confidence(d, 3.0) == "low"        # near the ±4 deg noise floor
-    assert value_confidence(d, 5.0) == "moderate"
-    assert value_confidence(d, 8.0) == "high"       # clears the floor
-
-
-def test_pronation_stays_low_regardless():
-    d = METRIC_DEFS[MetricKey.PRONATION]
-    assert value_confidence(d, 2.0) == "low"
-    assert value_confidence(d, 15.0) == "low"
-
-
-def test_non_tier_c_uses_base_confidence():
-    assert value_confidence(METRIC_DEFS[MetricKey.CADENCE], 999) == "high"
-    assert value_confidence(METRIC_DEFS[MetricKey.CADENCE], float("nan")) == "low"
-
-
 def _rear_pose_with_hip_conf(conf: float, n: int = 8) -> PoseSequence:
     frames = []
     for i in range(n):
-        fr = [(0.0, 0.0, 0.0)] * len(KEYPOINTS)
-        fr[KEYPOINTS.index("l_hip")] = (100.0, 500.0 + i, conf)
-        fr[KEYPOINTS.index("r_hip")] = (200.0, 500.0 - i, conf)
-        fr[KEYPOINTS.index("mid_hip")] = (150.0, 500.0, conf)
-        frames.append(fr)
+        frame = [(0.0, 0.0, 0.0)] * len(KEYPOINTS)
+        frame[KEYPOINTS.index("l_hip")] = (100.0, 500.0 + i, conf)
+        frame[KEYPOINTS.index("r_hip")] = (200.0, 500.0 - i, conf)
+        frame[KEYPOINTS.index("mid_hip")] = (150.0, 500.0, conf)
+        frames.append(frame)
     return PoseSequence(fps=60, width=1080, height=1920, view="rear", frames=frames, source="test")
 
 
-def test_low_keypoint_confidence_downgrades_metric():
-    d = METRIC_DEFS[MetricKey.PELVIC_DROP]
-    high = _rear_pose_with_hip_conf(0.95)
-    low = _rear_pose_with_hip_conf(0.2)
-    # value 8 alone would be "high"; weak hip keypoints drag it down
-    assert metric_confidence(high, "pelvic_drop", 8.0, d) == "high"
-    assert metric_confidence(low, "pelvic_drop", 8.0, d) == "low"
+def test_measurement_tiers_are_not_promoted_by_large_values():
+    assert value_confidence(METRIC_DEFS[MetricKey.PELVIC_DROP], 20) == "low"
+    assert value_confidence(METRIC_DEFS[MetricKey.PRONATION], 20) == "low"
+    assert value_confidence(METRIC_DEFS[MetricKey.CADENCE], 180) == "moderate"
 
 
-def test_every_card_has_confidence(synth, golden_pose):
-    for seq in (synth("side-left", fps=60, duration=6, cadence=176, seed=1), golden_pose):
-        cards = analyze(seq).to_dict()["metrics"]
-        assert cards and all(c.get("confidence") in ("low", "moderate", "high") for c in cards)
+def test_tracking_downgrades_but_cannot_promote_measurement():
+    definition = METRIC_DEFS[MetricKey.PELVIC_DROP]
+    high = metric_confidence_detail(_rear_pose_with_hip_conf(0.95), "pelvic_drop", 8.0, definition)
+    low = metric_confidence_detail(_rear_pose_with_hip_conf(0.2), "pelvic_drop", 8.0, definition)
+    assert high["level"] == "low"  # measurement-validity tier is low
+    assert low["tracking"]["level"] == "low"
+    assert low["level"] == "low"
+
+
+def test_every_card_exposes_confidence_components(synth):
+    cards = analyze(synth("side-left", duration=6, cadence=176)).to_dict()["metrics"]
+    assert cards
+    for card in cards:
+        assert card["confidence"] in ("low", "moderate", "high")
+        assert {"measurement", "tracking", "event_detection", "protocol", "sample_count"} <= set(card["confidence_detail"])
+        assert card["confidence"] != "high"  # capped pending criterion validation
+
+
+def test_all_frame_metric_that_uses_stride_boundaries_inherits_event_confidence(synth):
+    seq = synth("side-left", duration=6, cadence=176)
+    events = GaitEvents(confidence="low")
+    definition = METRIC_DEFS[MetricKey.VERTICAL_OSCILLATION]
+    detail = metric_confidence_detail(
+        seq, "vertical_oscillation", 11.0, definition, events
+    )
+    assert definition.event_phase == "all"
+    assert definition.requires_events is True
+    assert detail["event_detection"] == "low"
+    assert detail["level"] == "low"

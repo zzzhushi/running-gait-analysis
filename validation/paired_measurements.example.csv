@@ -1,0 +1,6 @@
+participant_id,split,trial_id,metric,unit,observed,criterion,failure_reason
+demo_001,development,trial_001,cadence,spm,171.2,172.0,
+demo_002,development,trial_002,cadence,spm,168.5,169.0,
+demo_003,development,trial_003,cadence,spm,174.1,173.0,
+demo_004,development,trial_004,cadence,spm,,,insufficient_events
+

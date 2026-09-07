@@ -85,8 +85,14 @@ def _init_db() -> None:
         name TEXT NOT NULL,
         sex TEXT,
         height_cm REAL,
-        leg_length_cm REAL
+        leg_length_cm REAL,
+        age_years REAL,
+        body_mass_kg REAL
     )""")
+    user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+    for column in ("age_years", "body_mass_kg"):
+        if column not in user_cols:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {column} REAL")
     conn.execute("""CREATE TABLE IF NOT EXISTS runs (
         id TEXT PRIMARY KEY,
         created_at TEXT,
@@ -158,14 +164,18 @@ def list_users() -> list:
 
 
 def create_user(name: str, sex: str = None, height_cm: float = None,
-                leg_length_cm: float = None) -> dict:
+                leg_length_cm: float = None, age_years: float = None,
+                body_mass_kg: float = None) -> dict:
     uid = uuid.uuid4().hex[:12]
     created = datetime.now(timezone.utc).isoformat(timespec="seconds")
     with db() as conn:
-        conn.execute("INSERT INTO users VALUES (?,?,?,?,?,?)",
-                     (uid, created, name, sex, height_cm, leg_length_cm))
+        conn.execute(
+            "INSERT INTO users (id, created_at, name, sex, height_cm, leg_length_cm, age_years, body_mass_kg) VALUES (?,?,?,?,?,?,?,?)",
+            (uid, created, name, sex, height_cm, leg_length_cm, age_years, body_mass_kg),
+        )
     return {"id": uid, "created_at": created, "name": name,
-            "sex": sex, "height_cm": height_cm, "leg_length_cm": leg_length_cm}
+            "sex": sex, "height_cm": height_cm, "leg_length_cm": leg_length_cm,
+            "age_years": age_years, "body_mass_kg": body_mass_kg}
 
 
 def get_user(uid: str) -> dict:
@@ -175,7 +185,7 @@ def get_user(uid: str) -> dict:
 
 
 def update_user(uid: str, updates: dict) -> dict:
-    allowed = {"name", "sex", "height_cm", "leg_length_cm"}
+    allowed = {"name", "sex", "height_cm", "leg_length_cm", "age_years", "body_mass_kg"}
     fields = {k: v for k, v in updates.items() if k in allowed}
     if fields:
         sets = ", ".join(f"{k}=?" for k in fields)
@@ -381,6 +391,8 @@ class Handler(BaseHTTPRequestHandler):
                     sex=body.get("sex") or None,
                     height_cm=body.get("height_cm") or None,
                     leg_length_cm=body.get("leg_length_cm") or None,
+                    age_years=body.get("age_years") or None,
+                    body_mass_kg=body.get("body_mass_kg") or None,
                 ), 201)
             elif path == "/api/analyze":
                 body = self._read_body()

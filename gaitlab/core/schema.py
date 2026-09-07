@@ -8,7 +8,8 @@ that reasons about height accounts for this.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from statistics import median
 from typing import List, Optional, Tuple
 
 SCHEMA_VERSION = "gaitlab.pose/v1"
@@ -55,6 +56,9 @@ class PoseSequence:
     # Present when the extractor could read them (robust to variable frame rate);
     # None for synthetic/constant-rate clips, where f/fps is exact.
     timestamps: Optional[List[float]] = None
+    # Internal-only threshold used by the analysis copy. Raw sequences keep 0 so
+    # serialization and the overlay retain every detector coordinate.
+    analysis_min_confidence: float = field(default=0.0, repr=False)
 
     # --- validation -------------------------------------------------------
     def validate(self) -> "PoseSequence":
@@ -73,6 +77,16 @@ class PoseSequence:
             errs.append("keypoint_names is empty")
         if not self.frames:
             errs.append("frames is empty")
+
+        if self.timestamps is not None:
+            if len(self.timestamps) != len(self.frames):
+                errs.append(
+                    f"timestamps has {len(self.timestamps)} entries, expected {len(self.frames)}"
+                )
+            elif any(not isinstance(t, (int, float)) or not math.isfinite(t) for t in self.timestamps):
+                errs.append("timestamps must be finite numbers")
+            elif any(b <= a for a, b in zip(self.timestamps, self.timestamps[1:])):
+                errs.append("timestamps must be strictly increasing")
 
         k = len(self.keypoint_names)
         for fi, fr in enumerate(self.frames):
@@ -109,7 +123,30 @@ class PoseSequence:
 
     @property
     def duration(self) -> float:
+        if self.timestamps and len(self.timestamps) > 1:
+            frame_period = (self.timestamps[-1] - self.timestamps[0]) / (len(self.timestamps) - 1)
+            return self.timestamps[-1] - self.timestamps[0] + frame_period
         return self.n / self.fps if self.fps else 0.0
+
+    @property
+    def effective_fps(self) -> float:
+        """Median observed sampling rate, falling back to nominal metadata."""
+        if self.timestamps is not None and len(self.timestamps) > 1:
+            intervals = [b - a for a, b in zip(self.timestamps, self.timestamps[1:])]
+            frame_period = median(intervals)
+            if frame_period > 0:
+                return 1.0 / frame_period
+        return self.fps
+
+    def time_at(self, frame: int) -> float:
+        """Presentation time in seconds, using real timestamps when available."""
+        if self.timestamps is not None:
+            return self.timestamps[frame]
+        return frame / self.fps
+
+    def elapsed(self, start: int, end: int) -> float:
+        """Elapsed seconds between two frame indices."""
+        return self.time_at(end) - self.time_at(start)
 
     def is_side(self) -> bool:
         return self.view in ("side-left", "side-right")
@@ -145,6 +182,8 @@ class PoseSequence:
 
     def xy(self, f: int, name: str) -> XY:
         p = self.frames[f][self.idx(name)]
+        if p[2] < self.analysis_min_confidence:
+            return (float("nan"), float("nan"))
         return (p[0], p[1])
 
     def has(self, name: str) -> bool:
@@ -155,12 +194,55 @@ class PoseSequence:
         return [(fr[i][0], fr[i][1]) for fr in self.frames]
 
     def series_y(self, name: str) -> List[float]:
-        i = self.idx(name)
-        return [fr[i][1] for fr in self.frames]
+        return [self.xy(f, name)[1] for f in range(self.n)]
 
     def series_x(self, name: str) -> List[float]:
-        i = self.idx(name)
-        return [fr[i][0] for fr in self.frames]
+        return [self.xy(f, name)[0] for f in range(self.n)]
+
+    def filtered_for_analysis(
+        self, min_confidence: float = 0.35, max_gap_seconds: float = 0.05
+    ) -> "PoseSequence":
+        """Return an analysis-only copy with short low-confidence gaps interpolated.
+
+        A gap is filled only when trustworthy observations exist on both sides and
+        its elapsed duration is no greater than ``max_gap_seconds``. Longer gaps
+        keep their detector coordinates for the overlay but ``xy`` exposes them as
+        NaN to metric calculations through ``analysis_min_confidence``.
+        """
+        frames = [[tuple(p) for p in fr] for fr in self.frames]
+        for ki in range(len(self.keypoint_names)):
+            i = 0
+            while i < self.n:
+                if frames[i][ki][2] >= min_confidence:
+                    i += 1
+                    continue
+                start = i
+                while i < self.n and frames[i][ki][2] < min_confidence:
+                    i += 1
+                end = i
+                if start == 0 or end >= self.n:
+                    continue
+                # Measure the whole unobserved interval between trustworthy
+                # endpoints. This stays correct for variable-frame-rate input.
+                if self.elapsed(start - 1, end) > max_gap_seconds + 1e-9:
+                    continue
+                left, right = frames[start - 1][ki], frames[end][ki]
+                if left[2] < min_confidence or right[2] < min_confidence:
+                    continue
+                for f in range(start, end):
+                    alpha = (f - (start - 1)) / (end - (start - 1))
+                    x = left[0] + alpha * (right[0] - left[0])
+                    y = left[1] + alpha * (right[1] - left[1])
+                    # Interpolation restores geometric continuity, not detector
+                    # certainty. Keep it just usable while ensuring downstream
+                    # tracking confidence cannot mistake it for an observation.
+                    frames[f][ki] = (x, y, min_confidence)
+
+        return replace(
+            self,
+            frames=frames,
+            analysis_min_confidence=min_confidence,
+        )
 
     # --- (de)serialization ------------------------------------------------
     def to_pose_dict(self) -> dict:
@@ -196,5 +278,5 @@ class PoseSequence:
             frames=frames,
             source=d.get("source", "unknown"),
             keypoint_names=list(d.get("keypoint_names", KEYPOINTS)),
-            timestamps=[float(t) for t in ts] if ts else None,
+            timestamps=[float(t) for t in ts] if ts is not None else None,
         )

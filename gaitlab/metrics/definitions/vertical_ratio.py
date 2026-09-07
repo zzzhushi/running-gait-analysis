@@ -1,6 +1,4 @@
-"""Vertical ratio — bounce relative to step length; a calibration-gated economy
-proxy (lower is more economical, ~6-7% is typical for efficient runners).
-"""
+"""Vertical image displacement relative to calibrated step length."""
 
 from __future__ import annotations
 
@@ -28,10 +26,13 @@ register(MetricDef(
     unit="%",
     good=(None, None),
     warn=(None, None),
-    note="Bounce relative to step length — lower is more economical (~6-7% is good).",
-    confidence="moderate",
+    note="Calibrated vertical image displacement divided by speed-derived step length; descriptive and protocol dependent.",
+    confidence="low",
+    evidence_level="experimental",
     views=("side",),
     scored=False,
     compute=_compute,
+    keypoints=("mid_hip", "l_ankle", "r_ankle", "l_heel", "r_heel", "l_big_toe", "r_big_toe"),
+    requires_events=True,
     card_visibility="conditional",
 ))

@@ -18,6 +18,8 @@ def midpoint(a: XY, b: XY) -> XY:
 
 def angle_3pt(a: XY, b: XY, c: XY) -> float:
     """Interior angle at vertex b in degrees (0..180)."""
+    if not all(math.isfinite(value) for point in (a, b, c) for value in point):
+        return float("nan")
     bax, bay = a[0] - b[0], a[1] - b[1]
     bcx, bcy = c[0] - b[0], c[1] - b[1]
     n1 = math.hypot(bax, bay)

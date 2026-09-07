@@ -1,37 +1,62 @@
 {
   "asymmetry": {
-    "MetricKey.PELVIC_DROP": "bad",
-    "MetricKey.PRONATION": "bad"
+    "pelvic_drop": "info",
+    "pronation": "info",
+    "step_time": "info",
+    "stride_time": "info",
+    "swing_time": "info"
   },
   "feedback_titles": [
-    "Hip drop (weak stabilizers)",
-    "Left/right imbalance: Pelvic drop",
-    "Left/right imbalance: Pronation (estimate)"
+    "Descriptive analysis complete"
   ],
   "metrics": {
+    "arm_crossover": {
+      "status": "info",
+      "value": false
+    },
     "cadence": {
-      "status": "warn",
+      "status": "info",
       "value": 163.636
+    },
+    "cadence_cv": {
+      "status": "info",
+      "value": 5.074
+    },
+    "crossover": {
+      "status": "info",
+      "value": false
     },
     "head_lateral_sway": {
       "status": "info",
-      "value": 4.905
+      "value": 0.432
     },
     "lateral_trunk_sway": {
-      "status": "good",
-      "value": 4.985
+      "status": "info",
+      "value": 0.528
     },
     "pelvic_drop": {
-      "status": "warn",
-      "value": 6.757
+      "status": "info",
+      "value": -5.94
     },
     "pronation": {
-      "status": "warn",
-      "value": 10.87
+      "status": "info",
+      "value": 10.368
+    },
+    "step_time": {
+      "status": "info",
+      "value": 366.667
     },
     "step_width": {
-      "status": "bad",
-      "value": 33.579
+      "status": "info",
+      "value": 45.851
+    },
+    "stride_time": {
+      "status": "info",
+      "value": 700.0
+    },
+    "swing_time": {
+      "status": "info",
+      "value": 600.0
     },
     "trunk_pelvis_rotation": {
       "status": "info",
@@ -44,9 +69,9 @@
   ],
   "summary": {
     "cadence": 163.636,
-    "grade": "D",
-    "n_findings": 3,
-    "overall_score": 46.0,
+    "grade": null,
+    "n_findings": 0,
+    "overall_score": null,
     "view": "rear"
   }
 }

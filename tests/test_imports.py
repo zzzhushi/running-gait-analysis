@@ -33,6 +33,7 @@ STANDALONE = [
     REPO / "scripts" / "gen_spec.py",
     REPO / "scripts" / "gen_test_fixture.py",
     REPO / "scripts" / "gen_web_fixtures.py",
+    REPO / "scripts" / "evaluate_validation.py",
 ]
 
 

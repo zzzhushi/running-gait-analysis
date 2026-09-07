@@ -1,10 +1,4 @@
-"""Sinking into mid-stance — a collapsing knee combined with a forward-pitching
-trunk signals the stance leg and core aren't holding the runner tall.
-
-Note the trunk-lean condition compares against the WARN-band edge (16°), not
-the good-band edge (12°) — this composite only fires once trunk lean is well
-past merely-suboptimal, matching the original hand-tuned threshold.
-"""
+"""Exploratory co-occurrence of knee flexion and trunk lean at midstance."""
 
 from __future__ import annotations
 
@@ -15,16 +9,16 @@ register_composite(Composite(
     id="sinking_midstance",
     view="side",
     all_of=(
-        cond(MetricKey.KNEE_FLEXION_MIDSTANCE, ">", band="good_hi"),
-        cond(MetricKey.TRUNK_LEAN, ">", band="warn_hi"),
+        cond(MetricKey.KNEE_FLEXION_MIDSTANCE, ">", value=50),
+        cond(MetricKey.TRUNK_LEAN, ">", value=16),
     ),
-    severity="high",
-    title="Sinking into mid-stance",
+    severity="low",
+    title="Exploratory pattern: flexed midstance",
     detail=(
-        "Your knee collapses (~{knee_flexion_midstance:.0f}° flexion) while the trunk pitches forward "
-        "(~{trunk_lean:.0f}°) at mid-stance — a sign the stance leg and core aren't holding you tall."
+        "Knee flexion was ~{knee_flexion_midstance:.0f}° and trunk lean was "
+        "~{trunk_lean:.0f}° at the same midstance. This does not identify weakness or pathology."
     ),
-    cue="Run tall; don't sink into the stance leg.",
-    drill="Glute bridges and anti-extension core work (dead bugs, planks).",
-    supersedes=("knee_flexion_midstance", "trunk_lean"),
+    cue="Review the synchronized frame and compare repeated strides at the same speed.",
+    drill="",
+    supersedes=(),
 ))

@@ -1,11 +1,4 @@
-"""Foot-strike angle — heel/midfoot/forefoot classification, side view.
-
-No good/warn band by design: no single strike pattern is inherently better —
-it's the overstride that matters (see the note below). Because both bounds are
-None, `status()` always reports "good", so this never fires a coaching finding
-on its own; its finding_text exists only for the heavy_heelstrike composite,
-which builds its own text but keeps this declared here for reference.
-"""
+"""Foot-segment angle and categorical contact pattern, side view."""
 
 from __future__ import annotations
 
@@ -34,10 +27,12 @@ register(MetricDef(
     good=(None, None),
     warn=(None, None),
     note=(
-        "Where your foot first contacts: heel, midfoot, or forefoot. None is inherently bad — "
-        "it's the overstride that matters."
+        "Foot-segment angle to image horizontal at estimated contact. Classification uses published "
+        "2-D thresholds, but a tilted camera or non-level ground biases the result."
     ),
-    confidence="moderate",
+    confidence="low",
+    evidence_level="screening",
+    reference_ids=("Altman2012", "Oliveira2019", "Hensley2022"),
     views=("side",),
     scored=False,
     per_side=True,
@@ -45,15 +40,6 @@ register(MetricDef(
     compute=_compute,
     per_side_compute=True,
     aggregate="median",
-    finding_text={
-        "any": {
-            "title": "Heavy heel-strike with overstriding",
-            "detail": (
-                "You land clearly on the heel with the foot well ahead of you. Heel contact itself "
-                "isn't bad, but combined with overstriding it amplifies braking and impact."
-            ),
-            "cue": "Fixing the overstride (land under your hips) usually softens the heel-strike on its own.",
-            "drill": "Same high-cadence strides as above; let foot-strike self-correct.",
-        },
-    },
+    keypoints=("l_heel", "r_heel", "l_big_toe", "r_big_toe"),
+    event_phase="strike",
 ))

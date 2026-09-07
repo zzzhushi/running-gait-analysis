@@ -1,6 +1,7 @@
-"""Bouncing — high vertical oscillation at a low cadence means drive is going
-up instead of forward. Compares vertical oscillation against its WARN-band
-edge (18%), not the good-band edge (12%), matching the original threshold.
+"""Exploratory co-occurrence of vertical displacement and cadence heuristics.
+
+The numeric cutoffs are retained only to make the former prototype pattern
+observable; they are not population targets or a validated construct.
 """
 
 from __future__ import annotations
@@ -12,16 +13,16 @@ register_composite(Composite(
     id="bouncing",
     view="side",
     all_of=(
-        cond(MetricKey.VERTICAL_OSCILLATION, ">", band="warn_hi"),
-        cond(MetricKey.CADENCE, "<", band="good_lo"),
+        cond(MetricKey.VERTICAL_OSCILLATION, ">", value=18),
+        cond(MetricKey.CADENCE, "<", value=170),
     ),
-    severity="high",
-    title="Bouncing — drive forward, not up",
+    severity="low",
+    title="Exploratory pattern: vertical displacement",
     detail=(
-        "Your hips travel ~{vertical_oscillation:.0f}% of a leg vertically each stride at a low cadence "
-        "(~{cadence:.0f} spm), so drive is going up instead of forward."
+        "Hip vertical travel was ~{vertical_oscillation:.0f}% of leg length and cadence was "
+        "~{cadence:.0f} spm in the same stride. This is descriptive and does not measure energy waste."
     ),
-    cue="Lift cadence and keep the crown of your head on a level line.",
-    drill="Run-tall-past-a-rail (4×20s) and pogo hops (3×10).",
-    supersedes=("vertical_oscillation", "cadence"),
+    cue="Compare vertical displacement only at matched speed and camera setup.",
+    drill="",
+    supersedes=(),
 ))

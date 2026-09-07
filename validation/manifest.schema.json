@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gaitlab.local/validation/manifest.schema.json",
+  "title": "GaitLab criterion-validation manifest",
+  "type": "object",
+  "required": ["dataset_version", "pose_model", "participants", "trials"],
+  "properties": {
+    "dataset_version": {"type": "string"},
+    "pose_model": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "weights_sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "participants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "split", "age_years", "height_cm", "leg_length_cm", "body_mass_kg", "sex_as_recorded", "skin_tone_scale"],
+        "properties": {
+          "id": {"type": "string"},
+          "split": {"enum": ["development", "calibration", "test"]},
+          "age_years": {"type": "number", "minimum": 18},
+          "height_cm": {"type": "number", "exclusiveMinimum": 0},
+          "leg_length_cm": {"type": "number", "exclusiveMinimum": 0},
+          "body_mass_kg": {"type": "number", "exclusiveMinimum": 0},
+          "sex_as_recorded": {"type": ["string", "null"]},
+          "gender_as_recorded": {"type": ["string", "null"]},
+          "skin_tone_scale": {"type": ["string", "null"]}
+        },
+        "additionalProperties": false
+      }
+    },
+    "trials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "participant_id", "view", "fps", "width_px", "height_px", "camera_distance_m", "camera_height_m", "speed_mps", "surface", "footwear", "clothing", "video_sha256", "criterion_type", "criterion_sha256", "synchronization_method", "consent_scope"],
+        "properties": {
+          "id": {"type": "string"},
+          "participant_id": {"type": "string"},
+          "view": {"enum": ["side-left", "side-right", "rear", "front"]},
+          "fps": {"type": "number", "exclusiveMinimum": 0},
+          "width_px": {"type": "integer", "exclusiveMinimum": 0},
+          "height_px": {"type": "integer", "exclusiveMinimum": 0},
+          "camera_distance_m": {"type": "number", "exclusiveMinimum": 0},
+          "camera_height_m": {"type": "number", "exclusiveMinimum": 0},
+          "speed_mps": {"type": "number", "exclusiveMinimum": 0},
+          "footwear": {"type": ["string", "null"]},
+          "clothing": {"type": ["string", "null"]},
+          "surface": {"enum": ["treadmill", "overground"]},
+          "video_sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+          "criterion_type": {"enum": ["3d-motion-capture", "force-treadmill", "force-plates", "combined"]},
+          "criterion_sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+          "synchronization_method": {"type": "string"},
+          "consent_scope": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

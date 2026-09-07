@@ -1,5 +1,4 @@
-"""Overstriding / reaching — low cadence, limited hip extension, and landing
-far ahead of the hips reinforce each other into one braking pattern."""
+"""Exploratory co-occurrence of three sagittal-plane heuristics."""
 
 from __future__ import annotations
 
@@ -10,18 +9,18 @@ register_composite(Composite(
     id="overstriding",
     view="side",
     all_of=(
-        cond(MetricKey.OVERSTRIDE, ">", band="good_hi"),
-        cond(MetricKey.HIP_EXTENSION, "<", band="good_lo"),
-        cond(MetricKey.CADENCE, "<", band="good_lo"),
+        cond(MetricKey.OVERSTRIDE, ">", value=8),
+        cond(MetricKey.HIP_EXTENSION, "<", value=10),
+        cond(MetricKey.CADENCE, "<", value=170),
     ),
-    severity="high",
-    title="Overstriding — quicken your cadence",
+    severity="low",
+    title="Exploratory pattern: forward foot placement",
     detail=(
-        "You're reaching out in front: the foot lands ~{overstride:.0f}% of a leg ahead of your hips, "
-        "hip extension is limited (~{hip_extension:.0f}°), and cadence is low (~{cadence:.0f} spm). Together these "
-        "brake you on every step and raise impact loading."
+        "Forward foot placement was ~{overstride:.0f}% of leg length, hip extension was "
+        "~{hip_extension:.0f}°, and cadence was ~{cadence:.0f} spm in the same stride. "
+        "This is a descriptive pattern, not a force or injury measurement."
     ),
-    cue="Lift cadence ~5-10% and let the foot land under your hips.",
-    drill="High-cadence strides (6×20s) + couch stretch and glute bridges for hip extension.",
-    supersedes=("overstride", "hip_extension", "cadence"),
+    cue="Compare this pattern at the same speed across repeated recordings.",
+    drill="",
+    supersedes=(),
 ))

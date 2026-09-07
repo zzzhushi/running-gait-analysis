@@ -1,18 +1,12 @@
-"""Rule-based coaching feedback — generic engine.
+"""Descriptive observation assembly.
 
-Every finding comes from the metric registry: a metric's own `trigger()`
-decides whether it fires and at what severity, and its `finding_text` supplies
-the copy. This module has no per-metric knowledge; to change what triggers a
-finding or what it says, edit that metric's module under
-gaitlab/metrics/definitions/ (or its composite under .../definitions/composites/).
+Single-metric coaching is disabled. Retained composites are explicitly
+exploratory, confidence-gated same-stride co-occurrences.
 """
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
-from ..core.geometry import clamp
-from ..metrics import asymmetry as asym_mod
+from typing import Dict, List, Optional, Tuple
 from ..metrics import spec as registry
 from ..metrics.defs import METRIC_DEFS
 
@@ -41,6 +35,8 @@ def _single_metric_findings(values: Dict, view: str, targets: Dict, foi: Dict) -
     view_str = "side" if view in ("side-left", "side-right") else "rear"
     items: List[dict] = []
     for defn in registry.all_metrics().values():
+        if defn.interpretation == "descriptive":
+            continue
         trigger_views = defn.trigger_views or defn.views
         if view_str not in trigger_views or not defn.finding_text:
             continue
@@ -60,48 +56,59 @@ def _single_metric_findings(values: Dict, view: str, targets: Dict, foi: Dict) -
     return items
 
 
-def _composite_findings(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]]:
+def _composite_findings(observations: List[dict], view: str, targets: Dict,
+                        confidences: Dict[str, str]) -> List[Tuple[dict, set]]:
     view_str = "side" if view in ("side-left", "side-right") else "rear"
     out: List[Tuple[dict, set]] = []
+    rank = {"low": 0, "moderate": 1, "high": 2}
     for comp in registry.all_composites():
         if comp.view != view_str:
             continue
-        if comp.fires(values, targets):
-            out.append((comp.finding(values), set(comp.supersedes)))
+        component_keys = [condition.key.value for condition in comp.all_of]
+        if any(rank.get(confidences.get(key, "low"), 0) < rank[comp.min_confidence]
+               for key in component_keys):
+            continue
+        by_side: Dict[str, List[dict]] = {}
+        for row in observations:
+            if comp.fires(row, targets):
+                by_side.setdefault(row.get("side", "unknown"), []).append(row)
+        if not by_side:
+            continue
+        side, matches = max(by_side.items(), key=lambda item: len(item[1]))
+        if len(matches) >= comp.min_observations:
+            out.append((comp.finding(matches[0], side, len(matches)), set(comp.supersedes)))
     return out
 
 
 def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
-          foi: Dict, targets: Dict = None) -> Tuple[List[dict], float, str]:
+          foi: Dict, targets: Dict = None, observations: Optional[List[dict]] = None,
+          confidences: Optional[Dict[str, str]] = None) -> Tuple[List[dict], None, None]:
     targets = targets or METRIC_DEFS
     items = _single_metric_findings(values, view, targets, foi)
 
     # composites outrank (supersede) the single-metric findings of the metrics they name
-    for finding, superseded in _composite_findings(values, view, targets):
+    for finding, superseded in _composite_findings(
+        observations or [], view, targets, confidences or {}
+    ):
         items[:] = [i for i in items if i.get("metric") not in superseded]
         items.append(finding)
 
-    # asymmetry findings
-    for a in asym[:3]:
-        if a["status"] == "good":
+    # Do not turn asymmetry percentages into findings without a metric-specific MDC.
+    for a in asym:
+        if a.get("interpretation") != "exceeds_mdc":
             continue
-        sev = "high" if a["status"] == "bad" else "med"
         items.append(_make_finding(
-            sev, f"Left/right imbalance: {a['label']}",
-            f"{a['label']} differs {a['diff_pct']:.0f}% between sides "
-            f"(L {a['left']:.0f} vs R {a['right']:.0f} {a['unit']}), with the {a['worse_side']} side standing out. "
-            "Imbalances over ~10% are worth addressing before they cause one-sided overuse.",
-            f"Give the {a['worse_side']} side a little extra attention in strength work.",
-            "Single-leg strength on the weaker side; film again in ~4 weeks to recheck.",
-            a["key"]))
+            "low", f"Observed left/right difference: {a['label']}",
+            f"The signed difference is {a['difference']:.1f} {a['unit']}, which exceeds the "
+            f"registered minimum detectable change of {a['mdc']:.1f} {a['unit']}.",
+            "Repeat the same protocol before treating this as a persistent change.", "", a["key"]))
 
-    # positive note if nothing major
-    if not any(i["severity"] in ("high", "med") for i in items):
+    if not items:
         items.append(_make_finding(
-            "good", "Solid mechanics",
-            "No major flags in this clip — your cadence, alignment, and symmetry look within healthy ranges.",
-            "Keep doing what you're doing; recheck periodically.",
-            "Maintain your current routine and strength work.", None))
+            "good", "Descriptive analysis complete",
+            "No validated clinical threshold was applied. Review the measurements, confidence, sample counts, and same-speed trends.",
+            "Use repeated recordings under the same setup to distinguish persistent changes from measurement noise.",
+            "", None))
 
     order = {"high": 0, "med": 1, "low": 2, "good": 3}
     items.sort(key=lambda i: order[i["severity"]])
@@ -112,23 +119,4 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
     good = [i for i in items if i["severity"] == "good"]
     items = non_good + good
 
-    score, grade = _score(values, per_side, asym, view, targets)
-    return items, score, grade
-
-
-def _score(values: Dict, per_side: Dict, asym: List[dict], view: str, targets: Dict = None) -> Tuple[float, str]:
-    targets = targets or METRIC_DEFS
-    view_str = "side" if view in ("side-left", "side-right") else "rear"
-    scored_keys = registry.scored_keys(view_str)
-    scores = []
-    for k in scored_keys:
-        t = targets.get(k)
-        v = values.get(k.value)
-        if t and isinstance(v, (int, float)) and v == v:
-            scores.append(t.score(v))
-    base = sum(scores) / len(scores) if scores else 60.0
-    penalty = clamp(asym_mod.overall_diff(asym) * 0.8, 0.0, 22.0)
-    overall = clamp(base - penalty, 0.0, 100.0)
-    grade = ("A" if overall >= 85 else "B" if overall >= 72 else
-             "C" if overall >= 58 else "D" if overall >= 42 else "E")
-    return round(overall, 1), grade
+    return items, None, None

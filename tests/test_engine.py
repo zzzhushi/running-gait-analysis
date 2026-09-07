@@ -17,6 +17,9 @@ class TestGeometry(unittest.TestCase):
     def test_angle_3pt_straight(self):
         self.assertAlmostEqual(geo.angle_3pt((-1, 0), (0, 0), (1, 0)), 180.0, places=4)
 
+    def test_angle_3pt_propagates_missing_landmarks(self):
+        self.assertTrue(math.isnan(geo.angle_3pt((float("nan"), 0), (0, 0), (1, 0))))
+
     def test_signed_lean_forward(self):
         # hip at origin, shoulder up-and-forward -> positive lean
         self.assertGreater(geo.signed_lean((0, 10), (2, 0), facing=1), 0)
@@ -69,11 +72,12 @@ class TestMetrics(unittest.TestCase):
 
 
 class TestAsymmetryAndAnalyze(unittest.TestCase):
-    def test_injected_asymmetry_is_flagged(self):
+    def test_injected_asymmetry_is_reported_descriptively(self):
         seq = synthetic.generate("side-left", fps=60, duration=6, cadence=170, asymmetry=0.3, seed=6)
         result = analyze(seq).to_dict()
-        flagged = [a for a in result["asymmetry"] if a["status"] in ("warn", "bad")]
-        self.assertTrue(flagged, result["asymmetry"])
+        self.assertTrue(result["asymmetry"])
+        self.assertTrue(all(a["status"] == "info" for a in result["asymmetry"]))
+        self.assertTrue(any(abs(a["difference"]) > 0 for a in result["asymmetry"]))
 
     def test_rear_hip_drop_detected(self):
         seq = synthetic.generate("rear", fps=60, duration=6, cadence=170, asymmetry=0.6, seed=7)
@@ -81,8 +85,7 @@ class TestAsymmetryAndAnalyze(unittest.TestCase):
         pd = result["metrics"][1]
         self.assertEqual(pd["key"], "pelvic_drop")
         self.assertIsNotNone(pd["value"])
-        titles = " ".join(i["title"] for i in result["feedback"])
-        self.assertIn("Hip drop", titles)
+        self.assertEqual(pd["status"], "info")
 
     def test_result_is_strict_json(self):
         seq = synthetic.generate("side-left", fps=60, duration=5, cadence=160, asymmetry=0.2, seed=8)
@@ -92,13 +95,15 @@ class TestAsymmetryAndAnalyze(unittest.TestCase):
         self.assertIn("\"summary\"", text)
         self.assertIn("\"pose\"", text)
         self.assertEqual(result["summary"]["label"], "demo")
-        self.assertTrue(0 <= result["summary"]["overall_score"] <= 100)
+        self.assertIsNone(result["summary"]["overall_score"])
+        self.assertIsNone(result["summary"]["grade"])
 
-    def test_low_cadence_produces_finding(self):
+    def test_low_cadence_remains_descriptive(self):
         seq = synthetic.generate("side-left", fps=60, duration=6, cadence=150, seed=9)
         result = analyze(seq).to_dict()
-        titles = " ".join(i["title"] for i in result["feedback"])
-        self.assertIn("cadence", titles.lower())
+        cadence = next(c for c in result["metrics"] if c["key"] == "cadence")
+        self.assertEqual(cadence["status"], "info")
+        self.assertEqual(result["feedback"][0]["title"], "Descriptive analysis complete")
 
 
 class TestM5Metrics(unittest.TestCase):
@@ -134,23 +139,17 @@ class TestM5Metrics(unittest.TestCase):
 
 
 class TestM6(unittest.TestCase):
-    def test_personalized_cadence_higher_for_short_runner(self):
+    def test_no_demographic_target_bands(self):
         from gaitlab.metrics.defs import personalize
-        short = personalize({"height_cm": 155})["cadence"].good
-        tall = personalize({"height_cm": 188})["cadence"].good
-        self.assertGreater(sum(short) / 2, sum(tall) / 2)
+        from gaitlab.metrics.keys import MetricKey
+        for profile in ({"height_cm": 155}, {"height_cm": 188}, {"sex": "female"}):
+            self.assertEqual(personalize(profile)[MetricKey.CADENCE].good, (None, None))
+            self.assertEqual(personalize(profile)[MetricKey.PELVIC_DROP].good, (None, None))
 
-    def test_female_pelvic_drop_band_wider(self):
-        from gaitlab.metrics.defs import personalize, METRIC_DEFS as TARGETS
-        self.assertGreater(personalize({"sex": "female"})["pelvic_drop"].good[1],
-                           TARGETS["pelvic_drop"].good[1])
-
-    def test_plan_built_from_findings(self):
+    def test_plan_is_disabled_without_validated_prescription(self):
         seq = synthetic.generate("side-left", fps=60, duration=6, cadence=150, asymmetry=0.25, seed=21)
         plan = analyze(seq).to_dict()["plan"]
-        self.assertTrue(plan)
-        self.assertIn("name", plan[0]["exercises"][0])
-        self.assertIn("dose", plan[0]["exercises"][0])
+        self.assertEqual(plan, [])
 
     def test_quality_checks_present_and_short_clip_flagged(self):
         good = analyze(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=22)).to_dict()
@@ -167,15 +166,17 @@ class TestM6(unittest.TestCase):
 
 
 class TestM7Metrics(unittest.TestCase):
-    def test_knee_drive_and_arms_side(self):
+    def test_thigh_flexion_and_arms_side(self):
         v = compute_metrics(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=31))["values"]
-        self.assertTrue(10 < v["knee_drive"] < 50, v["knee_drive"])
+        self.assertTrue(0 < v["hip_flexion_peak"] < 80, v["hip_flexion_peak"])
+        self.assertNotIn("knee_drive", v)
         self.assertTrue(70 < v["elbow_angle"] < 120, v["elbow_angle"])
         self.assertIn("duty_factor", v)
 
     def test_p2_cards_present(self):
         keys = [c["key"] for c in analyze(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=32)).to_dict()["metrics"]]
-        for k in ("knee_drive", "elbow_angle", "arm_swing", "duty_factor"):
+        for k in ("hip_flexion_peak", "knee_flexion_peak", "knee_flexion_excursion",
+                  "elbow_angle", "arm_swing", "duty_factor"):
             self.assertIn(k, keys)
 
     def test_arm_crossover_not_false_positive(self):
@@ -204,7 +205,7 @@ class TestHeadMetric(unittest.TestCase):
     def test_head_lateral_sway_present_and_plausible_rear(self):
         v = compute_metrics(synthetic.generate("rear", fps=60, duration=6, cadence=170, seed=52))["values"]
         self.assertIn("head_lateral_sway", v)
-        self.assertTrue(0 < v["head_lateral_sway"] < 20, v["head_lateral_sway"])
+        self.assertTrue(0 <= v["head_lateral_sway"] < 20, v["head_lateral_sway"])
 
     def test_head_cards_appear_in_analysis(self):
         keys = [c["key"] for c in analyze(synthetic.generate("side-left", fps=60, duration=6, cadence=176, seed=53)).to_dict()["metrics"]]

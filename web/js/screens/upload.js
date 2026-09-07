@@ -29,6 +29,8 @@ export default async function upload(app) {
   const nuSex     = el("select", {}, [["", "Sex — optional"], ["female", "Female"], ["male", "Male"]].map(([v, t]) => el("option", { value: v }, t)));
   const nuHeight  = el("input", { type: "number", placeholder: "Height cm", min: "100", max: "230" });
   const nuLeg     = el("input", { type: "number", placeholder: "Leg cm", min: "50", max: "120" });
+  const nuAge     = el("input", { type: "number", placeholder: "Age", min: "18", max: "100" });
+  const nuMass    = el("input", { type: "number", placeholder: "Mass kg", min: "30", max: "250", step: "0.1" });
   const nuSave    = el("button", { class: "btn btn-accent btn-sm", type: "button" }, "Create");
   const nuCancel  = el("button", { class: "btn btn-sm", type: "button" }, "Cancel");
   const nuStatus  = el("span", { style: "font-size:12px;color:var(--muted);margin-left:8px" }, "");
@@ -38,6 +40,8 @@ export default async function upload(app) {
       el("div", { class: "field", style: "margin:0" }, [el("label", {}, "Sex — optional"), nuSex]),
       el("div", { class: "field", style: "margin:0" }, [el("label", {}, "Height (cm) — optional"), nuHeight]),
       el("div", { class: "field", style: "margin:0" }, [el("label", {}, "Leg length (cm) — optional"), nuLeg]),
+      el("div", { class: "field", style: "margin:0" }, [el("label", {}, "Age — optional"), nuAge]),
+      el("div", { class: "field", style: "margin:0" }, [el("label", {}, "Body mass (kg) — optional"), nuMass]),
     ]),
     el("div", { style: "display:flex;align-items:center;gap:8px" }, [nuSave, nuCancel, nuStatus]),
   );
@@ -57,6 +61,8 @@ export default async function upload(app) {
         sex: nuSex.value || null,
         height_cm: nuHeight.value ? parseFloat(nuHeight.value) : null,
         leg_length_cm: nuLeg.value ? parseFloat(nuLeg.value) : null,
+        age_years: nuAge.value ? parseFloat(nuAge.value) : null,
+        body_mass_kg: nuMass.value ? parseFloat(nuMass.value) : null,
       });
       users.push(created);
       userSel.append(el("option", { value: created.id }, created.name));
@@ -64,7 +70,7 @@ export default async function upload(app) {
       activeUser = created;
       api.setActiveUser(created);
       newUserForm.style.display = "none";
-      nuName.value = ""; nuSex.value = ""; nuHeight.value = ""; nuLeg.value = "";
+      nuName.value = ""; nuSex.value = ""; nuHeight.value = ""; nuLeg.value = ""; nuAge.value = ""; nuMass.value = "";
       nuStatus.textContent = "";
       prefillProfile(created);
       // refresh topbar user switcher
@@ -88,6 +94,8 @@ export default async function upload(app) {
   const sexSel       = el("select", {}, [["", "—"], ["female", "Female"], ["male", "Male"]].map(([v, t]) => el("option", { value: v }, t)));
   const heightInput  = el("input", { type: "number", placeholder: "optional, e.g. 178", min: "100", max: "230" });
   const legInput     = el("input", { type: "number", placeholder: "optional, e.g. 82", min: "50", max: "120" });
+  const ageInput     = el("input", { type: "number", placeholder: "optional, e.g. 35", min: "18", max: "100" });
+  const massInput    = el("input", { type: "number", placeholder: "optional, e.g. 65", min: "30", max: "250", step: "0.1" });
   const forceCheck   = el("input", { type: "checkbox" });
   const analyzeBtn   = el("button", { class: "btn btn-accent", disabled: true }, "Extract & Analyze");
   const statusEl     = el("div", { style: "font-size:13px;margin-top:10px;min-height:18px" }, "");
@@ -100,6 +108,8 @@ export default async function upload(app) {
     sexSel.value = user.sex || "";
     heightInput.value = user.height_cm || "";
     legInput.value = user.leg_length_cm || "";
+    ageInput.value = user.age_years || "";
+    massInput.value = user.body_mass_kg || "";
   }
   prefillProfile(activeUser);
 
@@ -139,6 +149,8 @@ export default async function upload(app) {
     if (heightInput.value) profile.height_cm = parseFloat(heightInput.value);
     if (legInput.value)    profile.leg_length_cm = parseFloat(legInput.value);
     if (speedInput.value)  profile.speed_kmh = parseFloat(speedInput.value);
+    if (ageInput.value)    profile.age_years = parseFloat(ageInput.value);
+    if (massInput.value)   profile.body_mass_kg = parseFloat(massInput.value);
     return Object.keys(profile).length ? profile : null;
   }
 
@@ -229,9 +241,11 @@ export default async function upload(app) {
   fields.push(
     el("div", { class: "field" }, [el("label", {}, "Treadmill speed (km/h) — optional, enables stride length"), speedInput]),
     el("div", {}), // spacer
-    el("div", { class: "field" }, [el("label", {}, "Sex — optional, personalizes injury-risk norms"), sexSel]),
-    el("div", { class: "field" }, [el("label", {}, "Your height (cm) — optional, enables cm & vertical ratio"), heightInput]),
-    el("div", { class: "field" }, [el("label", {}, "Leg length (cm) — optional, personalizes cadence & scale"), legInput]),
+    el("div", { class: "field" }, [el("label", {}, "Sex — optional, population-reference context only"), sexSel]),
+    el("div", { class: "field" }, [el("label", {}, "Your height (cm) — optional, enables calibrated outputs"), heightInput]),
+    el("div", { class: "field" }, [el("label", {}, "Leg length (cm) — optional, preferred spatial scale"), legInput]),
+    el("div", { class: "field" }, [el("label", {}, "Age — optional, population-reference context"), ageInput]),
+    el("div", { class: "field" }, [el("label", {}, "Body mass (kg) — optional, population-reference context"), massInput]),
   );
 
   if (!IS_STATIC) {

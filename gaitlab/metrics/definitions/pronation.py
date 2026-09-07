@@ -1,10 +1,4 @@
-"""Pronation (estimate) — rear-foot roll-in at contact, rear view.
-
-Low-confidence 2-D estimate (a partly-occluded angle), so confidence is always
-"low" regardless of magnitude, and it's excluded from the headline score. The
-global (worst-side) value compares magnitudes (abs), while the per-side display
-keeps the sign (direction of roll) — see `aggregate="worst_high_abs"`.
-"""
+"""Low-confidence rearfoot alignment proxy at estimated contact."""
 
 from __future__ import annotations
 
@@ -31,17 +25,20 @@ def _compute(ctx, side):
 
 register(MetricDef(
     key=MetricKey.PRONATION,
-    label="Pronation (estimate)",
+    label="Rearfoot alignment at contact",
     unit="deg",
-    good=(None, 8),
-    warn=(None, 12),
+    good=(None, None),
+    warn=(None, None),
     note=(
-        "Estimated rear-foot roll-in at contact. This is a low-confidence 2-D rear-view estimate — "
-        "treat it as a flag to check your shoe wear and ankle, not a measurement."
+        "Image-plane heel-to-ankle alignment at estimated contact. It is not a measure of dynamic "
+        "pronation and is reported only as a low-confidence screening observation."
     ),
     confidence="low",
+    evidence_level="screening",
+    reference_ids=("Hensley2022", "Leporace2023"),
+    event_phase="strike",
     views=("rear",),
-    scored=False,  # low confidence, excluded from headline score
+    scored=False,
     per_side=True,
     asym_direction="higher_worse",
     compute=_compute,
@@ -51,30 +48,4 @@ register(MetricDef(
     foi="max_pelvic_drop",
     card_per_side_key="pronation",
     value_confidence_fn=lambda value: "low",
-    finding_text={
-        "high": {
-            "title": "Possible overpronation (estimate)",
-            "detail": (
-                "The rear-foot appears to roll inward ~{value:.0f}° at contact. This is a "
-                "low-confidence 2-D rear-view estimate, so treat it as a prompt to look closer "
-                "rather than a verdict."
-            ),
-            "cue": "Check the wear pattern on your shoes; a stability shoe may help if it's pronounced.",
-            "drill": "Calf and foot strength (heel raises, short-foot drills); review footwear with a fitter.",
-        },
-    },
-    exercises=[
-        {"name": "Heel raises",
-         "why": "Calf/foot strength to control roll-in.",
-         "dose": "3×15",
-         "progression": "Single-leg, then off a step."},
-        {"name": "Short-foot drill",
-         "why": "Trains the arch muscles.",
-         "dose": "3×10 holds/side",
-         "progression": "Standing → single-leg balance."},
-        {"name": "Check footwear",
-         "why": "Worn or wrong-support shoes amplify roll-in.",
-         "dose": "Review shoe wear; consider a fitting",
-         "progression": "Trial a stability shoe if pronounced."},
-    ],
 ))
