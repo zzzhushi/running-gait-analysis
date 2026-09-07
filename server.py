@@ -35,12 +35,24 @@ from gaitlab import synthetic
 ROOT = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(ROOT, "web")
 DATA_DIR = os.path.join(ROOT, "data")
-DB_PATH = os.path.join(DATA_DIR, "gaitlab.db")
+# Overridable so tests can exercise the schema/seed paths against a throwaway file.
+# Without this every call here hardcodes the developer's real database, which is why
+# server.py had no tests at all — and why the data-loss bugs below went unnoticed.
+DB_PATH = os.environ.get("GAITLAB_DB") or os.path.join(DATA_DIR, "gaitlab.db")
 VIDEO_DIR = os.path.join(DATA_DIR, "video")
 POSE_DIR = os.path.join(DATA_DIR, "pose")
 EXTRACTOR = os.path.join(ROOT, "extractor", "extract_pose.py")
 INGEST_TIMEOUT = 600  # seconds
-SCHEMA_VERSION = 2  # bump when the DB schema changes to auto-wipe and recreate
+SCHEMA_VERSION = 2  # bump when the DB schema changes
+
+
+class SchemaVersionError(RuntimeError):
+    """The database on disk can't be safely used with this build.
+
+    Raised instead of dropping tables, so an unreadable or newer-than-expected
+    database stops startup with something actionable rather than silently
+    destroying the history the app exists to accumulate.
+    """
 
 
 class ExtractionError(RuntimeError):
@@ -60,20 +72,51 @@ def _get_extract_lock(pose_path: str) -> threading.Lock:
 
 
 # --------------------------------------------------------------------------- DB
+def _read_schema_version(conn: sqlite3.Connection):
+    """Current schema version, or None for a database that has never been set up.
+
+    The distinction matters: a fresh file has no _meta table and should be
+    created, whereas a database that HAS tables but whose version can't be read
+    is damaged, and the safe response is to stop rather than guess.
+    """
+    has_meta = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='_meta'"
+    ).fetchone()
+    if not has_meta:
+        # Untouched file, or one where _meta was lost. Only the former is safe to
+        # initialize: if user data exists without _meta, something removed it.
+        has_data = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name IN ('runs', 'users')"
+        ).fetchone()
+        if has_data:
+            raise SchemaVersionError(
+                f"{DB_PATH} has runs/users tables but no _meta version table — the database "
+                "looks damaged. Refusing to touch it. Move it aside to start fresh; the "
+                "previous behaviour here silently deleted every run and user."
+            )
+        return None
+    row = conn.execute("SELECT v FROM _meta").fetchone()
+    return row["v"] if row else None
+
+
 def _init_db() -> None:
-    """One-time DB setup at startup: check schema version, wipe if stale, create tables."""
-    os.makedirs(DATA_DIR, exist_ok=True)
+    """One-time DB setup at startup: verify schema version, create tables if absent.
+
+    Never drops user data. An unexpected version raises SchemaVersionError instead
+    of wiping — a version bump is a migration to write, not a reason to discard
+    the history Library, Trends and Compare exist to show.
+    """
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    try:
-        row = conn.execute("SELECT v FROM _meta").fetchone()
-        current_v = row["v"] if row else 0
-    except Exception:
-        current_v = 0
-    if current_v != SCHEMA_VERSION:
-        for tbl in ("runs", "users", "_meta"):
-            conn.execute(f"DROP TABLE IF EXISTS {tbl}")
-        conn.commit()
+    current_v = _read_schema_version(conn)
+    if current_v is not None and current_v != SCHEMA_VERSION:
+        conn.close()
+        raise SchemaVersionError(
+            f"{DB_PATH} is schema version {current_v}, but this build expects {SCHEMA_VERSION}. "
+            "No migration exists for that step, so the database has been left untouched. "
+            "Back it up and move it aside to start fresh."
+        )
     conn.execute("CREATE TABLE IF NOT EXISTS _meta (v INTEGER)")
     if not conn.execute("SELECT v FROM _meta").fetchone():
         conn.execute("INSERT INTO _meta VALUES (?)", (SCHEMA_VERSION,))
@@ -190,18 +233,43 @@ def delete_user(uid: str) -> None:
         conn.execute("DELETE FROM users WHERE id=?", (uid,))
 
 
-def seed_if_empty(force: bool = False) -> None:
-    with db() as conn:
-        count = conn.execute("SELECT COUNT(*) AS c FROM runs").fetchone()["c"]
-        if force:
-            conn.execute("DELETE FROM runs")
-            count = 0
-    if count == 0:
+def seed_demo_runs(user_id: str = None) -> int:
+    """Add the demo runs for `user_id` (the Demo profile when None). Returns how
+    many were added.
+
+    Additive and idempotent: never deletes, and a profile that already has the
+    demo runs gets nothing further. Previously this took force=True and ran an
+    unqualified `DELETE FROM runs`, so one profile loading demos erased every
+    other profile's history — and the demos landed on the Demo profile rather
+    than the one that asked, leaving the caller's library still empty.
+    """
+    if user_id is None:
         with db() as conn:
             row = conn.execute("SELECT id FROM users WHERE name='Demo' LIMIT 1").fetchone()
-        demo_id = row["id"] if row else create_user("Demo")["id"]
-        for label, seq, cal in synthetic.demo_runs():
-            store_run(label, seq, cal, user_id=demo_id)
+        user_id = row["id"] if row else create_user("Demo")["id"]
+
+    with db() as conn:
+        existing = {
+            r["label"] for r in conn.execute(
+                "SELECT label FROM runs WHERE user_id=?", (user_id,)
+            ).fetchall()
+        }
+
+    added = 0
+    for label, seq, cal in synthetic.demo_runs():
+        if label in existing:
+            continue  # already seeded for this profile
+        store_run(label, seq, cal, user_id=user_id)
+        added += 1
+    return added
+
+
+def seed_if_empty() -> None:
+    """Seed the Demo profile at first launch, only when there are no runs at all."""
+    with db() as conn:
+        count = conn.execute("SELECT COUNT(*) AS c FROM runs").fetchone()["c"]
+    if count == 0:
+        seed_demo_runs()
 
 
 def list_videos() -> list:
@@ -396,8 +464,11 @@ class Handler(BaseHTTPRequestHandler):
                     from gaitlab.coaching import narrative
                     self._json(narrative.generate(run))
             elif path == "/api/seed":
-                seed_if_empty(force=True)
-                self._json(list_runs())
+                # Scoped to the caller's profile: the demos land where the button was
+                # clicked, and nobody else's runs are touched.
+                uid = self._read_body().get("user_id") or None
+                seed_demo_runs(uid)
+                self._json(list_runs(uid))
             elif path == "/api/ingest":
                 body = self._read_body()
                 try:
@@ -445,7 +516,12 @@ def main():
     ap.add_argument("--no-open", action="store_true", help="don't open a browser")
     args = ap.parse_args()
 
-    _init_db()
+    try:
+        _init_db()
+    except SchemaVersionError as e:
+        # Fail closed with the explanation, not a traceback — the database is
+        # intact and the fix is a human decision about what to do with it.
+        sys.exit(f"\nGaitLab can't start:\n  {e}\n")
     seed_if_empty()
     # config.js defaults to the static (Pages) runtime; local dev opts in with
     # ?runtime=server. Without it the SPA hides Library/Trends/Combine and never reads
