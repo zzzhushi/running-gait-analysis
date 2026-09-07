@@ -29,13 +29,13 @@ from extractor.blazepose import MediaPipeExtractor
 from extractor.blazepose import to_canonical as blazepose_to_canonical
 from extractor.extract_pose import _resolve_video
 from extractor.mock import MockExtractor
-from extractor.pipeline import analyze_video
 from extractor.rtmpose import HALPE26, WHOLEBODY
 from extractor.rtmpose import RTMPoseExtractor
 from extractor.rtmpose import build_model, pick_person
 from extractor.rtmpose import to_canonical as rtmpose_to_canonical
 from extractor.timestamps import _monotonic_positive, choose_timestamps, probe_timestamps
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
+from pipeline import analyze_video
 
 
 class TestBaseContract:

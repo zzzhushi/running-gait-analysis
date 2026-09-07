@@ -5,7 +5,7 @@ demo runs and most of the test suite already use — so MockExtractor produces
 exactly the kind of PoseSequence the engine is already exercised against,
 rather than a second, parallel notion of "fake pose data".
 
-This is what makes extractor/pipeline.py's analyze_video() testable end to end:
+This is what makes pipeline.py's analyze_video() testable end to end:
 inject MockExtractor() in place of RTMPoseExtractor() and the whole
 video -> PoseSequence -> AnalysisResult path runs with no I/O at all.
 """

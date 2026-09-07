@@ -5,7 +5,7 @@
 Historically the only way to run this was extract_pose.py's CLI, which spawned
 a subprocess to get it — nothing could import RTMPoseExtractor and swap it for
 another source. This module is what closes that gap: extract_pose.py is now a
-thin CLI over RTMPoseExtractor, and extractor/pipeline.py can inject any
+thin CLI over RTMPoseExtractor, and pipeline.py can inject any
 PoseExtractor (see MockExtractor for the one that unblocked testing it).
 """
 
