@@ -5,7 +5,7 @@ import { metricCard, asymRow, findingCard, planSection, qualityPanel } from "./r
 // Multi-view fusion: merge a side run (sagittal) and a rear run (frontal) of the same
 // session into one report. Pure client-side composition of two stored AnalysisResults.
 export default async function combine(app) {
-  const runs = await api.listRuns();
+  const runs = await listRunsForActiveUser(api);
   const sideRuns = runs.filter((r) => r.view.startsWith("side"));
   const rearRuns = runs.filter((r) => r.view === "rear" || r.view === "front");
 
@@ -35,6 +35,20 @@ export default async function combine(app) {
     el("span", { style: "color:var(--muted);font-size:13px" }, "Rear:"), rearSel,
   ]), out);
   draw();
+}
+
+export async function listRunsForActiveUser(client) {
+  let activeUser = client.getActiveUser();
+  if (!activeUser && client.capabilities?.users) {
+    const users = await client.listUsers();
+    activeUser = users[0] || null;
+    if (activeUser) client.setActiveUser(activeUser);
+  }
+  // Same rule as Library and Trends: scope to the active user when there is one,
+  // otherwise show everything. Returning [] here hid runs that no user owns --
+  // every row a v1 migration produces, plus runs orphaned by delete_user, which
+  // sets user_id = NULL -- even though Library listed them a click earlier.
+  return client.listRuns(activeUser?.id);
 }
 
 function sel(runs, fallback) {

@@ -17,13 +17,14 @@ export default async function library(app) {
   ]));
 
   if (!runs.length) {
-    app.append(el("div", { class: "empty" }, [
-      el("p", {}, "No runs yet."),
-      el("button", {
+    const empty = [el("p", {}, "No runs yet.")];
+    if (api.capabilities.seed) {
+      empty.push(el("button", {
         class: "btn btn-accent",
-        onclick: async () => { await api.reseed(); location.reload(); },
-      }, "Load demo runs"),
-    ]));
+        onclick: async () => { await api.reseed(activeUser?.id); location.reload(); },
+      }, "Load demo runs"));
+    }
+    app.append(el("div", { class: "empty" }, empty));
     return;
   }
 

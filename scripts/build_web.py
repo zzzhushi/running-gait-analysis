@@ -7,6 +7,10 @@ time — locally via `make web-static`, in CI via .github/workflows/pages.yml. P
 unpacks the zip into its virtual FS; the package tree must stay intact for the dynamic
 metric registration (pkgutil.iter_modules) to work.
 
+This is also the local/static dependency boundary. Local persistence, ingestion, and
+HTTP code lives in the sibling gaitlab_local/ package, so recursively packaging SRC
+below includes the portable engine and cannot include the local application.
+
 Cache-busting (CI only): GitHub Pages serves every asset with a 10-minute max-age and no
 way to set headers, so after a redeploy a returning browser can keep running stale JS or
 a stale engine zip. Passing `--version <sha>` stamps `?v=<sha>` onto every local module
