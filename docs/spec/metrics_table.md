@@ -17,6 +17,7 @@
 | head_drop | %leg | — | — | moderate | side | no |
 | head_lateral_sway | %leg | ≤ 6 | ≤ 10 | moderate | rear | no |
 | heel_recovery | %leg | — | — | moderate | side | no |
+| hip_adduction | deg | ≤ 8 | ≤ 12 | low | rear | no |
 | hip_extension | deg | ≥ 10 | ≥ 5 | high | side | yes |
 | knee_drive | deg | ≥ 20 | ≥ 10 | high | side | yes |
 | knee_flexion_contact | deg | — | — | high | side | no |
@@ -40,5 +41,6 @@
 |---|---|---|---|
 | bouncing | side | vertical_oscillation > warn_hi; cadence < good_lo | high |
 | heavy_heelstrike | side | foot_strike_angle > 12; overstride > good_hi | med |
+| lateral_chain | rear | pelvic_drop > good_hi; hip_adduction > good_hi | med |
 | overstriding | side | overstride > good_hi; hip_extension < good_lo; cadence < good_lo | high |
 | sinking_midstance | side | knee_flexion_midstance > good_hi; trunk_lean > warn_hi | high |

@@ -385,7 +385,7 @@ all flow through `analyze(profile=…)` today.
 | Foot strike | **Yes** | `foot_strike_angle`. |
 | Hip extension | **Yes** | `hip_extension`. |
 | Arm swing | **Yes** | `arm_swing`. |
-| Knee valgus | **No** | valgus metric not computed (§7.3). **Gap.** |
+| Knee valgus | **Estimate only** | `hip_adduction`, same low-confidence 2-D treatment as `pronation` — always Low confidence, excluded from the headline score (§7.3). |
 | Vertical impulse | **No** | not derivable cleanly from 2-D (per-leg COM work). **Gap / likely DEFER.** |
 | Knee flexion (contact + midstance), overstride, contact time, knee drive, heel recovery, pronation, stride length | **Yes** | already in `ASYM_METRICS`. |
 
@@ -413,7 +413,7 @@ component metrics are at least Moderate confidence.
 | **Sinking at mid-stance** | `knee_flexion_midstance` > 50° **AND** `trunk_lean` > 16° | weak glute max / core control | "Run tall; don't sink into the stance leg." Bridges. |
 | **Bouncing** | `vertical_oscillation` > 18 %leg **AND** `cadence` below good band | low cadence redirecting drive upward | "Drive forward, not up; keep the head on a level line." |
 | **Stiff / jarring landing** | `knee_flexion_contact` near-straight **AND** `overstride` > 8 %leg **AND** foot-strike = heel | overstride + stiff landing (high loading rate) | "Soft, quiet landings; let the knee give." |
-| **Lateral chain (rear)** | `pelvic_drop` > 6° **AND** knee valgus flagged (same side) | weak glute med / glute max | clamshells, hip hikes | `DEFER` — needs knee valgus (§7.3). |
+| **Lateral chain (rear)** | `pelvic_drop` > 6° **AND** `hip_adduction` (estimate) > 8° | weak glute med / glute max | clamshells, hip hikes | Implemented at **med** (not high) severity — one input is a low-confidence estimate (§7.3). |
 
 Output rule: surface **at most 3** composites/findings, highest severity first; a composite
 outranks its individual component findings.
