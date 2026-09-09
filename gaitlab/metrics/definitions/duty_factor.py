@@ -14,12 +14,6 @@ def _compute(ctx, side):
     return float("nan")
 
 
-def _trigger(defn, value, values, targets):
-    # The current contact anchor is provisional. Keep the measurement visible, but do
-    # not turn it into coaching until it is criterion-calibrated.
-    return None
-
-
 register(MetricDef(
     key=MetricKey.DUTY_FACTOR,
     label="Duty factor",
@@ -36,7 +30,9 @@ register(MetricDef(
     aggregate="max",
     card_per_side_key="duty_factor",
     card_status="info",
-    trigger_fn=_trigger,
+    # The current contact anchor is provisional. Keep the measurement visible, but do
+    # not turn it into coaching until it is criterion-calibrated.
+    trigger_fn=lambda *a: None,
     finding_text={
         "high": {
             "title": "Long duty factor",
