@@ -7,10 +7,10 @@
 | arm_swing | %leg | — | — | moderate | side | no |
 | asymmetry | % | ≤ 5 | ≤ 10 | high | side, rear | yes |
 | cadence | spm | 170–185 | 160–195 | high | side, rear | yes |
-| contact_time | ms | ≤ 250 | ≤ 300 | high | side | yes |
-| contact_time_ms | ms | ≤ 250 | ≤ 300 | high | side | no |
+| contact_time | ms | ≤ 250 | ≤ 300 | low | side | no |
+| contact_time_ms | ms | ≤ 250 | ≤ 300 | low | side | no |
 | crossover | — | — | — | high | rear | no |
-| duty_factor | % | ≤ 40 | ≤ 48 | high | side | yes |
+| duty_factor | % | ≤ 40 | ≤ 48 | low | side | no |
 | elbow_angle | deg | 75–105 | 60–120 | high | side | yes |
 | flight_time | ms | — | — | moderate | side | no |
 | foot_strike_angle | deg | — | — | moderate | side | no |

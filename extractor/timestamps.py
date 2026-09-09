@@ -54,7 +54,7 @@ def probe_timestamps(path: str) -> Optional[List[float]]:
 
 
 def _monotonic_positive(ts: Optional[Sequence[float]]) -> bool:
-    return (ts is not None and len(ts) > 1 and ts[-1] > 0
+    return (ts is not None and len(ts) > 1 and ts[-1] > ts[0]
             and all(ts[i] >= ts[i - 1] for i in range(1, len(ts))))
 
 

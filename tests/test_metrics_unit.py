@@ -7,6 +7,7 @@ synthetic poses with a known input parameter where the expected output is deriva
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 import pytest
 
@@ -14,6 +15,8 @@ from gaitlab.core.events import GaitEvents
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 from gaitlab.metrics.compute import compute
 from gaitlab.metrics.ctx import Ctx, _leg_length, knee_flexion_at
+from gaitlab.metrics.defs import METRIC_DEFS
+from gaitlab.metrics.keys import MetricKey
 
 
 def pose_from_points(view, frames, fps=60, width=1080, height=1920):
@@ -74,6 +77,30 @@ def test_overstride_worst_side_is_max(synth):
     m = compute(synth("side-left", fps=60, duration=6, cadence=170, asymmetry=0.3, seed=6))
     ps = m["per_side"]
     assert m["values"]["overstride"] == pytest.approx(max(ps["l"]["overstride"], ps["r"]["overstride"]))
+
+
+def test_uncalibrated_contact_metrics_are_descriptive_only():
+    """A provisional event anchor must not drive the score or coaching contract."""
+    for key in (MetricKey.CONTACT_TIME, MetricKey.DUTY_FACTOR):
+        defn = METRIC_DEFS[key]
+        assert defn.scored is False
+        assert defn.confidence == "low"
+        assert defn.card_status == "info"
+        assert defn.trigger(999.0, {}, METRIC_DEFS) is None
+
+    assert METRIC_DEFS[MetricKey.CONTACT_TIME_MS].per_side is False
+
+
+def test_step_length_uses_real_timestamps(synth):
+    seq = synth("side-left", fps=60, duration=6, cadence=172, seed=8)
+    baseline = compute(seq, calibration={"speed_kmh": 12.0})
+    timed = replace(seq, timestamps=[i / seq.fps * 1.2 for i in range(seq.n)])
+    stretched = compute(timed, calibration={"speed_kmh": 12.0})
+
+    for side in ("l", "r"):
+        assert stretched["per_side"][side]["step_length"] == pytest.approx(
+            baseline["per_side"][side]["step_length"] * 1.2, rel=0.01
+        )
 
 
 def test_hip_extension_worst_side_is_min(synth):
