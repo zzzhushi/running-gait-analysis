@@ -1,7 +1,10 @@
 """Ground contact time — same underlying event data (ev.contact_time), exposed
-as two keys: CONTACT_TIME (the scored, always-shown headline) and
+as two keys: CONTACT_TIME (the always-shown descriptive headline) and
 CONTACT_TIME_MS (the hidden per-side twin that feeds the headline card's L/R
-display and the asymmetry table). One shared compute function, one file.
+display). One shared compute function, one file.
+
+The current ankle-lift anchor is not criterion-calibrated, so these values remain visible
+but are deliberately excluded from scoring, coaching, and asymmetry interpretation.
 """
 
 from __future__ import annotations
@@ -22,14 +25,17 @@ register(MetricDef(
     unit="ms",
     good=(None, 250),
     warn=(None, 300),
-    note="Efficient runners spend ~200-250 ms on the ground per step. Long contact = less reactive.",
-    confidence="high",
+    note=("Approximate time on the ground per step. The current video-only contact anchor "
+          "has not yet been calibrated against high-speed video or a force reference."),
+    confidence="low",
     views=("side",),
-    scored=True,
+    scored=False,
     compute=_compute,
     per_side_compute=True,
     aggregate="worst_high",
     card_per_side_key="contact_time_ms",
+    card_status="info",
+    trigger_fn=lambda *a: None,
     finding_text={
         "high": {
             "title": "Long ground contact",
@@ -59,11 +65,11 @@ register(MetricDef(
     unit="ms",
     good=(None, 250),
     warn=(None, 300),
-    note="Per-side contact time in milliseconds. Used for left/right asymmetry detection.",
-    confidence="high",
+    note="Approximate per-side contact time; descriptive until the event anchor is calibrated.",
+    confidence="low",
     views=("side",),
     scored=False,
-    per_side=True,
+    per_side=False,
     asym_direction="higher_worse",
     compute=_compute,
     per_side_compute=True,

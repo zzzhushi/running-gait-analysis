@@ -35,12 +35,6 @@ REGRESSION_TOLERANCE_PCT = 5.0
 # What the engine should manage once cadence is not quantized onto the integer-frame grid.
 ACCURATE_TOLERANCE_PCT = 1.5
 
-pytestmark = pytest.mark.skipif(
-    not POSE.exists() or not TRUTH.exists(),
-    reason=f"real-clip fixture not present ({POSE.name}); see tests/data/README.md",
-)
-
-
 @pytest.fixture(scope="module")
 def truth() -> dict:
     return json.loads(TRUTH.read_text())

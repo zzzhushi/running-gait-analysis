@@ -198,10 +198,9 @@ class TestAnalyzeVideo:
 
 
 class TestTimestamps:
-    def test_monotonic_positive_accepts_a_flat_series(self):
-        """The check is non-decreasing (>=), not strictly increasing — a run of
-        identical timestamps (e.g. a stalled decoder) still counts as usable."""
-        assert _monotonic_positive([1.0, 1.0, 1.0])
+    def test_monotonic_positive_rejects_a_flat_series(self):
+        """A stalled decoder clock contains no elapsed-time information."""
+        assert not _monotonic_positive([1.0, 1.0, 1.0])
 
     def test_monotonic_positive_rejects_a_decreasing_series(self):
         assert not _monotonic_positive([5.0, 3.0])

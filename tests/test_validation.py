@@ -49,6 +49,14 @@ def test_valid_pose_validates():
     _valid_base().validate()  # must not raise
 
 
+def test_timestamp_clock_controls_duration_and_effective_fps():
+    s = _valid_base()
+    s.timestamps = [i * 0.02 for i in range(s.n)]
+    s.validate()
+    assert s.effective_fps == pytest.approx(50.0)
+    assert s.duration == pytest.approx(0.12)
+
+
 @pytest.mark.parametrize("mutate,match", [
     (lambda s: setattr(s, "fps", 0), "fps"),
     (lambda s: setattr(s, "fps", -30), "fps"),
@@ -57,6 +65,10 @@ def test_valid_pose_validates():
     (lambda s: s.frames.__setitem__(0, s.frames[0][:-1]), "keypoints, expected"),
     (lambda s: s.frames[0].__setitem__(0, (1.0, 2.0, 3.0)), "confidence"),
     (lambda s: s.frames[0].__setitem__(0, (float("nan"), 2.0, 1.0)), "non-finite"),
+    (lambda s: setattr(s, "timestamps", [0.0]), "timestamps has"),
+    (lambda s: setattr(s, "timestamps", [0.0, 0.1, float("nan"), 0.3, 0.4, 0.5]), "finite"),
+    (lambda s: setattr(s, "timestamps", [0.0, 0.1, 0.2, 0.15, 0.4, 0.5]), "non-decreasing"),
+    (lambda s: setattr(s, "timestamps", [1.0] * 6), "positive duration"),
 ])
 def test_malformed_pose_rejected(mutate, match):
     s = _valid_base()

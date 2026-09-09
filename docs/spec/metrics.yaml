@@ -49,9 +49,9 @@ metrics:
     unit: ms
     good: [null, 250]
     warn: [null, 300]
-    confidence: high
+    confidence: low
     views: [side]
-    scored: true
+    scored: false
     per_side: false
     asym_direction: neutral
   contact_time_ms:
@@ -59,10 +59,10 @@ metrics:
     unit: ms
     good: [null, 250]
     warn: [null, 300]
-    confidence: high
+    confidence: low
     views: [side]
     scored: false
-    per_side: true
+    per_side: false
     asym_direction: higher_worse
   crossover:
     label: Crossover gait
@@ -79,9 +79,9 @@ metrics:
     unit: '%'
     good: [null, 40]
     warn: [null, 48]
-    confidence: high
+    confidence: low
     views: [side]
-    scored: true
+    scored: false
     per_side: false
     asym_direction: neutral
   elbow_angle:
@@ -331,15 +331,15 @@ asymmetry:
     good: [null, 5]
     warn: [null, 10]
   suppression: If both sides are individually within their metric's good band, the flag is suppressed.
-  metrics: {arm_swing: neutral, contact_time_ms: higher_worse, elbow_angle: neutral, foot_strike_angle: neutral,
-    heel_recovery: neutral, hip_extension: higher_better, knee_drive: higher_better, knee_flexion_midstance: higher_better,
-    knee_flexion_contact: neutral, overstride: higher_worse, pelvic_drop: higher_worse, pronation: higher_worse,
-    step_length: higher_better, stride_length: higher_better}
+  metrics: {arm_swing: neutral, elbow_angle: neutral, foot_strike_angle: neutral, heel_recovery: neutral,
+    hip_extension: higher_better, knee_drive: higher_better, knee_flexion_midstance: higher_better, knee_flexion_contact: neutral,
+    overstride: higher_worse, pelvic_drop: higher_worse, pronation: higher_worse, step_length: higher_better,
+    stride_length: higher_better}
 scoring:
   per_metric: {good: 100, warn_edge: 45, deep_bad: 17.5, nan: 50, frac_clamp: 1.5, slope: 55}
   overall: {base: mean of scored-metric scores for the view, penalty: 'clamp(mean(flagged asymmetry diffs)
       * 0.8, 0, 22)', formula: 'clamp(base - penalty, 0, 100)'}
   grades: {A: 85, B: 72, C: 58, D: 42}
-  scored_keys_side: [asymmetry, cadence, contact_time, duty_factor, elbow_angle, hip_extension, knee_drive,
-    knee_flexion_midstance, overstride, trunk_lean, vertical_oscillation]
+  scored_keys_side: [asymmetry, cadence, elbow_angle, hip_extension, knee_drive, knee_flexion_midstance,
+    overstride, trunk_lean, vertical_oscillation]
   scored_keys_rear: [asymmetry, cadence, lateral_trunk_sway, pelvic_drop, step_width]

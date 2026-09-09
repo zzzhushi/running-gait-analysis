@@ -41,7 +41,7 @@ def assess(seq: PoseSequence, events) -> List[dict]:
     def info(m):
         checks.append({"level": "info", "message": m})
 
-    n, fps, dur = seq.n, seq.fps or 30.0, seq.duration
+    n, fps, dur = seq.n, seq.effective_fps or 30.0, seq.duration
 
     if dur < 2.0 or n < 40:
         warn(f"Short clip ({dur:.1f}s). Film ~4–6s of steady running for stable metrics.")

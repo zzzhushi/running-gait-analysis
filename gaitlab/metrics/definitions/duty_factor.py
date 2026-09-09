@@ -15,10 +15,9 @@ def _compute(ctx, side):
 
 
 def _trigger(defn, value, values, targets):
-    t = targets.get(defn.key, defn)
-    if t.status(value) != "bad":
-        return None
-    return "high", "low"
+    # The current contact anchor is provisional. Keep the measurement visible, but do
+    # not turn it into coaching until it is criterion-calibrated.
+    return None
 
 
 register(MetricDef(
@@ -27,14 +26,16 @@ register(MetricDef(
     unit="%",
     good=(None, 40),
     warn=(None, 48),
-    note="Share of the stride your foot is on the ground. Lower is springier/faster (fps-limited estimate).",
-    confidence="high",
+    note=("Approximate share of the stride spent on the ground. Descriptive until the "
+          "video-only contact anchor is calibrated against a reference."),
+    confidence="low",
     views=("side",),
-    scored=True,
+    scored=False,
     compute=_compute,
     per_side_compute=True,
     aggregate="max",
     card_per_side_key="duty_factor",
+    card_status="info",
     trigger_fn=_trigger,
     finding_text={
         "high": {

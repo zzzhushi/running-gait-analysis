@@ -38,7 +38,7 @@ def per_stride_max(series: List[float], strikes: List[int]) -> float:
     return med(peaks) if peaks else geo.peak_to_peak(series)
 
 
-def step_times(ev: GaitEvents, side: str, fps: float) -> List[float]:
+def step_times(ev: GaitEvents, side: str, seq: PoseSequence) -> List[float]:
     """Step times for one side: from the preceding opposite-foot strike to each strike."""
     other = "r" if side == "l" else "l"
     s_side, s_other = ev.strikes[side], ev.strikes[other]
@@ -46,7 +46,7 @@ def step_times(ev: GaitEvents, side: str, fps: float) -> List[float]:
     for s in s_side:
         prev = [o for o in s_other if o < s]
         if prev:
-            out.append((s - prev[-1]) / fps)
+            out.append(seq.elapsed(prev[-1], s))
     return out
 
 

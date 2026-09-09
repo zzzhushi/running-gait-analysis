@@ -46,10 +46,10 @@ from .schema import PoseSequence
 LIFT_FRACTION = 0.15
 
 
-def _robust_period(gaps: List[int]) -> float:
-    """Typical interval from a list of whole-frame gaps, in frames.
+def _robust_period(gaps: List[float]) -> float:
+    """Typical interval from a list of elapsed-time gaps.
 
-    A plain median is robust to spurious events but quantized: gaps are whole frames, so
+    A plain median is robust to spurious events but quantized when timestamps are unavailable:
     at 30 fps a ~10.7-frame step can only ever report as 10 or 11. That lands on a coarse
     cadence grid — 150 / 156.5 / 163.6 / 171.4 / 180 spm — and on the real-clip fixture it
     put a true 168.6 spm at 163.6 (-2.9%), far enough below the 170 spm target band to
@@ -90,7 +90,9 @@ class GaitEvents:
 
 def detect_events(seq: PoseSequence) -> GaitEvents:
     ev = GaitEvents()
-    fps = seq.fps or 30.0
+    # Use the real presentation clock when available. Container FPS is only metadata on
+    # variable-frame-rate recordings and becomes wrong as soon as extraction drops frames.
+    fps = seq.effective_fps or 30.0
     n = seq.n
     if n < 4:
         return ev
@@ -154,17 +156,18 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
         # the step intervals, and cadence is the most-read number in the report. Measured
         # on the real-clip fixture, deriving cadence from refined contacts moved it from
         # 163.6 to 180 spm against a measured truth of 168.6.
-        same_foot = [midstances[i + 1] - midstances[i] for i in range(len(midstances) - 1)]
+        same_foot = [seq.elapsed(midstances[i], midstances[i + 1])
+                     for i in range(len(midstances) - 1)]
         if same_foot:
-            ev.stride_time[side] = _robust_period(same_foot) / fps
-        contacts = [to - s for (s, to) in stance]
+            ev.stride_time[side] = _robust_period(same_foot)
+        contacts = [seq.elapsed(s, to) for (s, to) in stance]
         if contacts:
-            ev.contact_time[side] = _robust_period(contacts) / fps
+            ev.contact_time[side] = _robust_period(contacts)
 
     # cadence from the merged (either-foot) step interval — robust to edge effects
     all_mid = sorted(ev.midstances["l"] + ev.midstances["r"])
-    steps = [all_mid[i + 1] - all_mid[i] for i in range(len(all_mid) - 1)]
-    step_frames = _robust_period(steps)
-    if step_frames == step_frames and step_frames > 0:
-        ev.cadence_spm = 60.0 / (step_frames / fps)
+    steps = [seq.elapsed(all_mid[i], all_mid[i + 1]) for i in range(len(all_mid) - 1)]
+    step_s = _robust_period(steps)
+    if step_s == step_s and step_s > 0:
+        ev.cadence_spm = 60.0 / step_s
     return ev

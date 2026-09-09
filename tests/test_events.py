@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 import pytest
 
@@ -47,3 +48,21 @@ def test_faster_cadence_more_strikes(synth):
     n_slow = len(slow.strikes["l"]) + len(slow.strikes["r"])
     n_fast = len(fast.strikes["l"]) + len(fast.strikes["r"])
     assert n_fast > n_slow
+
+
+def test_real_timestamps_control_temporal_metrics(synth):
+    """Nominal FPS must not override the presentation clock on VFR/dropped-frame input."""
+    seq = synth("side-left", fps=60, duration=6, cadence=172, seed=7)
+    baseline = detect_events(seq)
+    scale = 1.2
+    timed = replace(seq, timestamps=[i / seq.fps * scale for i in range(seq.n)])
+    stretched = detect_events(timed)
+
+    assert stretched.cadence_spm == pytest.approx(baseline.cadence_spm / scale, rel=0.01)
+    for side in ("l", "r"):
+        assert stretched.stride_time[side] == pytest.approx(
+            baseline.stride_time[side] * scale, rel=0.01
+        )
+        assert stretched.contact_time[side] == pytest.approx(
+            baseline.contact_time[side] * scale, rel=0.01
+        )
