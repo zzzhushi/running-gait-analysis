@@ -153,3 +153,72 @@ def test_both_feet_are_tracked(events):
         f"left/right strike counts differ by {imbalance:.0f}% (L={n_l} R={n_r}); "
         f"the far leg is probably being lost"
     )
+
+
+# --- event-confidence grade ---------------------------------------------------
+#
+# The grade is only worth reporting if it can say something other than "high". Every
+# synthetic fixture and the full real clip grade "high", so none of them demonstrate
+# that. These derive degraded clips from the same committed pose — no extra footage —
+# and pin each tier to the condition that produces it.
+
+
+def _degraded(frames=None, drop_side=None):
+    """The real pose, optionally truncated and/or with one foot untracked."""
+    pose = json.loads(POSE.read_text())
+    if frames is not None:
+        pose["frames"] = pose["frames"][:frames]
+        pose["timestamps"] = pose["timestamps"][:frames]
+    if drop_side:
+        from gaitlab.core.schema import KEYPOINTS
+
+        idx = {KEYPOINTS.index(f"{drop_side}_{p}") for p in ("ankle", "heel", "big_toe")}
+        pose["frames"] = [
+            [(0.0, 0.0, 0.0) if i in idx else pt for i, pt in enumerate(frame)]
+            for frame in pose["frames"]
+        ]
+    from gaitlab.core.events import detect_events
+    from gaitlab.core.schema import PoseSequence
+
+    return detect_events(PoseSequence.from_pose_dict(pose))
+
+
+def test_full_clip_earns_high_confidence(events):
+    ev, _ = events
+    assert ev.confidence == "high"
+    assert ev.warnings == []
+    assert ev.alternation_ratio == pytest.approx(1.0)
+
+
+def test_a_short_clip_is_downgraded_to_moderate():
+    """Two seconds is enough to measure but not enough to be confident in the spread."""
+    ev = _degraded(frames=60)
+    assert ev.confidence == "moderate"
+    assert len(ev.stance["l"]) + len(ev.stance["r"]) < 8
+
+
+def test_too_few_stances_is_low_and_says_so():
+    ev = _degraded(frames=30)
+    assert ev.confidence == "low"
+    assert "too_few_complete_stances" in ev.warnings
+
+
+def test_an_untracked_foot_is_low_and_names_the_alternation_failure():
+    """Losing one foot leaves contacts that never alternate — the single most
+    diagnostic sign that event detection has failed, and the case that used to be
+    reported as a perfect 1.0 alternation ratio."""
+    ev = _degraded(drop_side="l")
+    assert ev.confidence == "low"
+    assert ev.alternation_ratio == pytest.approx(0.0)
+    assert "inconsistent_left_right_alternation" in ev.warnings
+
+
+def test_the_grade_spans_every_tier_across_these_inputs():
+    """Guards the grade against collapsing to a constant, which is how it shipped:
+    inert, because every available clip produced the same answer."""
+    grades = {
+        _degraded().confidence,
+        _degraded(frames=60).confidence,
+        _degraded(frames=30).confidence,
+    }
+    assert grades == {"high", "moderate", "low"}
