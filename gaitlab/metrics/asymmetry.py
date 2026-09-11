@@ -19,10 +19,8 @@ def diff_pct(l: float, r: float) -> float:
 
 def compute(
     per_side: Dict[str, Dict[str, float]],
-    targets: Optional[Dict] = None,
     confidences: Optional[Dict[str, str]] = None,
 ) -> List[dict]:
-    del targets  # retained for API compatibility
     out: List[dict] = []
     if not per_side or "l" not in per_side or "r" not in per_side:
         return out
@@ -54,8 +52,3 @@ def compute(
         })
     out.sort(key=lambda row: abs(row["difference"]), reverse=True)
     return out
-
-
-def overall_diff(asym: List[dict]) -> float:
-    """Deprecated compatibility helper; asymmetry no longer penalizes a score."""
-    return 0.0

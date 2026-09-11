@@ -279,7 +279,7 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
         detail = metric_confidence_detail(seq, key, values.get(key), defn, ev)
         confidence_map[key] = detail["level"]
 
-    asym = asym_mod.compute(per_side, targets, confidence_map)
+    asym = asym_mod.compute(per_side, confidence_map)
     items, score, grade = fb.build(
         values, per_side, asym, seq.view, m["frames_of_interest"], targets,
         observations=m.get("stride_observations"), confidences=confidence_map,

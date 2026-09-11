@@ -21,7 +21,6 @@ class MetricKey(str, Enum):
     CONTACT_TIME            = "contact_time"
     DUTY_FACTOR             = "duty_factor"
     HIP_EXTENSION           = "hip_extension"
-    KNEE_DRIVE              = "knee_drive"
     ELBOW_ANGLE             = "elbow_angle"
     # --- rear-view scored ---
     PELVIC_DROP             = "pelvic_drop"

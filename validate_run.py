@@ -50,7 +50,7 @@ SIDE_EXPECTED = {
     "knee_flexion_midstance": (20, 70, "°"),
     "overstride":           (0,   40,  "%leg"),
     "hip_extension":        (0,   35,  "°"),
-    "knee_drive":           (5,   50,  "°"),
+    "hip_flexion_peak":     (5,   50,  "°"),
     "elbow_angle":          (60,  140, "°"),
     "duty_factor":          (20,  65,  "%"),
     "contact_time":         (100, 500, "ms"),

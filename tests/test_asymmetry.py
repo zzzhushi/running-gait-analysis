@@ -29,6 +29,3 @@ def test_native_unit_difference_is_primary_and_unflagged():
     assert row["confidence"] == "moderate"
     assert "worse_side" not in row
 
-
-def test_no_overall_asymmetry_score_penalty():
-    assert A.overall_diff([{"difference": 100}]) == 0.0

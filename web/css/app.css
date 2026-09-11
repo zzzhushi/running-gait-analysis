@@ -67,11 +67,10 @@ main { flex: 1; width: 100%; max-width: 1180px; margin: 0 auto; padding: 24px 22
 .runcard .meta { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .runcard .finding { color: var(--muted); font-size: 12px; margin-top: 8px; }
 
-.score-badge { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 17px; color: #06243c; }
-.score-badge.s-a { background: var(--good); }
-.score-badge.s-b { background: #7bd389; color: #08260f; }
-.score-badge.s-c { background: var(--warn); }
-.score-badge.s-d, .score-badge.s-e { background: var(--bad); color: #2a0b09; }
+/* Neutral chip. The s-a..s-e grade colours were removed with scoring; this no
+   longer encodes a verdict, it just labels the card (see library.js). */
+.score-badge { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center;
+  font-weight: 700; font-size: 13px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); }
 
 .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 
