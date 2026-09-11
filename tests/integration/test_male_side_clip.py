@@ -222,3 +222,90 @@ def test_the_grade_spans_every_tier_across_these_inputs():
         _degraded(frames=30).confidence,
     }
     assert grades == {"high", "moderate", "low"}
+
+
+# --- measurement repeatability (MDC) ------------------------------------------
+#
+# asymmetry.py exposes `asymmetry_mdc` but every metric leaves it None, so a left/right
+# difference is reported with no way to tell it from noise. This measures the noise floor
+# for the one clip where that is possible.
+#
+# WHAT THIS IS: the standard error of the *aggregate* under resampling of the strides the
+# clip contains, converted to MDC95 = 1.96 * sqrt(2) * SE ~= 2.77 * SE. Resampling the
+# aggregate rather than taking the raw stride-to-stride SD matters: stride time genuinely
+# varies between strides, and that biological variability averages out in the reported
+# number exactly as it does here, leaving sampling noise.
+#
+# WHAT THIS IS NOT: a test-retest MDC. It cannot see camera repositioning, lighting,
+# pose-model run-to-run variation, or day-to-day physiology, because it has one recording.
+# It is therefore a LOWER BOUND. A difference below it is definitely not interpretable;
+# a difference above it is not yet proven to be.
+#
+# Populating MetricDef.asymmetry_mdc needs the real protocol: ~10 clips of one runner
+# under conditions you would call identical, SD of the aggregate across them, x2.77.
+
+MDC_BOOTSTRAP_SAMPLES = 2000
+MDC_SEED = 7
+
+
+def _aggregate_se_ms(series, seed=MDC_SEED):
+    """Standard error (ms) of the reported aggregate, by resampling strides."""
+    import random
+    import statistics
+
+    from gaitlab.core.events import _robust_period
+
+    rng = random.Random(seed)
+    aggregates = [
+        _robust_period([rng.choice(series) for _ in series]) * 1000.0
+        for _ in range(MDC_BOOTSTRAP_SAMPLES)
+    ]
+    return statistics.stdev(aggregates)
+
+
+def _mdc95_ms(series):
+    return 2.77 * _aggregate_se_ms(series)
+
+
+def test_contact_time_noise_floor_is_small_relative_to_the_value(events):
+    """A ~15 ms floor on a ~223 ms contact time is ~7%.
+
+    If event detection gets noisier — a jitterier anchor, contacts dropped and
+    re-found — this grows, and the report starts presenting differences it cannot
+    actually resolve. That is the regression this guards.
+    """
+    ev, _ = events
+    contacts = [v for side in ("l", "r") for v in ev.contact_times[side]]
+    assert len(contacts) >= 20, "too few stances to estimate a noise floor"
+
+    mdc = _mdc95_ms(contacts)
+    mean_ms = sum(contacts) / len(contacts) * 1000.0
+    assert 5.0 <= mdc <= 30.0, f"contact-time MDC95 {mdc:.1f} ms is outside the expected range"
+    assert mdc / mean_ms <= 0.15, (
+        f"contact-time noise floor is {mdc / mean_ms * 100:.0f}% of the value "
+        f"({mdc:.1f} ms of {mean_ms:.0f} ms) — differences below that are unresolvable"
+    )
+
+
+def test_left_right_contact_difference_is_reported_against_its_noise_floor(events):
+    """On this clip the L/R difference clears the floor, so it is not pure noise.
+
+    That does not make it a real gait asymmetry: a side view occludes the far leg, so
+    the far foot's contacts are tracked worse, and this is exactly the shape that
+    artifact takes. It is recorded here so the number has a scale attached rather than
+    being presented bare, and so a future change that inflates it gets noticed.
+    """
+    ev, _ = events
+    left, right = ev.contact_times["l"], ev.contact_times["r"]
+    diff_ms = abs(ev.contact_time["l"] - ev.contact_time["r"]) * 1000.0
+    # Two independent estimates, so the difference's floor combines them in quadrature.
+    floor = 2.77 * (_aggregate_se_ms(left) ** 2 + _aggregate_se_ms(right) ** 2) ** 0.5
+
+    assert diff_ms > floor, (
+        f"L/R contact difference {diff_ms:.1f} ms no longer clears its {floor:.1f} ms "
+        f"noise floor; the fixture or the detector changed"
+    )
+    assert diff_ms < 80.0, (
+        f"L/R contact difference {diff_ms:.1f} ms is implausibly large for one runner; "
+        f"the far leg is probably being lost"
+    )
