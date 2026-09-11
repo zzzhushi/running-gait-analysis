@@ -1,0 +1,40 @@
+{
+  "clip": "male_side.mp4",
+  "pose": "male_side.pose.json",
+  "view": "side-left",
+  "description": "Treadmill run, side view, runner facing image-left. Portrait 720x1280, 30 fps, 360 frames, 12.0 s. 12 s trim (source t=10-22s of a 40 s recording) — the runner is at steady state for the full source clip, this window was picked from the middle to avoid any startup/settling frames on principle. Garage lighting, treadmill console partially occluding the far leg at the front of the stride.",
+
+  "trim_provenance": {
+    "source_duration_s": 39.967,
+    "trim_start_s": 10.0,
+    "trim_duration_s": 12.0,
+    "reencode": "ffmpeg -ss 10 -t 12 -an -c:v libx264 -crf 23 -preset slow -pix_fmt yuv420p",
+    "why_12s": "Verified against the full 40s clip before trimming: same overall_score (55.9), grade (D), and all 3 findings; cadence within 0.3% of the trim's own measured ground truth; every other metric within ~10% of the full-clip value. 12s at ~168 spm is ~17 strides per foot, enough for the engine's per-metric medians to be stable. See tests/data/README.md."
+  },
+
+  "cadence_spm": {
+    "value": 168.9,
+    "uncertainty": 0.5,
+    "unit": "spm",
+    "how_measured": [
+      "Measured from raw pixels only — no pose model involved, so this is independent of the code under test.",
+      "Method A: per-frame motion energy (mean abs frame difference) in the leg band of a 90x160 grayscale downscale, detrended, then a fine-grid DFT over 2.0-3.9 Hz. Fundamental = step frequency. -> 168.6 spm",
+      "Method B: temporal-median background subtraction, silhouette centroid vertical position per frame, same DFT. The centroid bounces once per step. -> 169.7 spm",
+      "Stride harmonic of method A is self-consistent (1.408 Hz -> 169.0 spm, exactly half the step frequency).",
+      "Method spread widened from 0.24 spm (on the original 40s clip) to 1.08 spm on this 12s trim — fewer cycles means a coarser DFT, as expected. Still well under 1% of the value.",
+      "Cross-checked against the un-trimmed 40s source: 168.6 +/- 0.3 spm there, 168.9 +/- 0.5 spm here — consistent."
+    ],
+    "regenerate": "scripts/measure_cadence_groundtruth.py tests/data/male_side.mp4"
+  },
+
+  "physiological_bands": {
+    "_comment": "Not measured from this clip — literature ranges for a recreational runner at ~170 spm. They exist to catch gait-event anchoring errors, which move these two by roughly 2x. See docs/references.md.",
+    "contact_time_ms": [180, 320],
+    "duty_factor_pct": [25, 48]
+  },
+
+  "known_engine_deviations": {
+    "_comment": "Delete an entry here when the underlying issue is fixed.",
+    "contact_time_anchor_uncalibrated": "LIFT_FRACTION in gaitlab/core/events.py sets where stance begins and ends. It is bounded by physical constraints (running has no double-support phase, so duty factor must stay under 50%) but not calibrated against a reference. At 30 fps a whole stance is ~7 frames, so contact time and duty factor here are accurate to roughly +/-1 frame (33 ms). A 120/240 fps clip would settle it."
+  }
+}

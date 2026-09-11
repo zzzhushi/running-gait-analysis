@@ -12,7 +12,7 @@
 | cadence_cv | CV% | experimental | low | side, rear | events | no | Patoz2021 |
 | contact_time | ms | experimental | low | side | events | no | Patoz2021, Malisoux2023 |
 | contact_time_cv | CV% | experimental | low | side | events | no | Patoz2021 |
-| contact_time_ms | ms | experimental | low | side | events | yes | Patoz2021 |
+| contact_time_ms | ms | experimental | low | side | events | no | Patoz2021 |
 | crossover | — | experimental | low | rear | strike | no | — |
 | dimensionless_speed | — | screening | moderate | side, rear | all | no | Hof1996 |
 | duty_factor | % | experimental | low | side | events | no | Patoz2021, Malisoux2023 |

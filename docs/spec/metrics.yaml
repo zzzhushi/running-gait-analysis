@@ -78,7 +78,7 @@ metrics:
     views: [side]
     event_phase: events
     requires_events: false
-    per_side: true
+    per_side: false
     asym_direction: higher_worse
     asymmetry_mdc: null
     reference_ids: [Patoz2021]
@@ -589,7 +589,6 @@ asymmetry:
   flagging: disabled unless a metric-specific validated minimum detectable change is registered
   metrics:
     arm_swing: {direction: neutral, mdc: null}
-    contact_time_ms: {direction: higher_worse, mdc: null}
     elbow_angle: {direction: neutral, mdc: null}
     foot_strike_angle: {direction: neutral, mdc: null}
     heel_recovery: {direction: neutral, mdc: null}

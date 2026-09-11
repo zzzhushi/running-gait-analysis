@@ -7,19 +7,22 @@ they do not define an optimum or an injury threshold.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Dict, Optional
 
 SOURCE = "Malisoux et al. 2023 (PMCID: PMC10588426)"
 SOURCE_URL = "https://pmc.ncbi.nlm.nih.gov/articles/PMC10588426/"
 
 
-def _number(profile: dict, key: str) -> Optional[float]:
-    value = profile.get(key)
+def _number(profile, key: str) -> Optional[float]:
+    # Reads a RunnerProfile attribute, tolerating the legacy wire dict.
+    value = profile.get(key) if isinstance(profile, Mapping) else getattr(profile, key, None)
     return float(value) if isinstance(value, (int, float)) and value > 0 else None
 
 
-def _sex(profile: dict) -> Optional[int]:
-    value = (profile.get("sex") or "").lower()
+def _sex(profile) -> Optional[int]:
+    raw = profile.get("sex") if isinstance(profile, Mapping) else getattr(profile, "sex", None)
+    value = (raw or "").lower()
     if value == "male":
         return 0
     if value == "female":
@@ -27,7 +30,7 @@ def _sex(profile: dict) -> Optional[int]:
     return None
 
 
-def population_reference(metric: str, profile: dict) -> Optional[Dict]:
+def population_reference(metric: str, profile) -> Optional[Dict]:
     age = _number(profile, "age_years")
     height_cm = _number(profile, "height_cm")
     mass = _number(profile, "body_mass_kg")

@@ -42,8 +42,10 @@ def test_timestamp_validation_rejects_nonfinite_or_nonincreasing():
         PoseSequence.from_pose_dict(_blank_sequence(4).to_pose_dict() | {"timestamps": []}).validate()
     with pytest.raises(PoseValidationError, match="finite"):
         _blank_sequence(4, timestamps=[0.0, 0.1, float("nan"), 0.3]).validate()
-    with pytest.raises(PoseValidationError, match="strictly increasing"):
-        _blank_sequence(4, timestamps=[0.0, 0.1, 0.1, 0.3]).validate()
+    with pytest.raises(PoseValidationError, match="non-decreasing"):
+        _blank_sequence(4, timestamps=[0.0, 0.2, 0.1, 0.3]).validate()
+    with pytest.raises(PoseValidationError, match="positive duration"):
+        _blank_sequence(4, timestamps=[0.0, 0.0, 0.0, 0.0]).validate()
 
 
 def test_only_short_bounded_low_confidence_gaps_are_interpolated():

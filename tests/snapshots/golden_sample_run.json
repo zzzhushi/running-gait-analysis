@@ -16,11 +16,11 @@
     },
     "cadence": {
       "status": "info",
-      "value": 163.636
+      "value": 168.093
     },
     "cadence_cv": {
       "status": "info",
-      "value": 5.074
+      "value": 4.416
     },
     "crossover": {
       "status": "info",
@@ -32,31 +32,31 @@
     },
     "lateral_trunk_sway": {
       "status": "info",
-      "value": 0.528
+      "value": 0.522
     },
     "pelvic_drop": {
       "status": "info",
-      "value": -5.94
+      "value": -6.222
     },
     "pronation": {
       "status": "info",
-      "value": 10.368
+      "value": 11.369
     },
     "step_time": {
       "status": "info",
-      "value": 366.667
+      "value": 356.944
     },
     "step_width": {
       "status": "info",
-      "value": 45.851
+      "value": 45.466
     },
     "stride_time": {
       "status": "info",
-      "value": 700.0
+      "value": 716.035
     },
     "swing_time": {
       "status": "info",
-      "value": 600.0
+      "value": 592.104
     },
     "trunk_pelvis_rotation": {
       "status": "info",
@@ -68,7 +68,7 @@
     "ok"
   ],
   "summary": {
-    "cadence": 163.636,
+    "cadence": 168.093,
     "grade": null,
     "n_findings": 0,
     "overall_score": null,

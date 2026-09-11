@@ -31,6 +31,10 @@ register(MetricDef(
     keypoints=("l_ankle", "r_ankle", "l_heel", "r_heel", "l_big_toe", "r_big_toe"),
     event_phase="events",
     card_per_side_key="contact_time_ms",
+    card_status="info",
+    # Provisional event anchor: keep the measurement visible, never let it
+    # drive a finding or a score.
+    trigger_fn=lambda *a: None,
     reference_fn=lambda profile: population_reference("contact_time", profile),
 ))
 
@@ -46,7 +50,7 @@ register(MetricDef(
     reference_ids=("Patoz2021",),
     views=("side",),
     scored=False,
-    per_side=True,
+    per_side=False,
     asym_direction="higher_worse",
     compute=_compute,
     per_side_compute=True,

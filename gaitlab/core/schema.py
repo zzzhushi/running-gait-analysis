@@ -83,10 +83,13 @@ class PoseSequence:
                 errs.append(
                     f"timestamps has {len(self.timestamps)} entries, expected {len(self.frames)}"
                 )
-            elif any(not isinstance(t, (int, float)) or not math.isfinite(t) for t in self.timestamps):
+            elif any(not isinstance(t, (int, float)) or not math.isfinite(t)
+                     for t in self.timestamps):
                 errs.append("timestamps must be finite numbers")
-            elif any(b <= a for a, b in zip(self.timestamps, self.timestamps[1:])):
-                errs.append("timestamps must be strictly increasing")
+            elif any(b < a for a, b in zip(self.timestamps, self.timestamps[1:])):
+                errs.append("timestamps must be non-decreasing")
+            elif len(self.timestamps) > 1 and self.timestamps[-1] <= self.timestamps[0]:
+                errs.append("timestamps must span a positive duration")
 
         k = len(self.keypoint_names)
         for fi, fr in enumerate(self.frames):
@@ -123,24 +126,31 @@ class PoseSequence:
 
     @property
     def duration(self) -> float:
-        if self.timestamps and len(self.timestamps) > 1:
-            frame_period = (self.timestamps[-1] - self.timestamps[0]) / (len(self.timestamps) - 1)
-            return self.timestamps[-1] - self.timestamps[0] + frame_period
+        if self.timestamps is not None and len(self.timestamps) > 1:
+            # Presentation timestamps identify frame starts. Include one typical frame
+            # period so a 360-frame, 30 fps clip still reports 12.0 seconds rather than
+            # the final frame's start time (11.967 seconds).
+            deltas = [b - a for a, b in zip(self.timestamps, self.timestamps[1:]) if b > a]
+            if deltas:
+                return self.timestamps[-1] - self.timestamps[0] + median(deltas)
         return self.n / self.fps if self.fps else 0.0
 
     @property
     def effective_fps(self) -> float:
-        """Median observed sampling rate, falling back to nominal metadata."""
+        """Average observed sample rate, falling back to nominal stream metadata.
+
+        The average, rather than the median frame gap, preserves elapsed time when a
+        recording is variable-frame-rate or frames were dropped during extraction.
+        """
         if self.timestamps is not None and len(self.timestamps) > 1:
-            intervals = [b - a for a, b in zip(self.timestamps, self.timestamps[1:])]
-            frame_period = median(intervals)
-            if frame_period > 0:
-                return 1.0 / frame_period
+            span = self.timestamps[-1] - self.timestamps[0]
+            if span > 0:
+                return (len(self.timestamps) - 1) / span
         return self.fps
 
     def time_at(self, frame: int) -> float:
-        """Presentation time in seconds, using real timestamps when available."""
-        if self.timestamps is not None:
+        """Presentation time in seconds, using the real frame clock when available."""
+        if self.timestamps is not None and len(self.timestamps) == self.n:
             return self.timestamps[frame]
         return frame / self.fps
 

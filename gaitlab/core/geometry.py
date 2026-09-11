@@ -26,7 +26,9 @@ def angle_3pt(a: XY, b: XY, c: XY) -> float:
     n2 = math.hypot(bcx, bcy)
     if n1 == 0 or n2 == 0:
         return float("nan")
-    cos = (bax * bcx + bay * bcy) / (n1 * n2)
+    # Normalize first: multiplying the two magnitudes can underflow to zero for
+    # valid subnormal vectors (or overflow for very large coordinates).
+    cos = (bax / n1) * (bcx / n2) + (bay / n1) * (bcy / n2)
     cos = max(-1.0, min(1.0, cos))
     return math.degrees(math.acos(cos))
 

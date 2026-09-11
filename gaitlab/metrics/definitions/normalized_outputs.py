@@ -10,8 +10,8 @@ from ..spec import MetricDef, register
 
 
 def _step_leg_ratio(ctx, side):
-    speed = ctx.cal["speed_mps"]
-    px_per_cm = ctx.cal["px_per_cm"]
+    speed = ctx.cal.speed_mps
+    px_per_cm = ctx.cal.px_per_cm
     if not speed or not px_per_cm:
         return None
     steps = step_times(ctx.ev, side, ctx.seq)
@@ -20,8 +20,8 @@ def _step_leg_ratio(ctx, side):
 
 
 def _dimensionless_speed(ctx, side=None):
-    speed = ctx.cal["speed_mps"]
-    px_per_cm = ctx.cal["px_per_cm"]
+    speed = ctx.cal.speed_mps
+    px_per_cm = ctx.cal.px_per_cm
     if not speed or not px_per_cm:
         return None
     leg_m = (ctx.leg / px_per_cm) / 100.0

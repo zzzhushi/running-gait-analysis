@@ -16,6 +16,7 @@ from typing import Dict, List, Optional
 from .coaching import exercises as exercises_mod
 from .coaching import feedback as fb
 from .core.events import detect_events
+from .core.profile import RunnerProfile
 from .core.schema import PoseSequence
 from .metrics import asymmetry as asym_mod
 from .metrics import compute as metrics_mod
@@ -233,15 +234,18 @@ class AnalysisResult:
 
 
 def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
-    seq.validate()
+    seq.validate()  # reject malformed pose input early with a clear error
+    # Filtering (from the metric-correctness work) happens before detection so events
+    # and metrics see the same series; the typed profile (from #44) is resolved once
+    # here so nothing downstream has to know which form the caller sent.
     analysis_seq = seq.filtered_for_analysis()
     ev = detect_events(analysis_seq)
-    cal = None
-    if profile:
-        cal = {k: profile.get(k) for k in ("height_cm", "leg_length_cm", "speed_kmh")
-               if profile.get(k) is not None} or None
-    targets = personalize(profile)
-    m = metrics_mod.compute(analysis_seq, ev, cal)
+    # The raw input is kept for the summary echo below — callers (notably
+    # POST /api/analyze) may send keys the engine doesn't model, and those are
+    # reported back verbatim.
+    runner = profile if isinstance(profile, RunnerProfile) else RunnerProfile.from_dict(profile)
+    targets = personalize(runner)
+    m = metrics_mod.compute(analysis_seq, ev, runner)
     values = m["values"]
     per_side = m.get("per_side", {})
 
@@ -312,7 +316,10 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
             "analysis_mode": "descriptive_research",
             "score_status": "disabled_unvalidated",
             "n_findings": sum(1 for i in items if i["severity"] in ("high", "med")),
-            "profile": profile or None,
+            # Echo what the caller sent. A dict passes through untouched (extra
+            # keys included); a RunnerProfile is rendered back to the sparse wire
+            # form so the output shape is identical either way.
+            "profile": (profile.to_dict() or None) if isinstance(profile, RunnerProfile) else (profile or None),
         },
         "metrics": cards,
         "asymmetry": asym,

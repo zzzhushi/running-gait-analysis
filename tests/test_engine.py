@@ -19,6 +19,9 @@ class TestGeometry(unittest.TestCase):
 
     def test_angle_3pt_propagates_missing_landmarks(self):
         self.assertTrue(math.isnan(geo.angle_3pt((float("nan"), 0), (0, 0), (1, 0))))
+    def test_angle_3pt_subnormal_vectors_do_not_divide_by_zero(self):
+        tiny = 5e-324
+        self.assertAlmostEqual(geo.angle_3pt((tiny, 0), (0, 0), (0, tiny)), 90.0, places=4)
 
     def test_signed_lean_forward(self):
         # hip at origin, shoulder up-and-forward -> positive lean

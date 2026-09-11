@@ -47,7 +47,13 @@ export const analyzePose = IS_STATIC
       }).then(j);
 
 export const deleteRun = (id) => fetch("/api/runs/" + id, { method: "DELETE" }).then(j);
-export const reseed = () => fetch("/api/seed", { method: "POST" }).then(j);
+// Demo runs go to the profile that asked for them; omitting userId seeds "Demo".
+export const reseed = (userId) =>
+  fetch("/api/seed", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId || null }),
+  }).then(j);
 export const narrative = (id) => fetch("/api/narrative/" + id, { method: "POST" }).then(j);
 
 // --- users (server only; static returns none so the picker stays hidden) ------
