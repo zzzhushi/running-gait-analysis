@@ -79,7 +79,7 @@ python3 extractor/extract_pose.py /path/to/run.mp4 --view side-left -o run.pose.
 ```
 
 The browser build uses MediaPipe and runs the Python analysis engine under Pyodide. Pose
-sources are swappable as long as they emit the normalized schema in
+sources are swappable as long as they emit the canonical schema in
 `gaitlab/core/schema.py`.
 
 ## Architecture

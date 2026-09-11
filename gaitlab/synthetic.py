@@ -1,6 +1,6 @@
 """Procedural running-gait generator.
 
-Produces a normalized PoseSequence via simple 2-D forward kinematics (sinusoidal hip
+Produces a canonical PoseSequence via simple 2-D forward kinematics (sinusoidal hip
 and knee motion). It is the same shape RTMPose/MediaPipe emit, so it serves two jobs:
 
   1. deterministic ground-truth input for the unit tests, and

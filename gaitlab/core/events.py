@@ -1,4 +1,4 @@
-"""Gait-event detection from normalized landmarks.
+"""Gait-event detection from the canonical pose schema.
 
 A foot is on the ground while its ankle sits near its lowest point in the image (largest
 y). Over one stance phase that traces a plateau in the ankle-y signal, not a spike: the
