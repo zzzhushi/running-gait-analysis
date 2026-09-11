@@ -43,7 +43,20 @@ XY = Tuple[float, float]
 
 @dataclass
 class PoseSequence:
-    """A time series of normalized landmarks for a single clip/view."""
+    """A time series of 2-D landmarks in PIXELS for a single clip/view.
+
+    Pixels, not fractions of the frame. The engine needs an isotropic coordinate
+    system: geometry.angle_3pt measures with math.hypot, so x and y must share a
+    scale. MediaPipe's native output is normalized anisotropically (x by width, y by
+    height), which distorts every angle by the aspect ratio -- on a 1080x1920 frame a
+    124.9 deg ankle angle reads as 114.5. web/js/pose.js multiplies back to pixels
+    before handing the pose over for exactly this reason.
+
+    Absolute pixel values are never compared against constants: thresholds are
+    fractions of a measured amplitude, and real-world scale comes from calibration
+    (px_per_cm). Output is therefore resolution-independent -- halving a clip's
+    resolution leaves every metric unchanged.
+    """
 
     fps: float
     width: int

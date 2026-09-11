@@ -136,13 +136,23 @@ def _init_db() -> None:
     for column in ("age_years", "body_mass_kg"):
         if column not in user_cols:
             conn.execute(f"ALTER TABLE users ADD COLUMN {column} REAL")
+    run_cols = {row[1] for row in conn.execute("PRAGMA table_info(runs)")}
+    if "score" in run_cols:
+        # Scoring was retired, so this column only holds NULLs for anything analyzed
+        # since. Historical values are an unvalidated composite this release exists to
+        # remove; the full report stays in result_json either way. DROP COLUMN needs
+        # SQLite 3.35+ (2021) — on anything older the column is simply left in place,
+        # unread and unwritten, rather than failing startup over cosmetics.
+        try:
+            conn.execute("ALTER TABLE runs DROP COLUMN score")
+        except sqlite3.OperationalError:
+            pass
     conn.execute("""CREATE TABLE IF NOT EXISTS runs (
         id TEXT PRIMARY KEY,
         created_at TEXT,
         label TEXT,
         view TEXT,
         source TEXT,
-        score REAL,
         grade TEXT,
         cadence REAL,
         n_findings INTEGER,
@@ -167,16 +177,18 @@ def store_run(label: str, seq: PoseSequence, profile=None, user_id: str = None) 
     speed_kmh = (profile or {}).get("speed_kmh")
     with db() as conn:
         conn.execute(
-            "INSERT INTO runs VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO runs (id, created_at, label, view, source, grade, cadence,"
+            " n_findings, speed_kmh, user_id, result_json)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (rid, datetime.now(timezone.utc).isoformat(timespec="seconds"),
-             s["label"], s["view"], s["source"], s["overall_score"], s["grade"],
+             s["label"], s["view"], s["source"], s["grade"],
              s["cadence"], s["n_findings"], speed_kmh, user_id, json.dumps(result)),
         )
     return {"id": rid, "result": result}
 
 
 def list_runs(user_id: str = None) -> list:
-    cols = "id, created_at, label, view, source, score, grade, cadence, n_findings, speed_kmh, user_id"
+    cols = "id, created_at, label, view, source, grade, cadence, n_findings, speed_kmh, user_id"
     with db() as conn:
         if user_id:
             rows = conn.execute(
