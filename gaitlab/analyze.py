@@ -20,6 +20,7 @@ from .core.profile import RunnerProfile
 from .core.schema import PoseSequence
 from .metrics import asymmetry as asym_mod
 from .metrics import compute as metrics_mod
+from .metrics import plausibility as plausibility_mod
 from .metrics import quality as quality_mod
 from .metrics import spec as registry
 from .metrics.defs import METRIC_DEFS, personalize, value_confidence
@@ -262,6 +263,7 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
 
     # every card carries a value-dependent, keypoint-propagated confidence
     confidence_map = {}
+    implausible = []
     for c in cards:
         defn = targets.get(MetricKey(c["key"]))
         detail = metric_confidence_detail(seq, c["key"], c.get("value"), defn, ev)
@@ -271,6 +273,15 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
         if statistics:
             c["statistics"] = statistics
         confidence_map[c["key"]] = detail["level"]
+        # A value a running human cannot produce is a pipeline fault, not a finding.
+        # Checked per side too: one badly tracked leg can be implausible on its own
+        # while the two-sided aggregate still lands inside the range.
+        report = plausibility_mod.check(c["key"], c.get("value"))
+        for side in ("l", "r"):
+            report = report or plausibility_mod.check(c["key"], (c.get("per_side") or {}).get(side))
+        if report:
+            c["plausibility"] = report
+            implausible.append(c["key"])
 
     for defn in registry.asym_metrics():
         key = defn.key.value
@@ -325,7 +336,7 @@ def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
         "asymmetry": asym,
         "feedback": items,
         "plan": exercises_mod.build_plan(items),
-        "quality": quality_mod.assess(analysis_seq, ev),
+        "quality": quality_mod.assess(analysis_seq, ev, implausible=implausible),
         "events": events_dict,
         "series": m["series"],
         "frames_of_interest": m["frames_of_interest"],

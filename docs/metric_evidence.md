@@ -26,6 +26,29 @@ definition; `screening` means projection/model error is expected to be material;
 `experimental` means the custom proxy lacks close criterion evidence. None of these labels
 means this implementation has passed GaitLab's own criterion-validation protocol.
 
+## Plausibility bounds are not evidence claims
+
+`gaitlab/metrics/plausibility.py` carries a low/high bound for every registered metric.
+These are deliberately not the `good`/`warn` target bands this release retired, and they
+make no normative claim. A target band judges the runner; a plausibility bound judges the
+measurement — a value outside it means the pipeline produced something a running human
+cannot have done, so the number is wrong rather than the gait.
+
+Three bases, in descending order of how arguable they are: `definitional` (a duty factor
+at or above 50% means the subject is walking), `anatomical` (joint range of motion), and
+`literature` (wide ranges from running-biomechanics texts). The literature tier is
+sensitivity, not specificity, and is loose on purpose — a cadence of 90 spm says
+something is broken, a cadence of 165 says nothing at all.
+
+They exist because a wrong number is otherwise indistinguishable from a real one: the
+gait-event anchoring regression this release fixed reported a 67 ms contact time and a
+10.5% duty factor at high event confidence with no warning. Out-of-range values annotate
+the metric card and raise a single quality warning naming them.
+
+The `literature` tier is grounded in standard running-biomechanics ranges rather than
+traced per row to `references.md`. Treat those rows as engineering sanity bounds, not as
+registered evidence, until each carries a citation.
+
 ## Confidence has four independent parts
 
 | Part | Question |

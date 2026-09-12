@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 from statistics import mean
-from typing import List
+from typing import List, Optional
 
 from .ctx import _body_px_height
 from ..core.schema import PoseSequence
@@ -34,7 +34,7 @@ def _ground_slope(seq: PoseSequence, events):
     return sum((x - xm) * (y - ym) for x, y in zip(xs, ys)) / den
 
 
-def assess(seq: PoseSequence, events) -> List[dict]:
+def assess(seq: PoseSequence, events, implausible: Optional[List[str]] = None) -> List[dict]:
     checks: List[dict] = []
 
     def warn(m):
@@ -56,6 +56,14 @@ def assess(seq: PoseSequence, events) -> List[dict]:
         warn("Detected contacts do not alternate consistently; event-dependent metrics are low confidence.")
     if events.confidence == "low":
         warn("Gait-event confidence is low; do not interpret contact, phase, or event-sampled angles.")
+    if implausible:
+        # Physiologically impossible output means the pipeline is wrong, not the
+        # runner. Named explicitly so a bad number is never read as a gait finding.
+        warn(
+            f"Outside the physiological range: {', '.join(sorted(implausible))}. "
+            f"These are measurement faults, not findings — check the view, framing, "
+            f"and that the whole body stays in frame."
+        )
 
     confs = [min(1.0, p[2]) for fr in seq.frames for p in fr]
     if confs and mean(confs) < 0.45:
