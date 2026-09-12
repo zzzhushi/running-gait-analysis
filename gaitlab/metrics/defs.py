@@ -28,11 +28,13 @@ def value_confidence(defn: MetricDef, value: float) -> str:
 
 
 def personalize(profile) -> Dict[MetricKey, MetricDef]:
-    """A copy of METRIC_DEFS with any metric's bands adjusted for the runner's
-    profile (see each metric's `personalize_fn`, e.g. cadence and pelvic_drop).
+    """Return definitions with any registered context model applied.
 
-    Accepts a RunnerProfile or the wire dict; personalize_fn implementations read
-    attributes, so the dict form is converted here rather than in each of them.
+    Context models may add published population estimates; they do not create
+    individualized targets or injury-risk thresholds.
+
+    Accepts a RunnerProfile or the wire dict; context models read attributes, so the
+    dict form is converted here rather than in each of them.
     """
     if not profile:
         return dict(METRIC_DEFS)

@@ -1,7 +1,7 @@
 import * as api from "../api.js";
-import { el, fmt, scoreClass, viewLabel } from "../format.js";
+import { el, fmt, viewLabel } from "../format.js";
 
-const SEV = { high: "High", med: "Medium", low: "Minor", good: "Good" };
+const SEV = { high: "Review", med: "Review", low: "Observation", good: "Note" };
 
 export default async function report(app, params) {
   const id = params.id;
@@ -15,10 +15,10 @@ export default async function report(app, params) {
   ]));
 
   app.append(el("div", { class: "scorecard" }, [
-    el("div", { class: "big " + scoreClass(s.overall_score) }, fmt(s.overall_score, 0)),
+    el("div", { class: "big" }, "2-D"),
     el("div", { class: "sc-meta" }, [
       el("h2", {}, s.label || viewLabel(s.view) + " run"),
-      el("p", {}, `${viewLabel(s.view)} view · ${fmt(s.cadence, 0)} spm · ${fmt(s.duration, 1)}s · ${s.n_findings} finding${s.n_findings === 1 ? "" : "s"}${profileStr(s.profile)}`),
+      el("p", {}, `${viewLabel(s.view)} view · ${fmt(s.cadence, 0)} spm · ${fmt(s.duration, 1)}s · descriptive research output${profileStr(s.profile)}`),
     ]),
     el("div", { style: "margin-left:auto" }, [
       el("a", { class: "btn btn-accent", href: "#/analyze/" + id }, "▶ Open player"),
@@ -34,19 +34,16 @@ export default async function report(app, params) {
   app.append(grid);
 
   if (r.asymmetry && r.asymmetry.length) {
-    app.append(el("h3", { class: "sectitle" }, "Left / right symmetry"));
+    app.append(el("h3", { class: "sectitle" }, "Left / right comparison"));
     const asym = el("div", { class: "asym" });
     r.asymmetry.forEach((a) => asym.append(asymRow(a)));
     app.append(asym);
   }
 
-  app.append(el("h3", { class: "sectitle" }, "Coach feedback"));
+  app.append(el("h3", { class: "sectitle" }, "Observations"));
   const findings = el("div", { class: "findings" });
   r.feedback.forEach((f) => findings.append(findingCard(f, id)));
   app.append(findings);
-
-  const plan = planSection(r.plan);
-  if (plan) app.append(plan);
 
   // Optional: rephrase the findings as a coach's note via a local LLM (Ollama).
   const narrOut = el("div", { style: "margin-top:12px;color:#c2ccd8;font-size:14px;white-space:pre-wrap;line-height:1.55" });
@@ -61,7 +58,7 @@ export default async function report(app, params) {
   });
   app.append(el("div", { class: "panel", style: "margin-top:18px" }, [
     el("div", { style: "color:var(--muted);font-size:13px;margin-bottom:10px" },
-      "The rule-based feedback above is the source of truth. Optionally rephrase it as a coach's note using a local LLM — nothing leaves your machine."),
+      "The structured observations above remain authoritative. The optional local model only rephrases them and must not add clinical conclusions."),
     narrBtn, narrOut,
   ]));
 }
@@ -72,19 +69,31 @@ export function metricCard(m) {
   ]);
   if (m.key === "foot_strike_angle") {
     card.append(el("div", { class: "m-val" }, m.text || "—"));
-    card.append(el("div", { class: "m-target" }, m.note || ""));
-    return card;
+    card.append(el("div", { class: "m-target" }, `${fmt(m.value, 1)}° image-plane angle`));
+  } else if (m.is_boolean) {
+    card.append(el("div", { class: "m-val" }, m.text || "—"));
+  } else {
+    card.append(el("div", { class: "m-val" }, [fmt(m.value, 1), el("small", {}, " " + m.unit)]));
   }
-  card.append(el("div", { class: "m-val" }, [fmt(m.value, 0), el("small", {}, " " + m.unit)]));
-  if (m.good) {
-    const [lo, hi] = m.good;
-    const t = lo != null && hi != null ? `${lo}–${hi}` : hi != null ? `under ${hi}` : lo != null ? `over ${lo}` : "";
-    card.append(el("div", { class: "m-target" }, "target: " + t + " " + m.unit));
+  card.append(el("div", { class: "m-target" }, `${m.confidence || "low"} overall confidence · ${m.evidence_level || "experimental"}`));
+  if (m.reference) {
+    card.append(el("div", { class: "m-target" }, [
+      `${m.reference.label}: ${fmt(m.reference.value, 1)} ${m.unit} · not a target · `,
+      el("a", { href: m.reference.url, target: "_blank", rel: "noopener noreferrer" }, "source"),
+    ]));
   }
+  if (m.statistics) {
+    const ci = m.statistics.ci95_mean;
+    const detail = ci
+      ? `n=${m.statistics.n} · mean 95% CI ${fmt(ci[0], 1)}–${fmt(ci[1], 1)} ${m.unit}`
+      : `n=${m.statistics.n}`;
+    card.append(el("div", { class: "m-target" }, detail));
+  }
+  if (m.note) card.append(el("div", { class: "m-target" }, m.note));
   if (m.per_side && (m.per_side.l != null || m.per_side.r != null)) {
     card.append(el("div", { class: "m-side" }, [
-      el("span", { class: "side-l" }, ["L ", el("b", {}, fmt(m.per_side.l, 0))]),
-      el("span", { class: "side-r" }, ["R ", el("b", {}, fmt(m.per_side.r, 0))]),
+      el("span", { class: "side-l" }, ["L ", el("b", {}, fmt(m.per_side.l, 1))]),
+      el("span", { class: "side-r" }, ["R ", el("b", {}, fmt(m.per_side.r, 1))]),
     ]));
   }
   return card;
@@ -97,16 +106,16 @@ export function asymRow(a) {
     el("div", {}, [
       el("div", { class: "asym-lab" }, a.label),
       el("div", { class: "asym-bar left" }, [el("i", { style: `width:${lw}%` })]),
-      el("div", { class: "side-l", style: "font-size:12px;margin-top:3px" }, `L ${fmt(a.left, 0)} ${a.unit}`),
+      el("div", { class: "side-l", style: "font-size:12px;margin-top:3px" }, `L ${fmt(a.left, 1)} ${a.unit}`),
     ]),
     el("div", { class: "asym-mid" }, [
-      el("div", { class: "pct " + a.status }, fmt(a.diff_pct, 0) + "%"),
-      el("div", { style: "font-size:10px;color:var(--muted)" }, "diff"),
+      el("div", { class: "pct info" }, `${a.difference > 0 ? "+" : ""}${fmt(a.difference, 1)}`),
+      el("div", { style: "font-size:10px;color:var(--muted)" }, a.unit + " L−R"),
     ]),
     el("div", {}, [
       el("div", { class: "asym-lab", style: "text-align:right;min-height:15px" }, " "),
       el("div", { class: "asym-bar right" }, [el("i", { style: `width:${rw}%` })]),
-      el("div", { class: "side-r", style: "font-size:12px;margin-top:3px;text-align:right" }, `R ${fmt(a.right, 0)} ${a.unit}`),
+      el("div", { class: "side-r", style: "font-size:12px;margin-top:3px;text-align:right" }, `R ${fmt(a.right, 1)} ${a.unit}`),
     ]),
   ]);
 }
@@ -136,7 +145,9 @@ export function profileStr(p) {
   if (p.height_cm) parts.push(p.height_cm + "cm");
   if (p.leg_length_cm) parts.push("leg " + p.leg_length_cm + "cm");
   if (p.speed_kmh) parts.push(p.speed_kmh + "km/h");
-  return parts.length ? " · personalized (" + parts.join(", ") + ")" : "";
+  if (p.age_years) parts.push(p.age_years + "y");
+  if (p.body_mass_kg) parts.push(p.body_mass_kg + "kg");
+  return parts.length ? " · context (" + parts.join(", ") + ")" : "";
 }
 
 export function qItem(level, msg) {
@@ -159,27 +170,4 @@ export function qualityPanel(checks) {
     el("div", { style: "color:var(--muted);font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px" }, "Capture quality"),
     ...rows,
   ]);
-}
-
-export function planSection(plan) {
-  if (!plan || !plan.length) return null;
-  const wrap = el("div", {}, [
-    el("h3", { class: "sectitle" }, "Corrective plan"),
-    el("div", { style: "color:var(--muted);font-size:13px;margin:-6px 0 12px" },
-      "Targeted drills for your top findings. General training guidance, not a medical prescription — for pain or a diagnosed injury, see a physio."),
-  ]);
-  plan.forEach((g) => {
-    wrap.append(el("div", { class: "panel", style: "margin-bottom:12px" }, [
-      el("div", { style: "font-weight:600;margin-bottom:4px" }, g.title),
-      ...g.exercises.map((ex) =>
-        el("div", { style: "padding:9px 0;border-top:1px solid var(--line)" }, [
-          el("div", {}, [el("b", {}, ex.name), el("span", { style: "color:var(--muted)" }, " — " + ex.why)]),
-          el("div", { style: "color:var(--muted);font-size:12.5px;margin-top:3px" }, [
-            el("span", { class: "side-l" }, "Dose: "), ex.dose, "   ",
-            el("span", { class: "side-r" }, "Progress: "), ex.progression,
-          ]),
-        ])),
-    ]));
-  });
-  return wrap;
 }

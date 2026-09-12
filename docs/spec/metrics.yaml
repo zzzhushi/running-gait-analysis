@@ -7,339 +7,608 @@ metrics:
   arm_crossover:
     label: Arm crossover
     unit: ''
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [rear]
-    scored: false
+    event_phase: all
+    requires_events: false
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: []
   arm_swing:
     label: Arm swing
     unit: '%leg'
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: all
+    requires_events: false
     per_side: true
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: []
   asymmetry:
-    label: Left/right asymmetry
-    unit: '%'
-    good: [null, 5]
-    warn: [null, 10]
-    confidence: high
+    label: Left/right comparison
+    unit: ''
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side, rear]
-    scored: true
+    event_phase: all
+    requires_events: false
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: []
   cadence:
     label: Cadence
     unit: spm
-    good: [170, 185]
-    warn: [160, 195]
-    confidence: high
+    measurement_confidence: moderate
+    evidence_level: supported
+    interpretation: descriptive
     views: [side, rear]
-    scored: true
+    event_phase: events
+    requires_events: false
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Oliveira2019, Malisoux2023]
   contact_time:
     label: Ground contact time
     unit: ms
-    good: [null, 250]
-    warn: [null, 300]
-    confidence: low
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: events
+    requires_events: false
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Patoz2021, Malisoux2023]
   contact_time_ms:
     label: Ground contact time
     unit: ms
-    good: [null, 250]
-    warn: [null, 300]
-    confidence: low
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: events
+    requires_events: false
     per_side: false
     asym_direction: higher_worse
+    asymmetry_mdc: null
+    reference_ids: [Patoz2021]
   crossover:
     label: Crossover gait
     unit: ''
-    good: [null, null]
-    warn: [null, null]
-    confidence: high
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [rear]
-    scored: false
+    event_phase: strike
+    requires_events: false
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: []
   duty_factor:
     label: Duty factor
     unit: '%'
-    good: [null, 40]
-    warn: [null, 48]
-    confidence: low
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: events
+    requires_events: false
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Patoz2021, Malisoux2023]
   elbow_angle:
     label: Elbow angle
     unit: deg
-    good: [75, 105]
-    warn: [60, 120]
-    confidence: high
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side]
-    scored: true
+    event_phase: all
+    requires_events: false
     per_side: true
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: []
   flight_time:
     label: Flight time
     unit: ms
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: events
+    requires_events: false
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Patoz2021, Malisoux2023]
   foot_strike_angle:
     label: Foot-strike angle
     unit: deg
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: screening
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: strike
+    requires_events: false
     per_side: true
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Altman2012, Oliveira2019, Hensley2022]
   head_drop:
     label: Head bobbing
     unit: '%leg'
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: all
+    requires_events: true
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: []
   head_lateral_sway:
     label: Head lateral sway
     unit: '%leg'
-    good: [null, 6]
-    warn: [null, 10]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [rear]
-    scored: false
+    event_phase: all
+    requires_events: true
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: []
   heel_recovery:
     label: Heel recovery
     unit: '%leg'
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: all
+    requires_events: true
     per_side: true
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: []
   hip_extension:
     label: Hip extension (peak)
     unit: deg
-    good: [10, null]
-    warn: [5, null]
-    confidence: high
+    measurement_confidence: moderate
+    evidence_level: screening
+    interpretation: descriptive
     views: [side]
-    scored: true
+    event_phase: all
+    requires_events: true
     per_side: true
     asym_direction: higher_better
-  knee_drive:
-    label: Knee drive (peak)
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023, Cronin2023]
+  knee_flexion_peak:
+    label: Peak knee flexion
     unit: deg
-    good: [20, null]
-    warn: [10, null]
-    confidence: high
+    measurement_confidence: moderate
+    evidence_level: supported
+    interpretation: descriptive
     views: [side]
-    scored: true
+    event_phase: all
+    requires_events: true
     per_side: true
-    asym_direction: higher_better
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023, Cronin2023]
+  knee_flexion_excursion:
+    label: Knee flexion excursion
+    unit: deg
+    measurement_confidence: moderate
+    evidence_level: supported
+    interpretation: descriptive
+    views: [side]
+    event_phase: events
+    requires_events: false
+    per_side: true
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023, Cronin2023]
+  hip_flexion_peak:
+    label: Thigh flexion relative to trunk
+    unit: deg
+    measurement_confidence: moderate
+    evidence_level: screening
+    interpretation: descriptive
+    views: [side]
+    event_phase: all
+    requires_events: true
+    per_side: true
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023, Cronin2023]
+  ankle_dorsiflexion_midstance:
+    label: Ankle angle proxy (midstance)
+    unit: deg
+    measurement_confidence: low
+    evidence_level: screening
+    interpretation: descriptive
+    views: [side]
+    event_phase: midstance
+    requires_events: false
+    per_side: true
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023, Cronin2023]
+  ankle_plantarflexion_toeoff:
+    label: Ankle angle proxy (toe-off)
+    unit: deg
+    measurement_confidence: low
+    evidence_level: screening
+    interpretation: descriptive
+    views: [side]
+    event_phase: toeoff
+    requires_events: false
+    per_side: true
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023, Cronin2023]
+  shank_angle_contact:
+    label: Shank angle at contact
+    unit: deg
+    measurement_confidence: moderate
+    evidence_level: supported
+    interpretation: descriptive
+    views: [side]
+    event_phase: strike
+    requires_events: false
+    per_side: true
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023, Cronin2023]
   knee_flexion_midstance:
     label: Knee flexion (midstance)
     unit: deg
-    good: [38, 50]
-    warn: [28, 58]
-    confidence: high
+    measurement_confidence: moderate
+    evidence_level: supported
+    interpretation: descriptive
     views: [side]
-    scored: true
+    event_phase: midstance
+    requires_events: false
     per_side: true
     asym_direction: higher_better
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023, Cronin2023]
   knee_flexion_contact:
     label: Knee flexion (contact)
     unit: deg
-    good: [null, null]
-    warn: [null, null]
-    confidence: high
+    measurement_confidence: moderate
+    evidence_level: supported
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: strike
+    requires_events: false
     per_side: true
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023, Cronin2023]
   lateral_trunk_sway:
     label: Lateral trunk sway
     unit: '%leg'
-    good: [null, 8]
-    warn: [null, 12]
-    confidence: high
+    measurement_confidence: low
+    evidence_level: screening
+    interpretation: descriptive
     views: [rear]
-    scored: true
+    event_phase: all
+    requires_events: true
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023]
+  step_length_leg_ratio:
+    label: Step length / leg length
+    unit: '%'
+    measurement_confidence: moderate
+    evidence_level: screening
+    interpretation: descriptive
+    views: [side, rear]
+    event_phase: events
+    requires_events: false
+    per_side: true
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hof1996, Malisoux2023]
+  dimensionless_speed:
+    label: Dimensionless speed
+    unit: ''
+    measurement_confidence: moderate
+    evidence_level: screening
+    interpretation: descriptive
+    views: [side, rear]
+    event_phase: all
+    requires_events: false
+    per_side: false
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hof1996]
   overstride:
-    label: Overstride
+    label: Forward foot placement at contact
     unit: '%leg'
-    good: [null, 8]
-    warn: [null, 15]
-    confidence: high
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side]
-    scored: true
+    event_phase: strike
+    requires_events: false
     per_side: true
     asym_direction: higher_worse
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022]
   pelvic_drop:
-    label: Pelvic drop
+    label: Swing-side pelvic drop
     unit: deg
-    good: [null, 6]
-    warn: [null, 10]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: screening
+    interpretation: descriptive
     views: [rear]
-    scored: true
+    event_phase: midstance
+    requires_events: false
     per_side: true
-    asym_direction: higher_worse
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023]
   pronation:
-    label: Pronation (estimate)
+    label: Rearfoot alignment at contact
     unit: deg
-    good: [null, 8]
-    warn: [null, 12]
-    confidence: low
+    measurement_confidence: low
+    evidence_level: screening
+    interpretation: descriptive
     views: [rear]
-    scored: false
+    event_phase: strike
+    requires_events: false
     per_side: true
     asym_direction: higher_worse
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023]
   step_length:
     label: Step length
     unit: m
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: moderate
+    evidence_level: screening
+    interpretation: descriptive
     views: [side, rear]
-    scored: false
+    event_phase: events
+    requires_events: false
     per_side: true
     asym_direction: higher_better
+    asymmetry_mdc: null
+    reference_ids: [Hof1996, Malisoux2023]
   step_width:
-    label: Step width / crossover
+    label: Successive foot-placement width
     unit: '%leg'
-    good: [2, 14]
-    warn: [0, 22]
-    confidence: high
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [rear]
-    scored: true
+    event_phase: strike
+    requires_events: false
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023]
   stride_length:
     label: Stride length
     unit: m
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: moderate
+    evidence_level: screening
+    interpretation: descriptive
     views: [side, rear]
-    scored: false
+    event_phase: events
+    requires_events: false
     per_side: true
     asym_direction: higher_better
+    asymmetry_mdc: null
+    reference_ids: [Hof1996, Malisoux2023]
+  step_time:
+    label: Step time
+    unit: ms
+    measurement_confidence: moderate
+    evidence_level: screening
+    interpretation: descriptive
+    views: [side, rear]
+    event_phase: events
+    requires_events: false
+    per_side: true
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Patoz2021, Malisoux2023]
+  stride_time:
+    label: Stride time
+    unit: ms
+    measurement_confidence: moderate
+    evidence_level: screening
+    interpretation: descriptive
+    views: [side, rear]
+    event_phase: events
+    requires_events: false
+    per_side: true
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Patoz2021, Malisoux2023]
+  swing_time:
+    label: Swing time
+    unit: ms
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
+    views: [side, rear]
+    event_phase: events
+    requires_events: false
+    per_side: true
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Patoz2021, Malisoux2023]
+  cadence_cv:
+    label: Step-rate variability
+    unit: CV%
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
+    views: [side, rear]
+    event_phase: events
+    requires_events: false
+    per_side: false
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Patoz2021]
+  contact_time_cv:
+    label: Contact-time variability
+    unit: CV%
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
+    views: [side]
+    event_phase: events
+    requires_events: false
+    per_side: false
+    asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Patoz2021]
   trunk_lean:
     label: Trunk lean
     unit: deg
-    good: [5, 12]
-    warn: [0, 16]
-    confidence: high
+    measurement_confidence: moderate
+    evidence_level: screening
+    interpretation: descriptive
     views: [side]
-    scored: true
+    event_phase: all
+    requires_events: false
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Hensley2022, Leporace2023]
   trunk_pelvis_rotation:
-    label: Trunk Pelvis Rotation
+    label: "Shoulder\u2013pelvis frontal obliquity"
     unit: deg
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [rear]
-    scored: false
+    event_phase: all
+    requires_events: false
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: []
   vertical_oscillation:
     label: Vertical oscillation
     unit: '%leg'
-    good: [null, 12]
-    warn: [null, 18]
-    confidence: high
+    measurement_confidence: moderate
+    evidence_level: screening
+    interpretation: descriptive
     views: [side]
-    scored: true
+    event_phase: all
+    requires_events: true
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Malisoux2023]
   vertical_oscillation_cm:
     label: Vertical oscillation
     unit: cm
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: screening
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: all
+    requires_events: true
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: [Malisoux2023]
   vertical_ratio:
     label: Vertical ratio
     unit: '%'
-    good: [null, null]
-    warn: [null, null]
-    confidence: moderate
+    measurement_confidence: low
+    evidence_level: experimental
+    interpretation: descriptive
     views: [side]
-    scored: false
+    event_phase: all
+    requires_events: true
     per_side: false
     asym_direction: neutral
+    asymmetry_mdc: null
+    reference_ids: []
 composites:
   bouncing:
     view: side
-    all_of: [vertical_oscillation > warn_hi, cadence < good_lo]
-    severity: high
-    supersedes: [vertical_oscillation, cadence]
+    all_of: [vertical_oscillation > 18, cadence < 170]
+    severity: low
+    interpretation: exploratory
+    min_confidence: moderate
+    min_observations: 2
+    supersedes: []
   heavy_heelstrike:
     view: side
-    all_of: [foot_strike_angle > 12, overstride > good_hi]
-    severity: med
-    supersedes: [foot_strike_angle]
+    all_of: [foot_strike_angle > 12, overstride > 8]
+    severity: low
+    interpretation: exploratory
+    min_confidence: low
+    min_observations: 2
+    supersedes: []
   overstriding:
     view: side
-    all_of: [overstride > good_hi, hip_extension < good_lo, cadence < good_lo]
-    severity: high
-    supersedes: [overstride, hip_extension, cadence]
+    all_of: [overstride > 8, hip_extension < 10, cadence < 170]
+    severity: low
+    interpretation: exploratory
+    min_confidence: moderate
+    min_observations: 2
+    supersedes: []
   sinking_midstance:
     view: side
-    all_of: [knee_flexion_midstance > good_hi, trunk_lean > warn_hi]
-    severity: high
-    supersedes: [knee_flexion_midstance, trunk_lean]
+    all_of: [knee_flexion_midstance > 50, trunk_lean > 16]
+    severity: low
+    interpretation: exploratory
+    min_confidence: moderate
+    min_observations: 2
+    supersedes: []
 asymmetry:
-  formula: AI = |L - R| / mean(|L|, |R|) * 100
-  bands:
-    good: [null, 5]
-    warn: [null, 10]
-  suppression: If both sides are individually within their metric's good band, the flag is suppressed.
-  metrics: {arm_swing: neutral, elbow_angle: neutral, foot_strike_angle: neutral, heel_recovery: neutral,
-    hip_extension: higher_better, knee_drive: higher_better, knee_flexion_midstance: higher_better, knee_flexion_contact: neutral,
-    overstride: higher_worse, pelvic_drop: higher_worse, pronation: higher_worse, step_length: higher_better,
-    stride_length: higher_better}
-scoring:
-  per_metric: {good: 100, warn_edge: 45, deep_bad: 17.5, nan: 50, frac_clamp: 1.5, slope: 55}
-  overall: {base: mean of scored-metric scores for the view, penalty: 'clamp(mean(flagged asymmetry diffs)
-      * 0.8, 0, 22)', formula: 'clamp(base - penalty, 0, 100)'}
-  grades: {A: 85, B: 72, C: 58, D: 42}
-  scored_keys_side: [asymmetry, cadence, elbow_angle, hip_extension, knee_drive, knee_flexion_midstance,
-    overstride, trunk_lean, vertical_oscillation]
-  scored_keys_rear: [asymmetry, cadence, lateral_trunk_sway, pelvic_drop, step_width]
+  primary_output: left, right, and signed difference (left - right) in the metric's native unit
+  optional_ratio: '|L-R| / mean(|L|, |R|) * 100, omitted when the denominator is near zero'
+  flagging: disabled unless a metric-specific validated minimum detectable change is registered
+  metrics:
+    arm_swing: {direction: neutral, mdc: null}
+    elbow_angle: {direction: neutral, mdc: null}
+    foot_strike_angle: {direction: neutral, mdc: null}
+    heel_recovery: {direction: neutral, mdc: null}
+    hip_extension: {direction: higher_better, mdc: null}
+    knee_flexion_peak: {direction: neutral, mdc: null}
+    knee_flexion_excursion: {direction: neutral, mdc: null}
+    hip_flexion_peak: {direction: neutral, mdc: null}
+    ankle_dorsiflexion_midstance: {direction: neutral, mdc: null}
+    ankle_plantarflexion_toeoff: {direction: neutral, mdc: null}
+    shank_angle_contact: {direction: neutral, mdc: null}
+    knee_flexion_midstance: {direction: higher_better, mdc: null}
+    knee_flexion_contact: {direction: neutral, mdc: null}
+    step_length_leg_ratio: {direction: neutral, mdc: null}
+    overstride: {direction: higher_worse, mdc: null}
+    pelvic_drop: {direction: neutral, mdc: null}
+    pronation: {direction: higher_worse, mdc: null}
+    step_length: {direction: higher_better, mdc: null}
+    stride_length: {direction: higher_better, mdc: null}
+    step_time: {direction: neutral, mdc: null}
+    stride_time: {direction: neutral, mdc: null}
+    swing_time: {direction: neutral, mdc: null}
+scoring: {enabled: false, reason: No criterion-validated weighting or universal optimal bands are available
+    for this product.}

@@ -17,12 +17,13 @@ rules can be tested without constructing a skeleton.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
 # The profile fields the engine understands. Single source of truth — `from_dict`
 # and `to_dict` both derive from it, so adding a field means editing one line.
-FIELDS = ("sex", "height_cm", "leg_length_cm", "speed_kmh")
+FIELDS = ("sex", "height_cm", "leg_length_cm", "speed_kmh", "age_years", "body_mass_kg")
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,10 @@ class RunnerProfile:
     height_cm: Optional[float] = None
     leg_length_cm: Optional[float] = None
     speed_kmh: Optional[float] = None
+    # Inputs to the published population equations (reference_models). They are
+    # context only -- nothing derives a target or a scale from them.
+    age_years: Optional[float] = None
+    body_mass_kg: Optional[float] = None
 
     @classmethod
     def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "RunnerProfile":
@@ -70,9 +75,24 @@ class RunnerProfile:
         """False when nothing was supplied, so `if profile:` reads naturally."""
         return any(getattr(self, f) is not None for f in FIELDS)
 
+    @staticmethod
+    def _positive(value) -> Optional[float]:
+        """A finite, strictly positive float, or None.
+
+        Profiles arrive from a browser form, a CLI flag and an HTTP body, so a field
+        can be "unknown", negative or infinite. Every scale rule below reads its
+        inputs through here rather than calling float() on whatever arrived.
+        """
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        return number if math.isfinite(number) and number > 0 else None
+
     @property
     def speed_mps(self) -> Optional[float]:
-        return float(self.speed_kmh) / 3.6 if self.speed_kmh else None
+        speed = self._positive(self.speed_kmh)
+        return speed / 3.6 if speed else None
 
     def calibrate(self, leg_px: float, body_px_height: Optional[float]) -> Calibration:
         """Derive the pixel scale, preferring measured leg length over height.
@@ -82,8 +102,10 @@ class RunnerProfile:
         head and heel keypoints that are noisier and can be cut off by the frame.
         """
         px_per_cm = None
-        if self.leg_length_cm and leg_px > 0:
-            px_per_cm = leg_px / float(self.leg_length_cm)
-        elif self.height_cm and body_px_height and body_px_height > 0:
-            px_per_cm = body_px_height / float(self.height_cm)
+        leg_cm = self._positive(self.leg_length_cm)
+        height_cm = self._positive(self.height_cm)
+        if leg_cm and leg_px > 0:
+            px_per_cm = leg_px / leg_cm
+        elif height_cm and body_px_height and body_px_height > 0:
+            px_per_cm = body_px_height / height_cm
         return Calibration(px_per_cm=px_per_cm, speed_mps=self.speed_mps)

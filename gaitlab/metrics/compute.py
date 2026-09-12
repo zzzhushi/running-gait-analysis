@@ -54,6 +54,7 @@ def compute(seq: PoseSequence, events: Optional[GaitEvents] = None,
         "per_side": {"l": {}, "r": {}},
         "values": {},
         "calibration": ctx.cal,
+        "stride_observations": [],
     }
     per_side = res["per_side"]
     values = res["values"]
@@ -83,6 +84,7 @@ def compute(seq: PoseSequence, events: Optional[GaitEvents] = None,
                 values[key] = float("nan")
 
     values["cadence"] = ev.cadence_spm
+    res["stride_observations"] = ctx.stride_observations() if view_str == "side" else []
 
     # frames_of_interest: generic, event-derived anchors the overlay/report point to.
     foi = res["frames_of_interest"]

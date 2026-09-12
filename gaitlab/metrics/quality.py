@@ -6,8 +6,9 @@ of {level, message}; the UI shows warnings (and a single 'looks good' when all p
 
 from __future__ import annotations
 
+import math
 from statistics import mean
-from typing import List
+from typing import List, Optional
 
 from .ctx import _body_px_height
 from ..core.schema import PoseSequence
@@ -19,6 +20,7 @@ def _ground_slope(seq: PoseSequence, events):
     for side in ("l", "r"):
         for s in events.strikes[side]:
             pts.append(seq.xy(s, f"{side}_ankle"))
+    pts = [point for point in pts if all(math.isfinite(value) for value in point)]
     if len(pts) < 4:
         return None
     xs = [p[0] for p in pts]
@@ -32,7 +34,7 @@ def _ground_slope(seq: PoseSequence, events):
     return sum((x - xm) * (y - ym) for x, y in zip(xs, ys)) / den
 
 
-def assess(seq: PoseSequence, events) -> List[dict]:
+def assess(seq: PoseSequence, events, implausible: Optional[List[str]] = None) -> List[dict]:
     checks: List[dict] = []
 
     def warn(m):
@@ -50,7 +52,20 @@ def assess(seq: PoseSequence, events) -> List[dict]:
     if total_strikes < 6:
         warn(f"Only {total_strikes} foot-strikes detected — capture more steady strides for reliable numbers.")
 
-    confs = [p[2] for fr in seq.frames for p in fr if p[2] > 0]
+    if events.alternation_ratio < 0.8:
+        warn("Detected contacts do not alternate consistently; event-dependent metrics are low confidence.")
+    if events.confidence == "low":
+        warn("Gait-event confidence is low; do not interpret contact, phase, or event-sampled angles.")
+    if implausible:
+        # Physiologically impossible output means the pipeline is wrong, not the
+        # runner. Named explicitly so a bad number is never read as a gait finding.
+        warn(
+            f"Outside the physiological range: {', '.join(sorted(implausible))}. "
+            f"These are measurement faults, not findings — check the view, framing, "
+            f"and that the whole body stays in frame."
+        )
+
+    confs = [min(1.0, p[2]) for fr in seq.frames for p in fr]
     if confs and mean(confs) < 0.45:
         warn("Low tracking confidence. Improve lighting, wear fitted clothing, and fill the frame.")
 
@@ -67,6 +82,7 @@ def assess(seq: PoseSequence, events) -> List[dict]:
             warn("The ground line looks tilted — keep the camera level (a tripod helps).")
 
     hipxs = [seq.xy(f, "mid_hip")[0] for f in range(n)]
+    hipxs = [value for value in hipxs if math.isfinite(value)]
     if hipxs and seq.width and (max(hipxs) - min(hipxs)) / seq.width > 0.6:
         info("You travel across the frame (overground/pan). A treadmill + fixed tripod gives steadier data.")
 

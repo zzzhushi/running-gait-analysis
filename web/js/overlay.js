@@ -1,4 +1,4 @@
-// Canvas skeleton overlay. Maps normalized pose pixels -> canvas, draws the
+// Canvas skeleton overlay. Maps pose pixels (source-frame space) -> canvas, draws the
 // color-coded skeleton, joint-angle arcs, COM/ground reference lines, and trails.
 
 const AXIAL = "#7f8c9b", LEFTC = "#4dabf7", RIGHTC = "#f59f00";

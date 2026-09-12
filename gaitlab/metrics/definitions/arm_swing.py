@@ -20,8 +20,9 @@ register(MetricDef(
     unit="%leg",
     good=(None, None),
     warn=(None, None),
-    note="Fore-aft arm drive. Aim for relaxed, even swing front-to-back (not across the body).",
-    confidence="moderate",
+    note="Peak-to-peak sagittal wrist displacement relative to the same-side shoulder, normalized to leg length.",
+    confidence="low",
+    evidence_level="experimental",
     views=("side",),
     scored=False,
     per_side=True,
@@ -29,4 +30,5 @@ register(MetricDef(
     compute=_compute,
     per_side_compute=True,
     aggregate="median",
+    keypoints=("l_shoulder", "r_shoulder", "l_wrist", "r_wrist"),
 ))

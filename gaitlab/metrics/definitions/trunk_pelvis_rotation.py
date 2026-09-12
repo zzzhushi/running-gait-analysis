@@ -16,14 +16,16 @@ def _compute(ctx, side=None):
 
 register(MetricDef(
     key=MetricKey.TRUNK_PELVIS_ROTATION,
-    label="Trunk Pelvis Rotation",
+    label="Shoulder–pelvis frontal obliquity",
     unit="deg",
     good=(None, None),
     warn=(None, None),
-    note="Shoulder-vs-pelvis counter-rotation — a low-confidence 2-D rear-view proxy.",
-    confidence="moderate",
+    note="Difference between shoulder-line and hip-line angles in the image plane. This is not axial trunk–pelvis rotation.",
+    confidence="low",
+    evidence_level="experimental",
     views=("rear",),
     scored=False,
     compute=_compute,
+    keypoints=("l_shoulder", "r_shoulder", "l_hip", "r_hip"),
     card_status="info",
 ))

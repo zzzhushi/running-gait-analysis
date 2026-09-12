@@ -50,6 +50,10 @@ def test_leg_length_is_sum_of_thigh_and_shank():
     assert _leg_length(seq) == pytest.approx(200.0, abs=1e-6)
 
 
+def test_leg_length_has_finite_fallback_when_landmarks_are_missing():
+    assert _leg_length(pose_from_points("side-left", [{}])) == 1.0
+
+
 # --- analytic-from-parameter: synthetic input we control -------------------
 
 def test_trunk_lean_recovers_synthetic_8deg(synth):
@@ -65,12 +69,11 @@ def test_vertical_oscillation_matches_synthetic_amplitude(synth):
     assert m["values"]["vertical_oscillation"] == pytest.approx(11.4, abs=2.0)
 
 
-def test_pelvic_drop_nonnegative_and_worse_side_from_asymmetry(synth):
-    # Injected asymmetry deepens the right hip's drop in the synthetic rear generator.
+def test_pelvic_drop_preserves_signed_swing_side_direction(synth):
     m = compute(synth("rear", fps=60, duration=6, cadence=170, asymmetry=0.6, seed=7))
     ps = m["per_side"]
-    assert ps["l"]["pelvic_drop"] >= 0 and ps["r"]["pelvic_drop"] >= 0
-    assert m["values"]["pelvic_drop"] == pytest.approx(max(ps["l"]["pelvic_drop"], ps["r"]["pelvic_drop"]))
+    assert all(math.isfinite(ps[side]["pelvic_drop"]) for side in ("l", "r"))
+    assert m["values"]["pelvic_drop"] == pytest.approx((ps["l"]["pelvic_drop"] + ps["r"]["pelvic_drop"]) / 2)
 
 
 def test_overstride_worst_side_is_max(synth):
@@ -127,6 +130,14 @@ def _crossover(seq, strikes):
     return Ctx(seq, ev, None).step_width_and_crossover()[1]
 
 
+def _mirror(seq):
+    frames = [[(seq.width - x, y, conf) for x, y, conf in frame] for frame in seq.frames]
+    return PoseSequence(
+        fps=seq.fps, width=seq.width, height=seq.height, view=seq.view,
+        frames=frames, source=f"{seq.source}-mirrored", timestamps=seq.timestamps,
+    )
+
+
 def test_crossover_ignores_single_midline_touch():
     # Three clean straddling strikes + one where the left ankle lands ~0.5% past the
     # midline (noise). The old `> 0` test flagged crossover here; it must not now.
@@ -135,6 +146,53 @@ def test_crossover_ignores_single_midline_touch():
 
 
 def test_crossover_flags_persistent_crossing():
-    # Both ankles clearly right of the midline on every strike (inner foot ~7% past it).
-    seq = _rear_ankles([(515, 535), (515, 535), (515, 535), (515, 535)])
+    # Successive right placements are left of successive left placements by >3% leg.
+    seq = _rear_ankles([(535, 515), (535, 515), (535, 515), (535, 515)])
     assert _crossover(seq, {"l": [1, 3], "r": [0, 2]}) is True
+
+
+@pytest.mark.parametrize("pairs, expected", [
+    ([(470, 530)] * 4, False),
+    ([(535, 515)] * 4, True),
+])
+def test_step_width_and_crossover_are_mirror_invariant(pairs, expected):
+    seq = _rear_ankles(pairs)
+    strikes = {"l": [1, 3], "r": [0, 2]}
+    ev = GaitEvents()
+    ev.strikes = strikes
+    original = Ctx(seq, ev, None).step_width_and_crossover()
+    mirrored = Ctx(_mirror(seq), ev, None).step_width_and_crossover()
+    assert original[0] == pytest.approx(mirrored[0])
+    assert original[1] is expected
+    assert mirrored[1] is expected
+
+
+def test_frontal_plane_angles_are_mirror_invariant():
+    points = {
+        "l_hip": (470, 100), "r_hip": (530, 110),
+        "l_shoulder": (465, 20), "r_shoulder": (535, 12),
+    }
+    seq = pose_from_points("rear", [points] * 5)
+    ev = GaitEvents()
+    original = Ctx(seq, ev, None)
+    mirrored = Ctx(_mirror(seq), ev, None)
+    assert original.pelvic_tilt_series() == pytest.approx(mirrored.pelvic_tilt_series())
+    assert original.shoulder_angle_series() == pytest.approx(mirrored.shoulder_angle_series())
+
+
+@pytest.mark.parametrize("wrists, expected", [
+    (((460, 50), (540, 50)), False),
+    (((510, 50), (490, 50)), True),
+])
+def test_arm_crossover_is_mirror_invariant(wrists, expected):
+    points = {
+        "mid_hip": (500, 100), "l_hip": (470, 100), "r_hip": (530, 100),
+        "l_wrist": wrists[0], "r_wrist": wrists[1],
+    }
+    seq = pose_from_points("rear", [points] * 5)
+    definition = METRIC_DEFS[MetricKey.ARM_CROSSOVER]
+    original = definition.compute(Ctx(seq, GaitEvents(), None), None)
+    mirrored_seq = _mirror(seq)
+    mirrored = definition.compute(Ctx(mirrored_seq, GaitEvents(), None), None)
+    assert original is expected
+    assert mirrored is expected

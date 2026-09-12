@@ -14,17 +14,16 @@ A metric module looks like:
         ...  # the formula — the one piece that is genuinely per-metric code
 
     register(MetricDef(
-        key=MetricKey.OVERSTRIDE, label="Overstride", unit="%leg",
-        good=(None, 8), warn=(None, 15), views=("side",), scored=True,
-        per_side=True, asym_direction="higher_worse", aggregate="worst_high",
-        keypoints=("l_hip", "l_ankle", "r_hip", "r_ankle"), foi="l_strike",
-        compute=_compute, finding_text={...}, exercises=[...],
+        key=MetricKey.OVERSTRIDE, label="Forward foot placement", unit="%leg",
+        good=(None, None), warn=(None, None), views=("side",), scored=False,
+        per_side=True, aggregate="worst_high",
+        keypoints=("l_hip", "l_ankle", "r_hip", "r_ankle"),
+        event_phase="strike", compute=_compute,
     ))
 
-Everything about a metric — its bands, coaching copy, exercises, formula, and any
-custom trigger/confidence/personalization rule — lives in that one file. Nothing
-about it is declared anywhere else; the generic engines (compute, feedback,
-asymmetry, analyze, exercises) only ever read the registry.
+Everything about a metric — its formula, evidence metadata, landmarks, event
+dependency, confidence, and display behavior — lives in that one file. Nothing
+about it is declared anywhere else; generic engines only read the registry.
 """
 
 from __future__ import annotations
@@ -80,10 +79,10 @@ def default_trigger(defn: "MetricDef", value: float, values: Dict, targets: Dict
 class MetricDef:
     """The single record for one metric: declarative facts + behavior hooks.
 
-    Bands/text/exercises are the declarative part — always set. `compute`,
-    `trigger_fn`, `value_confidence_fn`, and `personalize_fn` are optional
-    behavior hooks: omit them to get the generic default; only a handful of
-    metrics need a custom one (see their module's docstring for why).
+    Measurement and evidence metadata are declarative. Legacy band/coaching
+    fields remain only for API compatibility and are disabled for descriptive
+    metrics. `compute`, `value_confidence_fn`, and `reference_fn` are optional
+    behavior hooks.
     """
 
     key: MetricKey
@@ -93,13 +92,18 @@ class MetricDef:
     warn: Tuple[Optional[float], Optional[float]]
     note: str = ""
     higher_is_better: Optional[bool] = None
-    confidence: str = "high"        # "high" | "moderate" | "low"
-    views: Tuple[str, ...] = ("side", "rear")  # where this metric is scored/carded
+    # Criterion-validity tier for this exact kind of 2-D measurement. This is
+    # intentionally distinct from pose-landmark visibility.
+    confidence: str = "moderate"    # "high" | "moderate" | "low"
+    evidence_level: str = "experimental"  # "supported" | "screening" | "experimental"
+    interpretation: str = "descriptive"   # no causal/diagnostic implication
+    reference_ids: Tuple[str, ...] = ()
+    views: Tuple[str, ...] = ("side", "rear")  # views where this metric is available
     # Where this metric's trigger() can raise a coaching finding. None = same as
     # `views`. Only cadence differs: it's scored/carded in both views, but only
     # ever raises a finding in the side view.
     trigger_views: Optional[Tuple[str, ...]] = None
-    scored: bool = True             # False = informational only, excluded from score
+    scored: bool = False            # legacy compatibility flag; product scoring is disabled
     per_side: bool = False          # True = tracked in the left/right asymmetry table
     asym_direction: str = "neutral" # "higher_better" | "higher_worse" | "neutral"
     # Coaching text keyed by direction ("low", "high") or "any" (fires regardless
@@ -113,8 +117,10 @@ class MetricDef:
     compute: Optional[Callable] = None       # per_side_compute: (ctx, side)->float; else (ctx, None)->float
     per_side_compute: bool = False           # True: compute() is called once per side, then aggregated
     aggregate: str = "median"                # combiner for the two per-side raw values into one headline value
-    is_boolean: bool = False                 # a flag metric (e.g. crossover): value is True/False, not scored
+    is_boolean: bool = False                 # a flag metric (e.g. crossover): value is True/False
     keypoints: Tuple[str, ...] = ()          # contributing landmarks, for confidence propagation
+    event_phase: str = "all"                 # "all" | "strike" | "midstance" | "toeoff" | "events"
+    requires_events: bool = False             # event boundaries affect an all-frame measurement
     foi: Optional[str] = None                # frames_of_interest key this metric anchors on the overlay
     card_per_side_key: Optional[str] = None  # if set, the card also shows L/R using this per_side dict key
     # "always": shown whenever its view is active. "conditional": shown only once its
@@ -133,10 +139,25 @@ class MetricDef:
     value_confidence_fn: Optional[Callable] = None # (value) -> "low"|"moderate"|"high"
     personalize_fn: Optional[Callable] = None      # (defn, profile) -> MetricDef
     extra_fmt_fn: Optional[Callable] = None        # (values) -> dict of extra .format() args for finding_text
+    reference_fn: Optional[Callable] = None        # (profile) -> {value, label, source} | None
+    asymmetry_mdc: Optional[float] = None           # metric-specific absolute minimum detectable change
 
-    # ------------------------------------------------------------------
-    # Scoring (unchanged formula from the original targets.Target class)
-    # ------------------------------------------------------------------
+    def __post_init__(self) -> None:
+        # Fixed "good/warn" bands in the original prototype were not validated
+        # as optimal or injury-related thresholds. Keep constructor compatibility
+        # while ensuring they cannot drive product status, coaching, or scoring.
+        if self.interpretation == "descriptive":
+            self.good = (None, None)
+            self.warn = (None, None)
+            self.scored = False
+            # Do not leave legacy prescriptive copy reachable through a future
+            # caller that bypasses the current feedback guard.
+            self.finding_text = {}
+            self.exercises = []
+            self.trigger_fn = None
+
+    # Compatibility methods remain for internal callers, but descriptive
+    # definitions have no bands and never feed a product score or finding.
 
     def status(self, value: float) -> str:
         if value is None or value != value:
@@ -148,7 +169,7 @@ class MetricDef:
         return BAD
 
     def score(self, value: float) -> float:
-        """0-100 score (100 = ideal mid-band, ~45 at warn edge, ~17 at deep BAD)."""
+        """Legacy band-score helper; descriptive product metrics never call it."""
         if value is None or value != value:
             return 50.0
         if self.status(value) == GOOD:
@@ -183,16 +204,17 @@ class MetricDef:
             return self
         return self.personalize_fn(self, profile)
 
+    def reference(self, profile: Optional[dict]) -> Optional[dict]:
+        return self.reference_fn(profile or {}) if self.reference_fn else None
+
 
 @dataclass
 class Cond:
     """One condition in a composite's `all_of` list.
 
-    Compares a metric's already-computed value against a bound on that SAME
-    metric's own band (`good_hi`, `good_lo`, `warn_hi`, `warn_lo`) so the
-    composite can never drift from the metric's registered bands — or, for
-    the rare metric with no band at all (e.g. foot_strike_angle), an explicit
-    literal via `value=`.
+    Current exploratory patterns use explicit historic heuristic values. Band
+    lookup remains for serialized-definition compatibility, but descriptive
+    metrics intentionally have no good/warn bands.
     """
 
     key: MetricKey
@@ -226,10 +248,7 @@ def cond(key: MetricKey, op: str, band: Optional[str] = None, value: Optional[fl
 
 @dataclass
 class Composite:
-    """A conjunction of per-metric conditions that, together, tell a more useful
-    coaching story than any single metric alone — and outranks (supersedes) the
-    individual findings of the metrics it names once it fires.
-    """
+    """An exploratory, same-observation conjunction of metric conditions."""
 
     id: str
     view: str                 # "side" | "rear"
@@ -240,16 +259,20 @@ class Composite:
     cue: str
     drill: str
     supersedes: Tuple[str, ...]
+    min_confidence: str = "moderate"
+    min_observations: int = 2
 
     def fires(self, values: Dict, targets: Dict) -> bool:
         return all(c.holds(values, targets) for c in self.all_of)
 
-    def finding(self, values: Dict) -> dict:
+    def finding(self, values: Dict, side: str = None, count: int = 0) -> dict:
         fmt = {str(k): v for k, v in values.items() if isinstance(v, (int, float))}
         return {
             "severity": self.severity, "title": self.title,
             "detail": self.detail.format(**fmt), "cue": self.cue, "drill": self.drill,
-            "metric": self.id, "frame": None,
+            "metric": self.id, "frame": values.get("strike"),
+            "confidence": self.min_confidence, "interpretation": "exploratory",
+            "side": side, "matching_strides": count,
         }
 
 

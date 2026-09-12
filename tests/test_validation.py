@@ -101,7 +101,7 @@ def test_validate_result_rejects_bad_score():
 
 def test_validate_result_rejects_bad_grade():
     with pytest.raises(ResultValidationError, match="grade"):
-        validate_result({"summary": {"overall_score": 90, "grade": "Z", "view": "rear"},
+        validate_result({"summary": {"overall_score": None, "grade": "Z", "view": "rear"},
                          "metrics": [], "feedback": []})
 
 
@@ -112,5 +112,6 @@ def test_validate_result_rejects_bad_grade():
 def test_any_valid_pose_analyzes_to_conformant_result(seq):
     seq.validate()
     d = analyze(seq).validate().to_dict()
-    assert 0 <= d["summary"]["overall_score"] <= 100
+    assert d["summary"]["overall_score"] is None
+    assert d["summary"]["grade"] is None
     json.dumps(d, allow_nan=False)   # strictly JSON-safe (no NaN/Infinity)

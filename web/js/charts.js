@@ -41,15 +41,3 @@ export function lineChart(values, opts = {}) {
     ${dots}${xlab}
   </svg>`;
 }
-
-export function sparkline(values, opts = {}) {
-  const { w = 120, h = 30, color = "#4dabf7" } = opts;
-  const present = values.filter((v) => v != null && !Number.isNaN(v));
-  if (present.length < 2) return `<svg viewBox="0 0 ${w} ${h}"></svg>`;
-  const min = Math.min(...present), max = Math.max(...present) || 1;
-  const X = (i) => (i / (values.length - 1)) * w;
-  const Y = (v) => h - 2 - (max === min ? h / 2 : ((v - min) / (max - min)) * (h - 4));
-  let d = "";
-  values.forEach((v, i) => { d += (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1) + " "; });
-  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><path d="${d}" fill="none" stroke="${color}" stroke-width="2"/></svg>`;
-}

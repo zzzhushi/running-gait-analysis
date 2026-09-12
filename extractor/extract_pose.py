@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract normalized pose landmarks from a running video using RTMPose (via rtmlib).
+"""Extract canonical pose landmarks from a running video using RTMPose (via rtmlib).
 
 This is the ONE piece of GaitLab that needs third-party packages:
 

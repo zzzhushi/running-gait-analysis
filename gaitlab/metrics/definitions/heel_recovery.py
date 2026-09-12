@@ -25,8 +25,9 @@ register(MetricDef(
     unit="%leg",
     good=(None, None),
     warn=(None, None),
-    note="How much the heel picks up in swing (proxy). More recovery = a shorter, springier swing leg.",
-    confidence="moderate",
+    note="Heel vertical excursion relative to the pelvis during each stride; descriptive swing-phase proxy.",
+    confidence="low",
+    evidence_level="experimental",
     views=("side",),
     scored=False,
     per_side=True,
@@ -35,4 +36,6 @@ register(MetricDef(
     per_side_compute=True,
     aggregate="median",
     card_per_side_key="heel_recovery",
+    keypoints=("mid_hip", "l_heel", "r_heel"),
+    requires_events=True,
 ))

@@ -8,7 +8,7 @@ that reasons about height accounts for this.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from statistics import median
 from typing import List, Optional, Tuple
 
@@ -43,7 +43,20 @@ XY = Tuple[float, float]
 
 @dataclass
 class PoseSequence:
-    """A time series of normalized landmarks for a single clip/view."""
+    """A time series of 2-D landmarks in PIXELS for a single clip/view.
+
+    Pixels, not fractions of the frame. The engine needs an isotropic coordinate
+    system: geometry.angle_3pt measures with math.hypot, so x and y must share a
+    scale. MediaPipe's native output is normalized anisotropically (x by width, y by
+    height), which distorts every angle by the aspect ratio -- on a 1080x1920 frame a
+    124.9 deg ankle angle reads as 114.5. web/js/pose.js multiplies back to pixels
+    before handing the pose over for exactly this reason.
+
+    Absolute pixel values are never compared against constants: thresholds are
+    fractions of a measured amplitude, and real-world scale comes from calibration
+    (px_per_cm). Output is therefore resolution-independent -- halving a clip's
+    resolution leaves every metric unchanged.
+    """
 
     fps: float
     width: int
@@ -56,6 +69,9 @@ class PoseSequence:
     # Present when the extractor could read them (robust to variable frame rate);
     # None for synthetic/constant-rate clips, where f/fps is exact.
     timestamps: Optional[List[float]] = None
+    # Internal-only threshold used by the analysis copy. Raw sequences keep 0 so
+    # serialization and the overlay retain every detector coordinate.
+    analysis_min_confidence: float = field(default=0.0, repr=False)
 
     # --- validation -------------------------------------------------------
     def validate(self) -> "PoseSequence":
@@ -189,6 +205,8 @@ class PoseSequence:
 
     def xy(self, f: int, name: str) -> XY:
         p = self.frames[f][self.idx(name)]
+        if p[2] < self.analysis_min_confidence:
+            return (float("nan"), float("nan"))
         return (p[0], p[1])
 
     def has(self, name: str) -> bool:
@@ -199,12 +217,55 @@ class PoseSequence:
         return [(fr[i][0], fr[i][1]) for fr in self.frames]
 
     def series_y(self, name: str) -> List[float]:
-        i = self.idx(name)
-        return [fr[i][1] for fr in self.frames]
+        return [self.xy(f, name)[1] for f in range(self.n)]
 
     def series_x(self, name: str) -> List[float]:
-        i = self.idx(name)
-        return [fr[i][0] for fr in self.frames]
+        return [self.xy(f, name)[0] for f in range(self.n)]
+
+    def filtered_for_analysis(
+        self, min_confidence: float = 0.35, max_gap_seconds: float = 0.05
+    ) -> "PoseSequence":
+        """Return an analysis-only copy with short low-confidence gaps interpolated.
+
+        A gap is filled only when trustworthy observations exist on both sides and
+        its elapsed duration is no greater than ``max_gap_seconds``. Longer gaps
+        keep their detector coordinates for the overlay but ``xy`` exposes them as
+        NaN to metric calculations through ``analysis_min_confidence``.
+        """
+        frames = [[tuple(p) for p in fr] for fr in self.frames]
+        for ki in range(len(self.keypoint_names)):
+            i = 0
+            while i < self.n:
+                if frames[i][ki][2] >= min_confidence:
+                    i += 1
+                    continue
+                start = i
+                while i < self.n and frames[i][ki][2] < min_confidence:
+                    i += 1
+                end = i
+                if start == 0 or end >= self.n:
+                    continue
+                # Measure the whole unobserved interval between trustworthy
+                # endpoints. This stays correct for variable-frame-rate input.
+                if self.elapsed(start - 1, end) > max_gap_seconds + 1e-9:
+                    continue
+                left, right = frames[start - 1][ki], frames[end][ki]
+                if left[2] < min_confidence or right[2] < min_confidence:
+                    continue
+                for f in range(start, end):
+                    alpha = (f - (start - 1)) / (end - (start - 1))
+                    x = left[0] + alpha * (right[0] - left[0])
+                    y = left[1] + alpha * (right[1] - left[1])
+                    # Interpolation restores geometric continuity, not detector
+                    # certainty. Keep it just usable while ensuring downstream
+                    # tracking confidence cannot mistake it for an observation.
+                    frames[f][ki] = (x, y, min_confidence)
+
+        return replace(
+            self,
+            frames=frames,
+            analysis_min_confidence=min_confidence,
+        )
 
     # --- (de)serialization ------------------------------------------------
     def to_pose_dict(self) -> dict:
@@ -240,5 +301,5 @@ class PoseSequence:
             frames=frames,
             source=d.get("source", "unknown"),
             keypoint_names=list(d.get("keypoint_names", KEYPOINTS)),
-            timestamps=[float(t) for t in ts] if ts else None,
+            timestamps=[float(t) for t in ts] if ts is not None else None,
         )

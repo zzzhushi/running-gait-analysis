@@ -2,7 +2,7 @@
 """OPTIONAL alternative extractor: pose from video using MediaPipe BlazePose.
 
 This exists to demonstrate the **swappable pose source** — it emits the exact same
-normalized JSON as the RTMPose extractor, so the GaitLab engine/UI consume it
+canonical JSON as the RTMPose extractor, so the GaitLab engine/UI consume it
 identically. RTMPose (extract_pose.py) is the default (sharper foot keypoints); this is
 a lighter, install-once alternative.
 

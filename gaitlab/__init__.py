@@ -6,7 +6,7 @@ and the math is unit-testable without a browser or a pose model.
 Pipeline:  PoseSequence  ->  smooth  ->  gait events  ->  metrics  ->  asymmetry
            ->  target scoring  ->  rule-based feedback  ->  AnalysisResult
 
-The only "source" coupling is the normalized pose schema (see schema.py); RTMPose,
+The only "source" coupling is the canonical pose schema (see schema.py); RTMPose,
 MediaPipe, and the synthetic generator all produce the same PoseSequence, so the
 engine never needs to know which one fed it.
 """

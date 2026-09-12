@@ -20,8 +20,7 @@ export default async function trends(app) {
     i % step === 0 ? new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "");
 
   app.append(el("div", { class: "chart-row" }, [
-    chart("Overall score", lineChart(chrono.map((r) => r.score), { color: "#2fbf71", band: { lo: 72, hi: 100 }, dp: 0, labels })),
-    chart("Cadence (spm)", lineChart(chrono.map((r) => r.cadence), { color: "#4dabf7", band: { lo: 170, hi: 185 }, dp: 0, labels })),
+    chart("Cadence (spm) · compare like-for-like speeds", lineChart(chrono.map((r) => r.cadence), { color: "#4dabf7", dp: 0, labels })),
   ]));
 
   app.append(el("h3", { class: "sectitle" }, "Compare two runs"));
@@ -45,50 +44,26 @@ function chart(title, svg) {
 }
 function runSelect(runs) {
   return el("select", { style: "max-width:280px" },
-    runs.map((r) => el("option", { value: r.id }, (r.label || viewLabel(r.view) + " run") + " · " + fmt(r.score, 0))));
-}
-function improvementDir(good) {
-  if (!good) return null;
-  const [lo, hi] = good;
-  if (lo != null && hi != null) return { type: "range", center: (lo + hi) / 2 };
-  if (lo != null) return { type: "higher" };
-  if (hi != null) return { type: "lower" };
-  return null;
-}
-
-function isImproved(dir, a, b) {
-  if (!dir || a == null || b == null) return 0;
-  if (dir.type === "higher") return a > b ? 1 : a < b ? -1 : 0;
-  if (dir.type === "lower") return a < b ? 1 : a > b ? -1 : 0;
-  const da = Math.abs(a - dir.center), db = Math.abs(b - dir.center);
-  return da < db ? 1 : da > db ? -1 : 0;
+    runs.map((r) => el("option", { value: r.id }, r.label || viewLabel(r.view) + " run")));
 }
 
 function compareTable(a, b) {
   const mapB = Object.fromEntries(b.metrics.map((m) => [m.key, m]));
-  let improved = 0, regressed = 0;
   const rows = a.metrics
     .filter((m) => m.value != null && m.key !== "foot_strike_angle")
     .map((m) => {
       const mb = mapB[m.key];
       const delta = mb && mb.value != null ? m.value - mb.value : null;
-      const imp = mb ? isImproved(improvementDir(m.good), m.value, mb.value) : 0;
-      if (imp > 0) improved++; else if (imp < 0) regressed++;
-      const dcolor = imp > 0 ? "var(--good)" : imp < 0 ? "var(--bad)" : "var(--muted)";
-      const arrow = imp > 0 ? " ↑" : imp < 0 ? " ↓" : "";
       return el("tr", {}, [
         el("td", {}, m.label),
         el("td", { class: "num" }, fmt(m.value, 0) + " " + m.unit),
         el("td", { class: "num" }, mb ? fmt(mb.value, 0) + " " + mb.unit : "—"),
-        el("td", { class: "num", style: `color:${dcolor}` },
-          delta == null ? "—" : (delta > 0 ? "+" : "") + delta.toFixed(0) + arrow),
+        el("td", { class: "num", style: "color:var(--muted)" },
+          delta == null ? "—" : (delta > 0 ? "+" : "") + delta.toFixed(1)),
       ]);
     });
-  const summary = el("div", { style: "margin-bottom:10px;font-size:13px" }, [
-    el("span", { style: "color:var(--good)" }, `${improved} improved`), " · ",
-    el("span", { style: "color:var(--bad)" }, `${regressed} regressed`),
-    el("span", { style: "color:var(--muted)" }, "  — A vs B, green = closer to target"),
-  ]);
+  const summary = el("div", { style: "margin-bottom:10px;font-size:13px;color:var(--muted)" },
+    "Signed change only. Interpret repeated measurements at the same speed and capture setup.");
   const table = el("table", { class: "cmp" }, [
     el("tr", {}, [
       el("th", {}, "Metric"),

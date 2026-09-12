@@ -1,15 +1,9 @@
-"""Ground contact time — same underlying event data (ev.contact_time), exposed
-as two keys: CONTACT_TIME (the always-shown descriptive headline) and
-CONTACT_TIME_MS (the hidden per-side twin that feeds the headline card's L/R
-display). One shared compute function, one file.
-
-The current ankle-lift anchor is not criterion-calibrated, so these values remain visible
-but are deliberately excluded from scoring, coaching, and asymmetry interpretation.
-"""
+"""Kinematic contact-time estimate, exposed as headline and per-side keys."""
 
 from __future__ import annotations
 
 from ..keys import MetricKey
+from ..reference_models import population_reference
 from ..spec import MetricDef, register
 
 
@@ -23,55 +17,44 @@ register(MetricDef(
     key=MetricKey.CONTACT_TIME,
     label="Ground contact time",
     unit="ms",
-    good=(None, 250),
-    warn=(None, 300),
-    note=("Approximate time on the ground per step. The current video-only contact anchor "
-          "has not yet been calibrated against high-speed video or a force reference."),
+    good=(None, None),
+    warn=(None, None),
+    note="Median kinematic contact-time estimate. Strongly speed-dependent and approximate without force data.",
     confidence="low",
+    evidence_level="experimental",
+    reference_ids=("Patoz2021", "Malisoux2023"),
     views=("side",),
     scored=False,
     compute=_compute,
     per_side_compute=True,
     aggregate="worst_high",
+    keypoints=("l_ankle", "r_ankle", "l_heel", "r_heel", "l_big_toe", "r_big_toe"),
+    event_phase="events",
     card_per_side_key="contact_time_ms",
     card_status="info",
+    # Provisional event anchor: keep the measurement visible, never let it
+    # drive a finding or a score.
     trigger_fn=lambda *a: None,
-    finding_text={
-        "high": {
-            "title": "Long ground contact",
-            "detail": (
-                "You're spending ~{value:.0f} ms on the ground per step. Quicker, springier contacts "
-                "tend to be more economical."
-            ),
-            "cue": "Think 'hot pavement' — get off the ground a little faster.",
-            "drill": "Pogo hops and ankle-stiffness skips, 3×10, twice a week.",
-        },
-    },
-    exercises=[
-        {"name": "Ankle-stiffness skips",
-         "why": "Shortens time on the ground.",
-         "dose": "3×20m",
-         "progression": "Faster turnover, same height."},
-        {"name": "Pogo hops",
-         "why": "Reactive strength for quicker contacts.",
-         "dose": "3×10",
-         "progression": "Add single-leg / depth pogos."},
-    ],
+    reference_fn=lambda profile: population_reference("contact_time", profile),
 ))
 
 register(MetricDef(
     key=MetricKey.CONTACT_TIME_MS,
     label="Ground contact time",
     unit="ms",
-    good=(None, 250),
-    warn=(None, 300),
-    note="Approximate per-side contact time; descriptive until the event anchor is calibrated.",
+    good=(None, None),
+    warn=(None, None),
+    note="Per-side contact time in milliseconds. Used for left/right asymmetry detection.",
     confidence="low",
+    evidence_level="experimental",
+    reference_ids=("Patoz2021",),
     views=("side",),
     scored=False,
     per_side=False,
     asym_direction="higher_worse",
     compute=_compute,
     per_side_compute=True,
+    keypoints=("l_ankle", "r_ankle", "l_heel", "r_heel", "l_big_toe", "r_big_toe"),
+    event_phase="events",
     card_visibility="hidden",
 ))

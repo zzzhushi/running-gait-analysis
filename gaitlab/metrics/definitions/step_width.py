@@ -1,10 +1,4 @@
-"""Step width — lateral separation between the feet at contact, rear view.
-
-Shares its per-strike ankle-separation loop with `crossover` (Ctx.step_width_and_crossover).
-No independent trigger of its own: despite having a good/warn band, only the
-discrete crossover event (crossover.py) raises a coaching finding — a merely
-narrow-but-not-crossing step width is left as informational.
-"""
+"""Successive contralateral foot-placement width in a rear view."""
 
 from __future__ import annotations
 
@@ -19,14 +13,17 @@ def _compute(ctx, side=None):
 
 register(MetricDef(
     key=MetricKey.STEP_WIDTH,
-    label="Step width / crossover",
+    label="Successive foot-placement width",
     unit="%leg",
-    good=(2, 14),
-    warn=(0, 22),
-    note="Feet should not cross the midline. Crossover narrows your base and stresses the IT band.",
-    confidence="high",
+    good=(None, None),
+    warn=(None, None),
+    note="Rear-view distance between successive contralateral ankle placements in fixed-camera coordinates, normalized to leg length.",
+    confidence="low",
+    evidence_level="experimental",
+    reference_ids=("Hensley2022", "Leporace2023"),
     views=("rear",),
-    scored=True,
+    scored=False,
     compute=_compute,
-    trigger_fn=lambda *a: None,  # crossover.py raises the actual finding for this gait fault
+    keypoints=("l_hip", "r_hip", "l_ankle", "r_ankle"),
+    event_phase="strike",
 ))

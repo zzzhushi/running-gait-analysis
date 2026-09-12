@@ -175,8 +175,11 @@ class TestAnalyzeVideo:
         """The payoff of the seam: this exercises extract -> analyze with zero I/O."""
         result = analyze_video("nonexistent.mp4", "side-left", extractor=MockExtractor(duration=6))
         d = result.to_dict()
-        assert 0 <= d["summary"]["overall_score"] <= 100
+        # Scoring was retired with the evidence-led metric work, so the seam is
+        # checked on what the pipeline still produces rather than on a score.
+        assert d["summary"]["overall_score"] is None
         assert d["summary"]["view"] == "side-left"
+        assert d["metrics"], "the seam produced no metric cards"
 
     def test_defaults_to_rtmpose_extractor_when_none_given(self):
         """No extractor passed -> RTMPoseExtractor -> fails on missing opencv,
