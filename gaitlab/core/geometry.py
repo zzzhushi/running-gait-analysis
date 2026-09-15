@@ -130,6 +130,69 @@ def find_peaks(values: List[float], min_distance: int = 1,
     return chosen
 
 
+# How close a shorter lag must come to the best correlation before it is preferred over it.
+SUBHARMONIC_TOLERANCE = 0.85
+
+
+def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
+    """Period of the strongest repeat in `values`, in frames, or nan.
+
+    Normalized autocorrelation over `min_lag..max_lag`, returning the lag of the tallest
+    local maximum. NaNs are treated as zero deviation from the mean so a dropout weakens
+    the correlation rather than poisoning it.
+
+    Exists so the stride period can be measured WITHOUT first detecting gait events. That
+    independence is the whole point: a period derived from the peaks cannot be used to
+    judge whether those peaks are real, and a spurious extra peak per stride is exactly
+    the failure this guards against (see events.py).
+
+    Coarse by construction — the answer is a whole number of frames, so at 30 fps a true
+    21.3-frame stride reads as 21 (-1.5%). Use it to decide which peaks are plausible, not
+    as a timing measurement; timing still comes from the events themselves.
+    """
+    n = len(values)
+    min_lag = max(1, min_lag)
+    max_lag = min(max_lag, n - 2)
+    if n < 4 or max_lag < min_lag:
+        return float("nan")
+    finite = [v for v in values if not math.isnan(v)]
+    if not finite:
+        return float("nan")
+    m = sum(finite) / len(finite)
+    dev = [0.0 if math.isnan(v) else v - m for v in values]
+    total = sum(d * d for d in dev)
+    if total <= 0.0:
+        return float("nan")
+    # r[lag], unbiased for the shrinking overlap so long lags are not penalised.
+    r: List[float] = []
+    for lag in range(min_lag, max_lag + 1):
+        acc = 0.0
+        for i in range(n - lag):
+            acc += dev[i] * dev[i + lag]
+        r.append(acc / (total * (n - lag) / n))
+    peaks = [(min_lag + i, r[i]) for i in range(1, len(r) - 1)
+             if r[i] >= r[i - 1] and r[i] >= r[i + 1]]
+    if not peaks:
+        return float("nan")
+    best_r = max(v for _, v in peaks)
+    if best_r <= 0.0:
+        return float("nan")
+    # Prefer the SMALLEST lag that correlates about as well as the best one. A periodic
+    # signal correlates with itself at the period and at every multiple of it, so the
+    # tallest peak is not reliably the fundamental — on synthetic 172 spm pose the far
+    # leg scored 1.001 at both 42 and 84 frames and floating-point noise picked 84, which
+    # made the spacing floor wider than a real stride and merged genuine contacts. This
+    # is the usual sub-harmonic guard from autocorrelation pitch estimation.
+    #
+    # It cannot run away downward: the caller's `min_lag` is a physiological floor (a
+    # 0.5 s stride is already 240 spm), and the spurious swing-phase peak this whole
+    # mechanism exists to reject sits at ~0.4 of a stride, comfortably below it.
+    for lag, v in peaks:
+        if v >= best_r * SUBHARMONIC_TOLERANCE:
+            return float(lag)
+    return float("nan")
+
+
 def clamp(v: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, v))
 

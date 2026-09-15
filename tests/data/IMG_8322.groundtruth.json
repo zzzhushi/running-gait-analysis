@@ -1,0 +1,298 @@
+{
+  "clip": "IMG_8322.mov",
+  "clip_location_when_measured": "data/video/IMG_8322.mov",
+  "view": "side-right",
+  "description": "Treadmill run, side view, runner faces image-RIGHT so the camera sees her RIGHT side. Container is 1920x1080 with a -90 rotation flag; decodes to 1080x1920 portrait. HEVC, yuv420p10le. 240 decoded frames at a constant 33.33 ms spacing = exactly 30.000 fps, 7.967 s span. Plain white wall, fitted clothing, full body in frame, no handrail crossing the body, camera at roughly hip height. This is a markedly cleaner capture than male_side.mp4.",
+  "consent": null,
+  "consent_note": "NOT YET RECORDED. Do not commit the video to the public repo until the person in it has given explicit consent on the same terms as male_side.mp4 (see tests/data/README.md).",
+  "container_metadata_disagrees": {
+    "_comment": "Useful extractor test case. Trust the decoded per-frame timestamps, not the container header.",
+    "header_nb_frames": 249,
+    "header_avg_frame_rate": "747/26 = 28.73 fps",
+    "header_r_frame_rate": "30/1",
+    "decoded_frames": 240,
+    "decoded_interval_s": 0.03333,
+    "decoded_interval_spread": "all 239 intervals identical to 4 decimal places",
+    "decoded_fps": 30.0
+  },
+  "capture_geometry": {
+    "camera_tilt_deg": 0.0,
+    "camera_tilt_how": "Slopes of the treadmill's long horizontal edges in the temporal-median background, via Canny + HoughLinesP: 0.000, 0.000, 0.000, +0.281, -0.226 deg. Camera is level and perpendicular to within 0.3 deg; no measurable yaw or roll.",
+    "near_far_foot_offset_px": 30,
+    "near_far_foot_note": "The near (right) foot's sole projects ~30 px LOWER in the image than the far (left) foot's at the same belt surface, because the camera sits above the belt plane. A single fixed 'ground level' threshold therefore mis-segments one foot's stance.",
+    "lateral_drift": "Foot-placement depth drifts over the clip (near-foot sole y ranges 1695-1727), i.e. she moves laterally on the belt. Fixed per-foot depth thresholds fail late in the clip."
+  },
+  "cadence_spm": {
+    "value": 168.2,
+    "uncertainty": 0.5,
+    "unit": "spm",
+    "confidence": "high",
+    "how_measured": [
+      "Pixel-only, no pose model and no part of this engine.",
+      "A foot contact is the instant the frontmost point of the foot on the belt stops moving forward and reverses to belt speed. Located per contact by parabolic interpolation of that turning point, giving sub-frame resolution.",
+      "Method A (cream midsole brighter than the temporal-median background, restricted to the dark belt region): 22 contacts, 21 intervals over 7.489 s -> 168.24 spm. Inter-step sd 0.402 frames.",
+      "Method B (frontmost point of the background-subtracted silhouette below y=1500): 168.19 spm. Noisier (sd 2.29 frames) but independent of the colour test.",
+      "Two methods agree to 0.05 spm."
+    ],
+    "contact_times_frames": [
+      8.67,
+      19.63,
+      30.79,
+      41.64,
+      53.19,
+      64.26,
+      75.04,
+      85.88,
+      96.84,
+      107.55,
+      118.72,
+      129.52,
+      140.38,
+      150.78,
+      161.3,
+      171.73,
+      182.26,
+      192.45,
+      202.66,
+      213.43,
+      223.55,
+      233.35
+    ],
+    "first_contact_is": "right foot (near side). Feet alternate strictly from there: even index = right, odd index = left.",
+    "step_time_frames": 10.699,
+    "drift_within_clip": "Cadence rises through the clip: first 11 steps average 10.98 frames (163.9 spm), last 10 average 10.40 frames (173.1 spm). Either she settles in or the treadmill was still ramping. A whole-clip median hides this.",
+    "cross_check_from_touchdowns": "166.0 spm from 19 touchdown-to-touchdown gaps (mean 10.84 frames, integer-rounded). The 168.2 figure from sub-frame toe-peak interpolation stands as the more precise one; the two agree to 1.3%, confirming that a constant anchor bias cancels in a rate."
+  },
+  "timing_fps_limited": {
+    "_comment": "Re-measured against true touchdown. One frame is 33 ms, so these carry about +/-1 frame; toe-off is the softer of the two edges.",
+    "contact_time_ms": {
+      "value": 217,
+      "frames": 6.5,
+      "range_across_20_stances_ms": [
+        167,
+        267
+      ],
+      "sd_frames": 0.86,
+      "confidence": "moderate"
+    },
+    "duty_factor_pct": {
+      "value": 30,
+      "uncertainty": 4,
+      "confidence": "moderate"
+    },
+    "flight_time_ms": {
+      "value": 140,
+      "uncertainty": 35,
+      "confidence": "low"
+    },
+    "touchdown_frames": [
+      10,
+      22,
+      33,
+      44,
+      55,
+      67,
+      77,
+      88,
+      99,
+      110,
+      121,
+      132,
+      142,
+      154,
+      163,
+      174,
+      184,
+      195,
+      205,
+      216
+    ],
+    "toeoff_frames": [
+      17,
+      28,
+      39,
+      50,
+      62,
+      72,
+      83,
+      94,
+      104,
+      115,
+      127,
+      137,
+      148,
+      158,
+      169,
+      179,
+      189,
+      199,
+      210,
+      220
+    ]
+  },
+  "spatial": {
+    "belt_speed_px_per_frame": {
+      "value": 56.5,
+      "uncertainty": 2.0,
+      "how": "Frame-to-frame translation of the planted foot's leading and trailing edges over clean mid-stance only (excluding the first and last 2 frames of each stance, where the foot is still rotating and the blob is shrinking). Two stances gave -55..-58 and -57..-60 px/frame."
+    },
+    "belt_speed_px_per_s": 1695,
+    "step_length_px": 604,
+    "stride_length_px": 1209,
+    "vertical_oscillation_px": {
+      "value": 105,
+      "uncertainty": 15,
+      "how": "Two independent landmarks: the waistband (top of the dark leggings, tracked per frame) gives 109-114 px peak-to-peak per step; the hair crown gives ~96 px. Both verified visually against the frames."
+    },
+    "leg_length_px": {
+      "value": 750,
+      "uncertainty": 40,
+      "note": "hip joint to ankle joint. The hip is under clothing and is the dominant error in every %leg figure below."
+    },
+    "stature_px": {
+      "value": 1623,
+      "note": "crown to belt surface at the tallest instant of the stride"
+    }
+  },
+  "scale_and_absolute_units": {
+    "_comment": "NO absolute reference object was in frame. Scale is inferred from shoe outsole length and is the weakest link in every cm/kmh figure here. Entering the runner's real height would replace all of this with a measured scale.",
+    "shoe_outsole_px": 270,
+    "assumed_shoe_cm": [
+      25,
+      27
+    ],
+    "px_per_cm": [
+      10.0,
+      10.8
+    ],
+    "speed_m_per_s": [
+      1.57,
+      1.7
+    ],
+    "speed_km_per_h": [
+      5.7,
+      6.1
+    ],
+    "stride_length_cm": [
+      112,
+      121
+    ],
+    "step_length_cm": [
+      56,
+      60
+    ],
+    "vertical_oscillation_cm": [
+      9.7,
+      10.5
+    ],
+    "implied_stature_cm": [
+      150,
+      162
+    ],
+    "implied_leg_length_cm": [
+      67,
+      78
+    ],
+    "consistency_check": "speed = stride_length x stride_rate = 1.21 m x 1.40 strides/s = 1.69 m/s, matching the belt-speed route. Step length 0.58 m at 168 spm and ~5.9 km/h is self-consistent for a runner of this stature."
+  },
+  "normalized": {
+    "_comment": "divided by leg_length_px = 750 +/- 40, so each carries about +/-6% of its own value from the leg estimate alone",
+    "step_length_pct_leg": 81,
+    "stride_length_pct_leg": 161,
+    "vertical_oscillation_pct_leg": 14.0,
+    "vertical_ratio_pct": 8.7,
+    "overstride_pct_leg": {
+      "value": 18,
+      "uncertainty": 5,
+      "confidence": "low",
+      "how": "Read by eye at two true touchdown frames (f10, f33) from gridded crops, same method as IMG_8325. f10: ankle 145 px ahead of estimated hip; f33: 180 px. Leg length 799 px (0.49 x stature 1630 px).",
+      "supersedes": "the original 14 %leg measured 1-3 frames before touchdown, and the 2-10 %leg verbal estimate, both withdrawn"
+    }
+  },
+  "angles_deg": {
+    "trunk_lean_forward": {
+      "value": 5.7,
+      "iqr": [
+        3.5,
+        7.4
+      ],
+      "n": 33,
+      "confidence": "moderate",
+      "how": "Line fitted to the posterior torso contour, y 440-780, excluding pixels darker than 105 so the swinging ponytail is not mistaken for her back. Verified visually on 4 frames. Sign: shoulders ahead of hips = forward."
+    },
+    "knee_flexion_at_contact_right": {
+      "value": 10,
+      "uncertainty": 5,
+      "n": 5,
+      "confidence": "low",
+      "how": "Piecewise two-line fit to the leading leg's anterior contour (y 860-1560); the breakpoint is the knee. Per-stride values 16.1, 12.9, 6.9, 9.8, 3.2. Right leg only - the left leg is never the outermost contour so the same fit does not apply to it."
+    },
+    "shank_angle_at_contact_right": {
+      "value": 2,
+      "uncertainty": 4,
+      "confidence": "moderate",
+      "how": "Lower segment of the same fit. The anterior shank contour is the tibia, so this is a good axis proxy. ~0 deg means the ankle lands under the knee.",
+      "why_it_matters": "This is the better-supported overstride indicator (Crowell & Davis shank-angle retraining) and it does not need the hip landmark that makes overstride_pct_leg unreliable.",
+      "disagrees_with_overstride": "The shank is near vertical at touchdown (~2 deg) while the hip-referenced overstride reads ~18 %leg. Both are correct measurements of different things: the foot lands under the KNEE, but the whole leg is swung forward from the hip. The same pattern appears on IMG_8325 (shank ~2 deg, overstride ~27 %leg). For this runner the two measures give opposite verdicts, so neither should be quoted alone."
+    },
+    "foot_strike": {
+      "value": 1,
+      "uncertainty": 4,
+      "confidence": "low",
+      "conclusion": "Both feet land essentially FLAT (midfoot). No resolvable left/right difference.",
+      "how": "Line fitted to the lower boundary of the cream midsole, corrected for a per-foot systematic offset measured at mid-stance (when the foot is demonstrably flat on the belt the fit still reads -5 deg for the right foot and -2 deg for the left, because of the rockered midsole and because the two feet are seen from opposite sides of the shoe)."
+    },
+    "peak_thigh_forward": {
+      "value": 18,
+      "uncertainty": 4,
+      "confidence": "low",
+      "note": "knee-drive proxy, from the leading-thigh anterior contour"
+    }
+  },
+  "not_measurable_from_this_clip": {
+    "hip_extension": "No visible hip landmark. The greater trochanter is under the top, and the two thighs merge into one dark mass in the silhouette above the knee, so no thigh axis can be fitted through the hip. Would need a marker or a pose model.",
+    "elbow_angle_and_arm_swing": "Her sleeve is the same colour and brightness as her top, and the near arm overlaps the torso. No usable contour.",
+    "knee_flexion_at_midstance": "At mid-stance the swing leg crosses the stance leg, so the outermost-contour fit tracks the wrong limb. Verified: the fit at f14 and f19 visibly followed the buttock and posterior calf, not the stance thigh.",
+    "left_leg_joint_angles": "The left (far) leg is never the outermost contour and is partly occluded by the right leg.",
+    "pelvic_drop_step_width_crossover_pronation": "Frontal-plane metrics. Not observable from any side view."
+  },
+  "composites_repo_thresholds": {
+    "_comment": "Evaluated against the thresholds in gaitlab/metrics/definitions/composites/ as of this branch. Measurement only - not coaching.",
+    "bouncing": {
+      "fires": false,
+      "why": "needs vertical_oscillation > 18 %leg; measured 14.0"
+    },
+    "sinking_midstance": {
+      "fires": false,
+      "why": "needs trunk_lean > 16 deg; measured 5.7"
+    },
+    "heavy_heelstrike": {
+      "fires": false,
+      "why": "needs foot_strike_angle > 12 deg; measured ~1 (flat)"
+    },
+    "overstriding": {
+      "fires": "undetermined",
+      "why": "needs overstride > 8 %leg AND hip_extension < 10 deg AND cadence below the personalized good band. Overstride is 14 +/- 6 %leg (spans the threshold) and hip extension is not measurable from this clip."
+    }
+  },
+  "engine_check_worth_running": {
+    "personalized_cadence_target_looks_too_high": "gaitlab/metrics/definitions/cadence.py computes center = 188 - 0.615*(stature_cm - 157) + 1.2*(speed_kmh - 10). For this runner (stature ~156 cm, speed ~5.9 km/h) that is 183.7, so the good band is 177-191 and the warn floor is 170. Her measured 168.2 spm would be scored 'bad' and raise a high-severity 'increase your cadence' finding. At 5.9 km/h, 168 spm is brisk rather than low. The stature term outweighs the speed term at slow paces; worth checking the formula against slow-pace data before trusting that finding."
+  },
+  "measurement_pitfalls_found": [
+    "PAW-BACK: the frontmost-toe turning point is NOT touchdown. The foot reaches its most-forward position and then retracts backward through the air before landing \u2014 median 2.3 frames (76 ms) at 30 fps on this clip, and 9 frames (75 ms) at 120 fps on IMG_8325, i.e. the same ~75 ms in real time. Anchoring contact there inflates contact time, deflates flight, and shifts every at-contact angle. This is the single most consequential error found in either clip.",
+    "PHASE ARTIFACT: measuring foot-strike angle at the nominal contact frame produced a spurious and highly repeatable 13 deg left/right difference (right -5 deg, left +8 deg, five strides each). The left foot was still airborne at those frames. Phase-matching to actual touchdown removed the difference entirely. Any per-event angle must be matched to the event, not to a rounded frame index.",
+    "TEMPORAL-MEDIAN BACKGROUND FAILS ON A TREADMILL: the runner stays in place, so for torso pixels the per-pixel median over time IS her body, not the wall. The resulting silhouette is hollow through the torso and pelvis. Limbs, which move a lot, segment fine. Do not assume median background subtraction works just because the camera is static.",
+    "NEAR AND FAR FOOT SIT AT DIFFERENT IMAGE HEIGHTS on the same belt (30 px here), so a single ground-level threshold mis-segments one foot's stance.",
+    "CONTAINER FRAME-RATE METADATA WAS WRONG (249 frames / 28.73 fps in the header vs 240 frames at a constant 30.000 fps decoded)."
+  ],
+  "method_summary": "All numbers above were measured by hand from decoded frames using ffmpeg and OpenCV primitives (colour thresholds, background subtraction, contour and line fits, parabolic sub-frame interpolation). No part of the gaitlab engine and no pose model was used, so this is independent of the code it is meant to check. Every automated fit was verified by rendering it back over the source frames.",
+  "status": "CORRECTED 2026-09-13 \u2014 timing and overstride re-measured against true touchdown. See corrections.",
+  "corrections": {
+    "2026-09-13": [
+      "ROOT CAUSE: the original pass anchored contact on the frontmost-toe turning point, the frame where the foot stops moving forward. That is not touchdown. The foot actively retracts (paw-back) before it lands, so the turning point is systematically early. Re-measuring 20 stances on this clip puts the lag at 1.3 to 3.2 frames, median 2.3 (76 ms at 30 fps) \u2014 which matches the runner's own frame-by-frame reading of the shadow under the shoe.",
+      "contact_time 320 ms -> 217 ms; duty_factor 45% -> 30%; flight 37 ms -> 140 ms. The originals were physiologically implausible and are now inside the repo's own bands (contact 180-320 ms, duty 25-48%).",
+      "overstride: the original 14 %leg was marked void in conversation and I estimated the corrected value at 2-10 %leg. THAT ESTIMATE WAS WRONG IN THE OTHER DIRECTION. Re-read by eye at two true touchdown frames it is about 18 %leg, higher than the original, not lower. At 30 fps the foot retracts only 1-2 frames' worth before landing, so the correction is small, and my larger hip-position estimate moved it up rather than down.",
+      "I previously told the runner there was 'no evidence of meaningful overstriding' on this clip. That rested on the shank angle alone. The hip-referenced measure disagrees. Both are recorded below."
+    ]
+  }
+}

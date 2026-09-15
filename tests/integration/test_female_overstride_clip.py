@@ -14,26 +14,34 @@ apexes. All eight estimates land in 102.28-103.91 spm. No pose model and no part
 engine was involved. See tests/data/female_overstride.groundtruth.json for the full method,
 including why `scripts/measure_cadence_groundtruth.py` cannot measure this clip.
 
-WHAT IS BROKEN, as of commit c4f6389:
+WHAT THIS CAUGHT, and what fixing it did:
 
-    cadence        126.87 spm     truth 102.8      +23.4%
-    strikes        16 L + 18 R    truth ~16.6      2.05x too many
-    contact time   332 / 215 ms   truth 505 ms     low, and asymmetric for no reason
-    duty factor    57.3%          truth 44%        >50% means walking
-    flight time    199.5 ms       truth 75 ms      contradicts a 57.3% duty factor
+                    before      after     truth
+    cadence         126.87      102.96    102.8      23.4% -> 0.16%
+    strikes         34          18        ~17        2.05x -> correct
+    stride time     0.58 s      1.16 s    1.167 s    was the STEP period
+    duty factor     57.3%       43.3%     44%        was above 50%, i.e. walking
+    tilt warning    fires       gone      level      was a symptom, as predicted
 
-One root cause. `events.py` spaces ankle-y peaks with `min_dist = max(3, int(fps * 0.35))`,
-an absolute-time guard against a defect that scales with the stride: the spurious
-swing-phase peak sits at a roughly fixed FRACTION of the stride (~0.4), so at 168.9 spm it
-falls 0.28 s out and the guard rejects it, while at 102.8 spm it falls 0.47 s out and
-survives. `_robust_period` then converts the doubled event list into a plausible-looking
-wrong answer rather than an obviously broken one — its median-anchored 0.6x-1.6x trim
-window comes out as [0.215, 0.573] s, and the true step period of 0.5837 s falls just
-outside it, so the one correct gap in the list is discarded.
+Root cause, in `events.py`. Ankle-y peaks were spaced with `min_dist = fps * 0.35`, an
+absolute-time guard against a defect that scales with the stride: the spurious swing-phase
+peak sits at roughly a fixed FRACTION of the stride (~0.4), so at 168.9 spm it falls 0.28 s
+out and the guard rejects it, while at 102.8 spm it falls 0.47 s out and survives. No
+constant fixes that — rejecting a 100 spm runner's bump needs >0.5 s and admitting a 220 spm
+sprint stride needs <0.545 s. The stride is now measured from the signal itself
+(`geometry.dominant_period`) and the floor scales to it.
 
-Note the frame rate is NOT the cause. This clip carries real 120 fps container timestamps
-and the engine reads them correctly (`effective_fps` = 119.896). The bug is frame-rate
-independent.
+`_robust_period` then turned the doubled event list into a plausible wrong answer rather than
+an obvious one, which was the more dangerous half. Its median-anchored trim window came out
+as [0.215, 0.573] s while the true step period was 0.5837 s, so the one correct gap in the
+list was discarded. It now anchors on the measured stride when the caller knows it.
+
+The frame rate was never the cause. This clip carries real 120 fps container timestamps and
+the engine reads them correctly (`effective_fps` = 119.896); it failed identically with a
+perfect timebase.
+
+STILL OPEN: contact time and duty factor, for a DIFFERENT reason — see the note above
+`test_contact_time_is_physiological`.
 
 These tests are `xfail(strict=True)`: CI stays green while the bug is open, and the moment
 the engine gets cadence right they XPASS, which fails the run until the marker is removed.
@@ -60,11 +68,13 @@ pytestmark = pytest.mark.skipif(
     reason=f"real-clip fixture not present ({POSE.name}); see tests/data/README.md",
 )
 
-# Remove this marker when gait-event detection is fixed. Do not loosen the tolerances
-# instead: the measured truth is good to +/-0.6 spm and the engine is 23% away.
-broken = pytest.mark.xfail(
+# Contact time and duty factor are still wrong, but no longer because events are doubled.
+# See the note above test_contact_time_is_physiological. Do not loosen a tolerance or widen
+# a band to clear these: the measured truth is 505 +/- 25 ms and the bands are already
+# +/-15% around it.
+uncalibrated_stance = pytest.mark.xfail(
     strict=True,
-    reason="gait-event detection doubles at low cadence; see this module's docstring",
+    reason="LIFT_FRACTION cannot fit both clips at once; see test_contact_time_is_physiological",
 )
 
 
@@ -123,7 +133,6 @@ def test_engine_reads_the_real_frame_rate(seq):
 
 # --------------------------------------------------------------------------- cadence
 
-@broken
 def test_cadence_matches_ground_truth(result, truth):
     """THE EXIT CRITERION.
 
@@ -138,7 +147,6 @@ def test_cadence_matches_ground_truth(result, truth):
     )
 
 
-@broken
 def test_strike_count_is_consistent_with_cadence(events, seq, truth):
     """Count events independently of the gaps between them.
 
@@ -157,7 +165,6 @@ def test_strike_count_is_consistent_with_cadence(events, seq, truth):
     )
 
 
-@broken
 def test_same_foot_events_are_a_stride_apart(events, seq, truth):
     """Consecutive events on ONE foot are a stride apart, never a step.
 
@@ -179,25 +186,49 @@ def test_same_foot_events_are_a_stride_apart(events, seq, truth):
 
 # ------------------------------------------------------------ stance, from 120 fps
 
-@broken
+@uncalibrated_stance
 def test_contact_time_is_physiological(result, truth):
     """Unlike male_side's, this band is measured from the clip, not taken from literature.
 
-    At 120 fps a stance is ~60 frames, so contact time is resolved rather than argued over.
+    At 120 fps a stance is ~60 frames, so contact time is resolved rather than argued over —
+    and what it resolves is that LIFT_FRACTION is not merely uncalibrated (as events.py has
+    always said) but unfittable. Sweeping it against both real clips at once:
+
+        LIFT_FRACTION   female_overstride          male_side
+                        (truth 505 ms / 44%)       (bands 180-320 ms / 25-48%)
+        0.15 (current)  394 ms / 34.1%             241 ms / 34.5%   ok
+        0.20            440 ms / 37.7%             308 ms / 44.0%   ok
+        0.30            505 ms / 43.3%   exact     388 ms / 55.4%   impossible
+
+    No single value satisfies both. 0.20 does clear every band assertion, but only by
+    landing inside bands rather than by matching either clip's measurement, and it moves
+    male_side's duty factor by ten points on a clip where contact time was never measured.
+    That is tuning to the test, so it was not done.
+
+    The reason a constant cannot work: LIFT_FRACTION thresholds on a fraction of the ankle's
+    peak-to-peak range over the whole clip, and most of that range is swing-phase lift, not
+    anything to do with the ground. Worse, the ankle is not the sole — it keeps moving
+    through stance as the foot rolls — so the ankle-y plateau is systematically shorter than
+    true foot-ground contact, by an amount that depends on strike pattern and ankle motion.
+    A fixed fraction of an amplitude is not a definition of "the foot is loading the ground."
+
+    The fix is to define contact by MOTION rather than by height: the foot is down while its
+    velocity matches the ground's (-belt speed on a treadmill, zero overground with a fixed
+    camera). That is a separate change and it needs its own ground truth, which this clip now
+    provides.
     """
     lo, hi = truth["physiological_bands"]["contact_time_ms"]
     gct = _metric(result, "contact_time")
     assert lo <= gct <= hi, f"ground contact time {gct:.0f} ms is outside {lo}-{hi} ms"
 
 
-@broken
+@uncalibrated_stance
 def test_duty_factor_is_physiological(result, truth):
     lo, hi = truth["physiological_bands"]["duty_factor_pct"]
     duty = _metric(result, "duty_factor")
     assert lo <= duty <= hi, f"duty factor {duty:.1f}% is outside {lo}-{hi}%"
 
 
-@broken
 def test_duty_factor_and_flight_time_do_not_contradict_each_other(result):
     """A duty factor over 50% means both feet are down at once — so there is no flight.
 
@@ -215,7 +246,6 @@ def test_duty_factor_and_flight_time_do_not_contradict_each_other(result):
 
 # --------------------------------------------------------------------------- quality
 
-@broken
 def test_no_spurious_ground_tilt_warning(result):
     """The tilt check fits a line through ankle positions AT DETECTED STRIKES.
 

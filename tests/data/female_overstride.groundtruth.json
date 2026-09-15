@@ -115,13 +115,14 @@
     }
   },
   "known_engine_deviations": {
-    "_comment": "What main produces on this fixture as of 2026-09-15, commit c4f6389. Delete an entry when it is fixed. Every one of these is downstream of a single root cause; see root_cause.",
-    "cadence": "126.87 spm against a measured 102.8 — 23.4% high.",
-    "strike_count": "16 left + 18 right = 34 events over 9.675 s. The measured cadence implies ~16.6 steps total, so the detector finds 2.05x too many. Every same-foot gap comes out near 0.58 s, which is the STEP period; consecutive same-foot events are a STRIDE apart and should be near 1.167 s.",
-    "contact_time": "332 ms left, 215 ms right, against a measured 505 ms. Also grossly asymmetric between feet, which nothing in the clip supports.",
-    "duty_factor": "57.3%. Above 50% means both feet are on the ground at once, i.e. walking, which contradicts the 126.87 spm running cadence the same report prints.",
-    "flight_time": "199.5 ms against a measured 75 ms, and self-contradictory with a 57.3% duty factor.",
-    "ground_tilt_warning": "Fires. The check fits a line through the ankle positions AT DETECTED STRIKES, so phantom mid-swing strikes tilt the fitted line regardless of the camera. Independently traced scene edges are all within 2.5 deg and the belt line from planted soles is 1.5 deg, both under the check's ~3.4 deg threshold. It also disables its own safety net: quality.py suppresses the check when strikes span less than 25% of frame width (the treadmill case), and phantom strikes widen that span past the threshold."
+    "_comment": "Updated 2026-09-15 after the gait-event fix. Delete an entry when it is fixed.",
+    "FIXED_cadence": "126.87 -> 102.96 spm against a measured 102.8 (0.16%). male_side went 168.42 -> 169.60 against 168.9 (0.42%), still well inside its 1.5% band.",
+    "FIXED_strike_count": "34 -> 18 events over 9.675 s, against ~17 implied by the measured cadence.",
+    "FIXED_stride_time": "0.58 s -> 1.156/1.165 s against a true 1.167. It had been reporting the STEP period.",
+    "FIXED_duty_factor": "57.3% -> 43.3% against a measured 44%. No longer above the 50% walking boundary.",
+    "FIXED_ground_tilt_warning": "Gone. It was downstream of the strike bug exactly as predicted — the check fits a line through ankle positions at detected strikes.",
+    "OPEN_contact_time": "394 ms against a measured 505 ms. No longer an event-doubling problem; see lift_fraction_is_unfittable.",
+    "OPEN_flight_time": "213 ms against a measured 75 ms. Same cause — flight is derived as step time minus contact, so it inherits the contact error."
   },
   "browser_path_deviations": {
     "_comment": "The runner ran the SOURCE clip through the static GitHub Pages build (in-browser MediaPipe + Pyodide) on 2026-09-13. Kept separate from known_engine_deviations because the browser path fails differently AND additionally. Not asserted by any test — there is no headless harness for the browser path yet.",
@@ -172,5 +173,19 @@
     "Keep 120 fps. It is what made the timebase check and the measured contact time possible.",
     "Camera position and framing on this clip were fine. No change needed."
   ],
-  "method_summary": "Measured from decoded frames using ffmpeg, OpenCV primitives and numpy. No part of the gaitlab engine and no pose model was used for any ground-truth number. Every automated result was rendered back over the source frames before being trusted."
+  "method_summary": "Measured from decoded frames using ffmpeg, OpenCV primitives and numpy. No part of the gaitlab engine and no pose model was used for any ground-truth number. Every automated result was rendered back over the source frames before being trusted.",
+  "lift_fraction_is_unfittable": {
+    "_comment": "The headline result of adding a 120 fps clip, and it is a negative one. events.py has always described LIFT_FRACTION as 'bounded, not calibrated' and said a 120/240 fps clip would settle it. This is that clip, and what it settles is that no constant works.",
+    "sweep": {
+      "_columns": "LIFT_FRACTION | female_overstride contact ms / duty % | male_side contact ms / duty %",
+      "0.15": "394 / 34.1  |  241 / 34.5   male_side ok",
+      "0.20": "440 / 37.7  |  308 / 44.0   male_side ok",
+      "0.25": "469 / 40.4  |  367 / 52.4   male_side impossible",
+      "0.30": "505 / 43.3  exact match  |  388 / 55.4   male_side impossible"
+    },
+    "measured_truth_here": "contact 505 +/- 25 ms, duty 44%, flight 75 +/- 15 ms",
+    "decision": "Left at 0.15. 0.20 clears every band assertion on both clips, but only by landing inside bands rather than matching either measurement, and it would move male_side's duty factor ten points on a clip whose contact time was never measured. That is tuning to the test.",
+    "why_a_constant_cannot_work": "It thresholds a fraction of the ankle's peak-to-peak range over the whole clip, and most of that range is swing-phase lift, which has nothing to do with the ground. The ankle is also not the sole: it keeps moving through stance as the foot rolls, so the ankle-y plateau is systematically shorter than true foot-ground contact by an amount that depends on strike pattern and ankle motion.",
+    "proposed_replacement": "Define contact by motion rather than height: the foot is down while its horizontal velocity matches the ground's — minus belt speed on a treadmill, zero overground with a fixed camera. Both cases are the same statement, so writing it that way also makes overground support a parameter rather than a rewrite. Needs its own ground truth; the flight phases measured on this clip from the bright midsole are that."
+  }
 }

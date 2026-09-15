@@ -48,17 +48,21 @@ fine-grid DFT and a 4-harmonic autocorrelation ladder, plus two cross-checks of 
 physics. All eight estimates land in 102.28–103.91 spm. Contact time (**505 ± 25 ms**) and
 flight (**75 ± 15 ms**) are *measured*, not literature bands — that is what 120 fps buys.
 
-**This fixture fails on purpose.** `male_side.mp4` sits at 168.9 spm, where gait-event
-detection happens to work, so it can only show the engine has not regressed. This clip sits
-at 102.8 spm, where detection doubles: the engine reports 126.87 spm, 34 strikes where ~17
-are real, and a 57.3% duty factor alongside 199 ms of flight — two numbers that refute each
-other. `tests/integration/test_female_overstride_clip.py` marks those assertions
-`xfail(strict=True)`, so CI stays green while the bug is open and the run fails the moment
-the engine gets it right, forcing the marker off. The marker is the todo list.
+**This fixture was added because it failed.** `male_side.mp4` sits at 168.9 spm, where
+gait-event detection happens to work, so it could only show the engine had not regressed.
+This clip sits at 102.8 spm, where detection doubled: 126.87 spm, 34 strikes where ~17 are
+real, a 57.3% duty factor alongside 199 ms of flight, and a ground-tilt warning on a level
+clip. Cadence is now 102.96 spm (0.16% off) and the rest went with it.
 
-The frame rate is *not* the cause. This clip carries real 120 fps container timestamps and
-the engine reads them correctly (`effective_fps` = 119.896). The bug is frame-rate
-independent; the fixture is what proves it.
+Two assertions are still `xfail(strict=True)` — contact time and duty factor — for a
+different reason: `LIFT_FRACTION` cannot fit both clips at once. This clip's measured 505 ms
+needs 0.30, which puts male_side above a 50% duty factor. See the note on
+`test_contact_time_is_physiological` and the sweep in `gaitlab/core/events.py`. The markers
+are the todo list: strict means the run fails the moment they start passing.
+
+The frame rate was never the cause. This clip carries real 120 fps container timestamps and
+the engine reads them correctly (`effective_fps` = 119.896); it failed identically with a
+perfect timebase.
 
 **Consent.** The runner in `female_overstride.mp4` is the repository maintainer, who gave
 explicit consent on 2026-09-15 to commit it here under the MIT license, indefinitely and
@@ -145,9 +149,10 @@ it as a deliberate one-time migration, not a decision to make mid-PR.
 The 120 fps clip this section used to ask for now exists (`female_overstride.mp4`), and it
 did settle where initial contact falls: stance is ~60 frames rather than ~7, so contact time
 is measured (505 ± 25 ms) instead of argued over. `LIFT_FRACTION` in
-`gaitlab/core/events.py` can now be calibrated against a reference rather than bounded by
-physical constraints — but that is blocked on fixing gait-event detection first, because at
-102.8 spm the engine does not find the right events to calibrate against.
+`gaitlab/core/events.py` turned out to be unfittable rather than merely uncalibrated: no
+single value satisfies both clips, because it thresholds a fraction of the ankle's vertical
+range and most of that range is swing-phase lift. Defining contact by foot velocity matching
+ground velocity is the open replacement.
 
 Still missing from every clip here:
 
