@@ -34,13 +34,50 @@ rather than fail.
 committed to this public repository under its MIT license, indefinitely and re-forkable.
 Record the same for any clip you add — see "Before adding another clip" below.
 
+## `female_overstride.*`
+
+| File | What it is |
+|---|---|
+| `female_overstride.mp4` | Treadmill, side view, runner facing image-right. 720x1280, **120 fps**, 1160 frames, 9.675 s. Re-encode of a 1080x1920 HEVC phone clip; not trimmed (the source is only 9.675 s). |
+| `female_overstride.pose.json` | Landmarks from `extractor/extract_pose.py` (RTMPose-Halpe26). What the tests load. |
+| `female_overstride.groundtruth.json` | Measured cadence, contact and flight, full provenance, and the root-cause analysis of what the engine gets wrong on it. |
+
+Ground truth is **102.8 ± 0.6 spm**, from four independent pixel signals (head-top row,
+silhouette centroid, leg-band motion energy, foot-band spread), each read by both a
+fine-grid DFT and a 4-harmonic autocorrelation ladder, plus two cross-checks of different
+physics. All eight estimates land in 102.28–103.91 spm. Contact time (**505 ± 25 ms**) and
+flight (**75 ± 15 ms**) are *measured*, not literature bands — that is what 120 fps buys.
+
+**This fixture fails on purpose.** `male_side.mp4` sits at 168.9 spm, where gait-event
+detection happens to work, so it can only show the engine has not regressed. This clip sits
+at 102.8 spm, where detection doubles: the engine reports 126.87 spm, 34 strikes where ~17
+are real, and a 57.3% duty factor alongside 199 ms of flight — two numbers that refute each
+other. `tests/integration/test_female_overstride_clip.py` marks those assertions
+`xfail(strict=True)`, so CI stays green while the bug is open and the run fails the moment
+the engine gets it right, forcing the marker off. The marker is the todo list.
+
+The frame rate is *not* the cause. This clip carries real 120 fps container timestamps and
+the engine reads them correctly (`effective_fps` = 119.896). The bug is frame-rate
+independent; the fixture is what proves it.
+
+**Consent.** The runner in `female_overstride.mp4` is the repository maintainer, who gave
+explicit consent on 2026-09-15 to commit it here under the MIT license, indefinitely and
+re-forkable — the same terms recorded for `male_side.mp4`.
+
+Re-extract with:
+
+```
+python3 extractor/extract_pose.py tests/data/female_overstride.mp4 --view side-right \
+    -o tests/data/female_overstride.pose.json
+```
+
 ## Two layers, both real
 
 The video and the pose JSON test different things and both are committed on purpose:
 
 | Layer | Input | Catches | CI cost |
 |---|---|---|---|
-| Engine (`tests/integration/test_male_side_clip.py`) | `.pose.json` | metric/event regressions | <1s, no deps, runs every push |
+| Engine (`tests/integration/test_*_clip.py`) | `.pose.json` | metric/event regressions | <1s, no deps, runs every push |
 | Extraction | `.mp4` | extractor regressions, model swaps | needs rtmlib/onnxruntime + ~700MB of models; run on a schedule or when `extractor/` changes, not per-commit |
 
 Pose-only would be faster but hollow: the ground truth (168.9 spm) was measured from raw
@@ -82,8 +119,9 @@ Three things worth being deliberate about, in order of how easy they are to fix 
 
 ## Git LFS — not yet, revisit past ~50MB
 
-The whole repo's `.git` history is currently ~7MB. This clip adds ~2MB (video + pose JSON).
-At 1-3MB per clip (see above), even 15-20 clips covering every view/fps/body-type
+The whole repo's `.git` history was ~7MB before any clip. `male_side.*` adds ~2MB and
+`female_overstride.*` ~3.8MB (a 120fps clip costs more per second than a 30fps one).
+At 2-4MB per clip, even 10-15 clips covering every view/fps/body-type
 combination worth testing stays under 50MB total — well inside what plain git handles
 comfortably; GitHub's own guidance is to keep repos under a few hundred MB before it's
 worth the operational cost.
@@ -104,8 +142,23 @@ it as a deliberate one-time migration, not a decision to make mid-PR.
 
 ## What is still missing
 
-No clip here can settle where initial contact actually falls. At 30 fps a whole stance is
-about 7 frames, so competing event-anchor definitions differ by 2-3 frames and none can be
-resolved. `LIFT_FRACTION` in `gaitlab/core/events.py` is currently bounded by physical
-constraints rather than calibrated. **One 120 or 240 fps clip** — any modern phone's slow-mo
-mode — would settle it permanently. That is the highest-value addition to this directory.
+The 120 fps clip this section used to ask for now exists (`female_overstride.mp4`), and it
+did settle where initial contact falls: stance is ~60 frames rather than ~7, so contact time
+is measured (505 ± 25 ms) instead of argued over. `LIFT_FRACTION` in
+`gaitlab/core/events.py` can now be calibrated against a reference rather than bounded by
+physical constraints — but that is blocked on fixing gait-event detection first, because at
+102.8 spm the engine does not find the right events to calibrate against.
+
+Still missing from every clip here:
+
+- **A known-length reference in frame, at the runner's depth.** Every cm and km/h figure in
+  `female_overstride.groundtruth.json` is inferred from anthropometrics.
+- **The treadmill's displayed speed**, which four metrics depend on.
+- **Two seconds of empty belt before stepping on.** Temporal-median background subtraction
+  is unusable on a treadmill — a stationary runner makes the median *become* her body — and
+  a real background plate is the only fix.
+- **Something with a true vertical edge**, so camera roll can be measured rather than
+  assumed. Both clips currently make their angle measurements conditional on it.
+- **A band or contrasting sock on one leg.** When both legs are the same colour they cannot
+  be told apart wherever they overlap, which is what makes far-leg angles unmeasurable.
+- **A clip that is not a treadmill**, if overground support is ever in scope.
