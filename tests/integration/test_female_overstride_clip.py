@@ -212,10 +212,30 @@ def test_contact_time_is_physiological(result, truth):
     true foot-ground contact, by an amount that depends on strike pattern and ankle motion.
     A fixed fraction of an amplitude is not a definition of "the foot is loading the ground."
 
-    The fix is to define contact by MOTION rather than by height: the foot is down while its
-    velocity matches the ground's (-belt speed on a treadmill, zero overground with a fixed
-    camera). That is a separate change and it needs its own ground truth, which this clip now
-    provides.
+    Two replacements were prototyped against both clips and BOTH fail the same way, so the
+    problem is not the choice of signal:
+
+        vertical-velocity threshold k   female (truth 505 ms / 44%)   male_side
+        0.30                            450 ms / 38.8%                 83 ms / 11.8%
+        0.35                            513 ms / 44.2%  near-exact     83 ms / 11.8%
+        0.40                            592 ms / 51.0%                167 ms / 23.6%
+
+    Horizontal foot velocity was also tried, expecting a tight stance cluster at belt speed
+    against a broad forward swing spread. The heel's velocity histogram is not cleanly
+    bimodal on either clip, because the heel lifts during stance while the toe stays down.
+
+    What this actually shows is that the calibration is UNDER-DETERMINED, not that the model
+    is merely wrong. There is one clip with a measured contact time (this one, 505 ms at
+    120 fps) and one without (male_side, where only a literature band exists and where, at
+    30 fps, a whole stance is ~7 frames and the measurement is quantization-limited whatever
+    method is used). Every threshold fitted to this clip lands male_side outside its band and
+    vice versa, and with a single measured point there is no way to tell whether that means
+    the model is wrong or male_side's true contact is simply longer than 0.15 implies.
+
+    So the next step is data, not code: a second clip at 120 fps, at a DIFFERENT cadence,
+    with contact measured from pixels the way this one was. Then the threshold has two
+    constraints and the model can be tested rather than fitted. See
+    tests/data/README.md for the capture requirements.
     """
     lo, hi = truth["physiological_bands"]["contact_time_ms"]
     gct = _metric(result, "contact_time")

@@ -154,6 +154,14 @@ single value satisfies both clips, because it thresholds a fraction of the ankle
 range and most of that range is swing-phase lift. Defining contact by foot velocity matching
 ground velocity is the open replacement.
 
+**The single highest-value addition now is a second 120 fps clip at a different cadence,
+with contact time measured from pixels.** Contact detection currently has one measured
+constraint (`female_overstride`, 505 ms) and one literature band (`male_side`, at 30 fps
+where a stance is ~7 frames and any method is quantization-limited). With one measured
+point every threshold that fits one clip misses the other, and there is no way to tell
+whether the model is wrong or the unmeasured clip's true contact is simply different. Two
+measured points make it testable instead of fittable.
+
 Still missing from every clip here:
 
 - **A known-length reference in frame, at the runner's depth.** Every cm and km/h figure in
