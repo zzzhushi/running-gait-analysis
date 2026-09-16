@@ -130,6 +130,39 @@ def find_peaks(values: List[float], min_distance: int = 1,
     return chosen
 
 
+def resample_uniform(values: List[float], times: List[float], count: int) -> List[float]:
+    """`values` sampled at `times` (ascending), linearly interpolated onto `count` points
+    evenly spaced over the same span.
+
+    Frequency analysis assumes a uniform sample spacing. PoseSequence explicitly supports
+    variable frame rates and dropped frames — the browser extractor drops frames whenever the
+    compositor is busy — so the raw series is not safe to autocorrelate directly. Everything
+    else in events.py already works in elapsed time via `seq.elapsed`; this is how the period
+    estimate joins it.
+    """
+    n = len(values)
+    if n < 2 or len(times) != n or count < 2:
+        return list(values)
+    span = times[-1] - times[0]
+    if span <= 0:
+        return list(values)
+    step = span / (count - 1)
+    out: List[float] = []
+    j = 0
+    for k in range(count):
+        t = times[0] + k * step
+        while j + 2 < n and times[j + 1] < t:
+            j += 1
+        t0, t1 = times[j], times[j + 1]
+        v0, v1 = values[j], values[j + 1]
+        if math.isnan(v0) or math.isnan(v1) or t1 <= t0:
+            out.append(v0)
+        else:
+            f = (t - t0) / (t1 - t0)
+            out.append(v0 + (v1 - v0) * f)
+    return out
+
+
 # How close a shorter lag must come to the best correlation before it is preferred over it.
 SUBHARMONIC_TOLERANCE = 0.85
 
@@ -170,8 +203,18 @@ def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
         for i in range(n - lag):
             acc += dev[i] * dev[i + lag]
         r.append(acc / (total * (n - lag) / n))
-    peaks = [(min_lag + i, r[i]) for i in range(1, len(r) - 1)
-             if r[i] >= r[i - 1] and r[i] >= r[i + 1]]
+    # Endpoints count as one-sided maxima. `min_lag..max_lag` is an inclusive physiological
+    # range, so an interior-only scan makes the exact limits unreachable: at 60 spm (a 2.0 s
+    # stride, the slowest allowed) this returned nan and cadence came out at 120, and at
+    # 240 spm it locked onto the two-stride harmonic.
+    last = len(r) - 1
+    peaks = []
+    if last >= 1 and r[0] >= r[1]:
+        peaks.append((min_lag, r[0]))
+    peaks += [(min_lag + i, r[i]) for i in range(1, last)
+              if r[i] >= r[i - 1] and r[i] >= r[i + 1]]
+    if last >= 1 and r[last] >= r[last - 1]:
+        peaks.append((min_lag + last, r[last]))
     if not peaks:
         return float("nan")
     best_r = max(v for _, v in peaks)

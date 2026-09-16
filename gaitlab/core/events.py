@@ -103,7 +103,14 @@ def _robust_period(gaps: List[float], expect: float = float("nan")) -> float:
         return float("nan")
     lo, hi = ((0.8, 1.2) if (expect == expect and expect > 0) else (0.6, 1.6))
     kept = [g for g in gaps if lo * anchor <= g <= hi * anchor]
-    return mean(kept) if kept else anchor
+    if kept:
+        return mean(kept)
+    # Nothing observed supports the reference. Returning `anchor` here would report a period
+    # no detected gap is near — _robust_period([0.10, 0.12], 0.50) would answer 0.50, i.e.
+    # 120 spm from gaps that imply ~500. The prior's job is to say which observations are
+    # plausible, not to stand in for them, so say we do not know. Without a reference the
+    # median IS an observation, so that path keeps its old fallback.
+    return float("nan") if (expect == expect and expect > 0) else median(gaps)
 
 
 @dataclass
@@ -121,6 +128,32 @@ class GaitEvents:
 
     def midstance(self, side: str) -> List[int]:
         return list(self.midstances[side])
+
+
+def _stride_seconds(ankle_y: List[float], seq: PoseSequence, fps: float) -> float:
+    """Stride period in SECONDS, measured from the ankle-y signal alone.
+
+    Autocorrelation assumes a uniform sample spacing, so with real per-frame timestamps the
+    signal is resampled onto a uniform TIME grid first. Reading the lag in frame indices and
+    dividing by one average fps is only valid when the frames are evenly spaced, and
+    PoseSequence exists partly to support the case where they are not: the browser extractor
+    drops frames whenever the compositor is busy. On synthetic 172 spm pose with 7 of every 8
+    frames removed for four seconds (timestamps preserved), the index-space reading gave
+    121 spm; on the time axis it stays correct.
+    """
+    ts = seq.timestamps
+    if ts is not None and len(ts) == len(ankle_y) and len(ankle_y) > 3:
+        span = ts[-1] - ts[0]
+        if span > 0:
+            count = len(ankle_y)
+            dt = span / (count - 1)
+            grid = geo.resample_uniform(ankle_y, ts, count)
+            lag = geo.dominant_period(grid, max(1, int(MIN_STRIDE_S / dt)),
+                                      int(MAX_STRIDE_S / dt))
+            return lag * dt if lag == lag else float("nan")
+    lag = geo.dominant_period(ankle_y, max(1, int(MIN_STRIDE_S * fps)),
+                              int(MAX_STRIDE_S * fps))
+    return lag / fps if lag == lag else float("nan")
 
 
 def detect_events(seq: PoseSequence) -> GaitEvents:
@@ -154,10 +187,10 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
             continue
         # Stride period straight from the ankle-y signal, independent of the peaks below —
         # a period derived from those peaks could not be used to judge whether they are real.
-        period = geo.dominant_period(ankle_y, int(MIN_STRIDE_S * fps), int(MAX_STRIDE_S * fps))
+        period = _stride_seconds(ankle_y, seq, fps)
         if period == period:
-            stride_s[side] = period / fps
-            min_dist = max(3, int(period * PEAK_SPACING_FRACTION))
+            stride_s[side] = period
+            min_dist = max(3, int(period * fps * PEAK_SPACING_FRACTION))
         else:
             min_dist = fallback_min_dist
         # One peak per stance — midstance, the middle of the foot-down plateau.

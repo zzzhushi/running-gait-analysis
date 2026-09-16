@@ -3,7 +3,8 @@ logic, MockExtractor, and the pipeline that ties an extractor to analyze().
 
 Neither rtmlib, opencv, nor mediapipe is a project dependency (requirements.txt
 covers them only for someone actually extracting from real video), so none is
-installed in CI. What's tested here without them:
+installed in CI. The missing-dependency tests do not rely on that being true,
+though — see the `without_optional_deps` fixture. What's tested here:
 
   - the base contract raises when unimplemented
   - every PURE function each extractor's extract() calls (to_canonical,
@@ -20,6 +21,7 @@ installed in CI. What's tested here without them:
 from __future__ import annotations
 
 import os
+import sys
 
 import pytest
 
@@ -136,19 +138,34 @@ class TestBlazePoseToCanonical:
         assert frame[KEYPOINTS.index("r_small_toe")] == [0.0, 0.0, 0.0]
 
 
-class TestMissingDependencies:
-    """rtmlib, cv2, and mediapipe are genuinely absent in this environment (as in
-    CI) — these exercise the real failure path, not a simulated one."""
+@pytest.fixture
+def without_optional_deps(monkeypatch):
+    """Make rtmlib, cv2 and mediapipe unimportable, installed or not.
 
-    def test_build_model_without_rtmlib_raises_runtime_error(self):
+    These paths used to be tested by relying on the packages genuinely being absent, which
+    holds in CI but not on any machine that has extracted a pose fixture — so whether the
+    suite passed depended on who ran it, and it started failing the moment this repo grew a
+    real 120 fps fixture to extract. Putting None in sys.modules makes an import of that name
+    raise ImportError, and both extractors import these lazily inside the function that needs
+    them, so the genuine error path still runs.
+    """
+    for name in ("rtmlib", "cv2", "mediapipe"):
+        monkeypatch.setitem(sys.modules, name, None)
+
+
+class TestMissingDependencies:
+    """A missing optional dependency must surface as a clear RuntimeError telling you what
+    to install, not as a bare ImportError traceback."""
+
+    def test_build_model_without_rtmlib_raises_runtime_error(self, without_optional_deps):
         with pytest.raises(RuntimeError, match="rtmlib is not installed"):
             build_model("body26")
 
-    def test_rtmpose_extract_without_opencv_raises_runtime_error(self):
+    def test_rtmpose_extract_without_opencv_raises_runtime_error(self, without_optional_deps):
         with pytest.raises(RuntimeError, match="opencv is not installed"):
             RTMPoseExtractor().extract("video.mp4", "side-left")
 
-    def test_mediapipe_extract_without_mediapipe_raises_runtime_error(self):
+    def test_mediapipe_extract_without_mediapipe_raises_runtime_error(self, without_optional_deps):
         with pytest.raises(RuntimeError, match="Needs MediaPipe"):
             MediaPipeExtractor().extract("video.mp4", "side-left")
 
@@ -178,7 +195,7 @@ class TestAnalyzeVideo:
         assert 0 <= d["summary"]["overall_score"] <= 100
         assert d["summary"]["view"] == "side-left"
 
-    def test_defaults_to_rtmpose_extractor_when_none_given(self):
+    def test_defaults_to_rtmpose_extractor_when_none_given(self, without_optional_deps):
         """No extractor passed -> RTMPoseExtractor -> fails on missing opencv,
         not on missing video. Confirms the default wiring without needing cv2."""
         with pytest.raises(RuntimeError, match="opencv is not installed"):
