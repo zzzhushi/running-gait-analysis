@@ -134,8 +134,7 @@ def resample_uniform(values: List[float], times: List[float], count: int) -> Lis
     """`values` sampled at `times` (ascending), linearly interpolated onto `count` points
     evenly spaced over the same span.
 
-    Frequency analysis assumes uniform spacing, so unevenly sampled series must be regridded
-    before any lag or frequency is read from them.
+    Use before frequency analysis, which assumes uniform sample spacing.
     """
     n = len(values)
     if n < 2 or len(times) != n or count < 2:
@@ -167,12 +166,8 @@ SUBHARMONIC_TOLERANCE = 0.85
 def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
     """Period of the strongest repeat in `values`, in samples, or nan.
 
-    Normalized autocorrelation over the inclusive `min_lag..max_lag`, returning the lag of
-    the strongest peak. NaNs count as zero deviation from the mean, so a dropout weakens the
-    correlation rather than poisoning it.
-
-    Coarse by construction: the answer is a whole number of samples. Use it to judge which
-    candidates are plausible, not as a measurement.
+    Searches normalized autocorrelation over the inclusive lag bounds. NaNs contribute zero
+    deviation from the mean. The result has whole-sample resolution.
     """
     n = len(values)
     min_lag = max(1, min_lag)
@@ -194,8 +189,7 @@ def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
         for i in range(n - lag):
             acc += dev[i] * dev[i + lag]
         r.append(acc / (total * (n - lag) / n))
-    # Endpoints count as one-sided maxima: the range is inclusive, so an interior-only scan
-    # would make its own limits unreachable.
+    # Inclusive search bounds make endpoints eligible as one-sided maxima.
     last = len(r) - 1
     peaks = []
     if last >= 1 and r[0] >= r[1]:
@@ -209,9 +203,7 @@ def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
     best_r = max(v for _, v in peaks)
     if best_r <= 0.0:
         return float("nan")
-    # Prefer the SMALLEST lag correlating about as well as the best: a periodic signal peaks
-    # at every multiple of its period, so the tallest is not reliably the fundamental.
-    # `min_lag` bounds how far down this can reach.
+    # Prefer the smallest comparable peak; multiples of the fundamental can score higher.
     for lag, v in peaks:
         if v >= best_r * SUBHARMONIC_TOLERANCE:
             return float(lag)

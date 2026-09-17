@@ -11,10 +11,8 @@ found by walking outward from the peak until the foot has lifted `LIFT_FRACTION`
 vertical range. Using the same threshold on both sides keeps stance symmetric about
 midstance.
 
-Keep that distinction, because these anchors are what every downstream metric is measured
-from. Treating midstance as the strike moves contact time, duty factor and overstride by
-about half a stance each, all in the same direction — so the report stays internally
-consistent while being uniformly wrong, which is the hardest kind of error to notice.
+Downstream metrics depend on these anchors, so midstance must not be reported as initial
+contact.
 """
 
 from __future__ import annotations
@@ -26,13 +24,8 @@ from typing import Dict, List, Tuple
 from . import geometry as geo
 from .schema import PoseSequence
 
-# How far the ankle must rise above its midstance low before the foot counts as off the
-# ground, as a fraction of its peak-to-peak range. Symmetric, so stance stays centred on
-# midstance.
-#
-# An amplitude fraction is a weak proxy for ground contact: most of that range is swing-phase
-# lift, and the ankle keeps moving through stance as the foot rolls. No single value suits
-# every runner, so contact time and duty factor are approximate.
+# Fraction of ankle vertical range used to estimate stance boundaries. Ankle motion during
+# stance varies by runner, so contact time and duty factor remain approximate.
 LIFT_FRACTION = 0.15
 
 # Peak spacing floor, as a fraction of the measured stride. The swing-phase bump sits near
@@ -44,14 +37,10 @@ MAX_STRIDE_S = 2.0
 
 
 def _robust_period(gaps: List[float], expect: float = float("nan")) -> float:
-    """Typical interval from a list of elapsed-time gaps.
+    """Return the mean of gaps consistent with a reference period.
 
-    Trim to gaps near a reference, then average what survives: a median alone is quantized
-    onto a coarse cadence grid, a mean alone is skewed by a single spurious event.
-
-    Pass `expect` when the caller knows the interval independently of these gaps. The median
-    is a poor stand-in, because it assumes most gaps are already real; where that fails the
-    trim keeps the wrong ones. An independent reference also allows a tighter window.
+    When `expect` is absent, the sample median supplies the reference. An external reference
+    permits tighter filtering and returns NaN when no observation supports it.
     """
     if not gaps:
         return float("nan")
@@ -62,8 +51,7 @@ def _robust_period(gaps: List[float], expect: float = float("nan")) -> float:
     kept = [g for g in gaps if lo * anchor <= g <= hi * anchor]
     if kept:
         return mean(kept)
-    # Nothing observed supports the reference: report unknown rather than a period no gap is
-    # near. Without a reference the median is itself an observation, so that path keeps it.
+    # Do not turn an unsupported external reference into an observed period.
     return float("nan") if (expect == expect and expect > 0) else median(gaps)
 
 
@@ -72,9 +60,8 @@ class GaitEvents:
     strikes: Dict[str, List[int]] = field(default_factory=lambda: {"l": [], "r": []})
     toeoffs: Dict[str, List[int]] = field(default_factory=lambda: {"l": [], "r": []})
     stance: Dict[str, List[Tuple[int, int]]] = field(default_factory=lambda: {"l": [], "r": []})
-    # The ankle-y peaks themselves: one per stance, the most sharply-defined event the
-    # signal offers. Timing-only quantities (cadence, stride time) are derived from these
-    # rather than from the refined contact frames — see the note in detect_events.
+    # Stable extrema used for cadence and stride timing; contact boundaries are noisier
+    # threshold crossings.
     midstances: Dict[str, List[int]] = field(default_factory=lambda: {"l": [], "r": []})
     cadence_spm: float = float("nan")
     stride_time: Dict[str, float] = field(default_factory=dict)   # seconds, median
@@ -85,10 +72,9 @@ class GaitEvents:
 
 
 def _stride_seconds(ankle_y: List[float], seq: PoseSequence, fps: float) -> float:
-    """Stride period in SECONDS, measured from the ankle-y signal alone.
+    """Estimate stride seconds from the ankle-y signal alone.
 
-    Resampled onto a uniform time grid first: an autocorrelation lag counts samples, so
-    converting it with one average fps holds only while frames are evenly spaced.
+    Timestamped input is resampled because autocorrelation lags assume uniform spacing.
     """
     ts = seq.timestamps
     if ts is not None and len(ts) == len(ankle_y) and len(ankle_y) > 3:
@@ -114,10 +100,8 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
     if n < 4:
         return ev
 
-    # Same-foot peaks are a STRIDE apart, with a swing-phase bump between each real pair at
-    # ~0.4 of the stride. The floor scales to the measured stride because the bump's position
-    # scales with it; an absolute floor separates the two at one cadence only. The fallback
-    # covers a clip too short or flat to measure a period from.
+    # Same-foot peaks are one stride apart; a secondary swing-phase peak occurs near 0.4 of
+    # that interval. Scale the spacing floor with stride so it works across cadences.
     fallback_min_dist = max(3, int(fps * 0.35))
     stride_s: Dict[str, float] = {}
 
@@ -170,10 +154,7 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
         ev.stance[side] = stance
         ev.midstances[side] = midstances
 
-        # Use midstance intervals for stride and step timing, not the refined contacts: an
-        # extremum is less sensitive to frame-level jitter than a threshold crossing on a
-        # rounded shoulder. That jitter cancels in stance duration, where both edges move
-        # together, but lands directly in the step intervals.
+        # Extrema provide more stable timing than contact-threshold crossings.
         same_foot = [seq.elapsed(midstances[i], midstances[i + 1])
                      for i in range(len(midstances) - 1)]
         if same_foot:
@@ -182,9 +163,8 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
         if contacts:
             ev.contact_time[side] = _robust_period(contacts)
 
-    # Merged (either-foot) step intervals: twice the samples, and L/R phase jitter averages
-    # out. The trim is anchored on half the measured stride because a spurious peak on one
-    # foot lands beside a real one on the other, injecting a near-zero gap here.
+    # Merge both feet for cadence; anchor filtering on half-stride so a spurious peak from
+    # either side cannot dominate the interval distribution.
     all_mid = sorted(ev.midstances["l"] + ev.midstances["r"])
     steps = [seq.elapsed(all_mid[i], all_mid[i + 1]) for i in range(len(all_mid) - 1)]
     measured = [v for v in stride_s.values() if v == v and v > 0]

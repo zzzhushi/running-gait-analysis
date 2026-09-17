@@ -140,15 +140,7 @@ class TestBlazePoseToCanonical:
 
 @pytest.fixture
 def without_optional_deps(monkeypatch):
-    """Make rtmlib, cv2 and mediapipe unimportable, installed or not.
-
-    These paths used to be tested by relying on the packages genuinely being absent, which
-    holds in CI but not on any machine that has extracted a pose fixture — so whether the
-    suite passed depended on who ran it, and it started failing the moment this repo grew a
-    real 120 fps fixture to extract. Putting None in sys.modules makes an import of that name
-    raise ImportError, and both extractors import these lazily inside the function that needs
-    them, so the genuine error path still runs.
-    """
+    """Force lazy optional-dependency imports to fail on every test environment."""
     for name in ("rtmlib", "cv2", "mediapipe"):
         monkeypatch.setitem(sys.modules, name, None)
 
