@@ -134,11 +134,8 @@ def resample_uniform(values: List[float], times: List[float], count: int) -> Lis
     """`values` sampled at `times` (ascending), linearly interpolated onto `count` points
     evenly spaced over the same span.
 
-    Frequency analysis assumes a uniform sample spacing. PoseSequence explicitly supports
-    variable frame rates and dropped frames — the browser extractor drops frames whenever the
-    compositor is busy — so the raw series is not safe to autocorrelate directly. Everything
-    else in events.py already works in elapsed time via `seq.elapsed`; this is how the period
-    estimate joins it.
+    Frequency analysis needs uniform spacing, and PoseSequence supports variable frame rates
+    and dropped frames — so the raw series is not safe to autocorrelate directly.
     """
     n = len(values)
     if n < 2 or len(times) != n or count < 2:
@@ -174,14 +171,11 @@ def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
     local maximum. NaNs are treated as zero deviation from the mean so a dropout weakens
     the correlation rather than poisoning it.
 
-    Exists so the stride period can be measured WITHOUT first detecting gait events. That
-    independence is the whole point: a period derived from the peaks cannot be used to
-    judge whether those peaks are real, and a spurious extra peak per stride is exactly
-    the failure this guards against (see events.py).
+    Measures the period WITHOUT detecting gait events first, which is the whole point: a
+    period derived from the peaks cannot judge whether those peaks are real.
 
-    Coarse by construction — the answer is a whole number of frames, so at 30 fps a true
-    21.3-frame stride reads as 21 (-1.5%). Use it to decide which peaks are plausible, not
-    as a timing measurement; timing still comes from the events themselves.
+    Coarse by construction — a whole number of frames, so a 21.3-frame stride reads as 21.
+    Use it to decide which peaks are plausible, never as a timing measurement.
     """
     n = len(values)
     min_lag = max(1, min_lag)
@@ -203,10 +197,8 @@ def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
         for i in range(n - lag):
             acc += dev[i] * dev[i + lag]
         r.append(acc / (total * (n - lag) / n))
-    # Endpoints count as one-sided maxima. `min_lag..max_lag` is an inclusive physiological
-    # range, so an interior-only scan makes the exact limits unreachable: at 60 spm (a 2.0 s
-    # stride, the slowest allowed) this returned nan and cadence came out at 120, and at
-    # 240 spm it locked onto the two-stride harmonic.
+    # Endpoints count as one-sided maxima: min_lag..max_lag is inclusive, so an interior-only
+    # scan makes the exact limits unreachable.
     last = len(r) - 1
     peaks = []
     if last >= 1 and r[0] >= r[1]:
@@ -220,16 +212,10 @@ def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
     best_r = max(v for _, v in peaks)
     if best_r <= 0.0:
         return float("nan")
-    # Prefer the SMALLEST lag that correlates about as well as the best one. A periodic
-    # signal correlates with itself at the period and at every multiple of it, so the
-    # tallest peak is not reliably the fundamental — on synthetic 172 spm pose the far
-    # leg scored 1.001 at both 42 and 84 frames and floating-point noise picked 84, which
-    # made the spacing floor wider than a real stride and merged genuine contacts. This
-    # is the usual sub-harmonic guard from autocorrelation pitch estimation.
-    #
-    # It cannot run away downward: the caller's `min_lag` is a physiological floor (a
-    # 0.5 s stride is already 240 spm), and the spurious swing-phase peak this whole
-    # mechanism exists to reject sits at ~0.4 of a stride, comfortably below it.
+    # Prefer the SMALLEST lag correlating about as well as the best: a periodic signal peaks
+    # at every multiple of its period, so the tallest is not reliably the fundamental. It
+    # cannot run away downward — min_lag is a physiological floor, below which the swing-phase
+    # bump this exists to reject already sits.
     for lag, v in peaks:
         if v >= best_r * SUBHARMONIC_TOLERANCE:
             return float(lag)

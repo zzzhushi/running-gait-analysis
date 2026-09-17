@@ -29,37 +29,13 @@ from . import geometry as geo
 from .schema import PoseSequence
 
 # How far the ankle must rise from its midstance low before the foot counts as off the
-# ground. Used symmetrically for initial contact and toe-off, so stance stays centred on
+# ground, as a fraction of its peak-to-peak range. Symmetric, so stance stays centred on
 # midstance.
 #
-# PROVISIONAL — this value is bounded, not calibrated. Running has no double-support
-# phase, so duty factor must stay under 50%; on the real-clip fixture 0.25 gives 52%
-# (physically impossible, both feet down at once) and 0.20 gives 48% with measurable
-# left/right stance overlap. 0.15 gives 233 ms contact / 33% duty, which is physiological
-# for a recreational runner at ~168 spm, with essentially no overlap.
-#
-# It is now verified against a reference, and the answer is that it is UNFITTABLE, not
-# merely uncalibrated. tests/data/female_overstride.mp4 is the 120 fps clip this comment
-# used to ask for, with a contact time measured from pixels at 505 +/- 25 ms. Swept against
-# both real clips at once:
-#
-#     LIFT_FRACTION   female_overstride (truth 505 ms / 44%)   male_side (180-320 ms / 25-48%)
-#     0.15            394 ms / 34.1%                           241 ms / 34.5%   ok
-#     0.20            440 ms / 37.7%                           308 ms / 44.0%   ok
-#     0.30            505 ms / 43.3%  exact                    388 ms / 55.4%   impossible
-#
-# No single value satisfies both. 0.15 is kept because it is the only one that leaves
-# male_side comfortably inside its bands, and because moving it would be tuning to a test:
-# 0.20 clears every band assertion but matches neither clip's measurement.
-#
-# The reason a constant cannot work is structural. This thresholds a fraction of the ankle's
-# peak-to-peak range over the whole clip, and most of that range is swing-phase lift, which
-# has nothing to do with the ground. The ankle is also not the sole — it keeps moving through
-# stance as the foot rolls — so the ankle-y plateau is systematically shorter than true
-# foot-ground contact by an amount that depends on strike pattern. A fixed fraction of an
-# amplitude is not a definition of "the foot is loading the ground"; foot velocity matching
-# ground velocity is. Until that lands, treat contact time and duty factor as approximate —
-# which is what metrics/quality.py already warns about.
+# WRONG MODEL, not just a wrong value: most of that range is swing-phase lift, and the ankle
+# keeps moving through stance as the foot rolls. No constant fits both real clips — contact
+# time and duty factor are approximate until contact is defined by motion instead. Sweep and
+# failed alternatives: tests/integration/test_female_overstride_clip.py.
 LIFT_FRACTION = 0.15
 
 # Peak spacing floor, as a fraction of the measured stride. The spurious swing-phase peak
@@ -74,27 +50,13 @@ MAX_STRIDE_S = 2.0
 def _robust_period(gaps: List[float], expect: float = float("nan")) -> float:
     """Typical interval from a list of elapsed-time gaps.
 
-    A plain median is robust to spurious events but quantized when timestamps are unavailable:
-    at 30 fps a ~10.7-frame step can only ever report as 10 or 11. That lands on a coarse
-    cadence grid — 150 / 156.5 / 163.6 / 171.4 / 180 spm — and on the real-clip fixture it
-    put a true 168.6 spm at 163.6 (-2.9%), far enough below the 170 spm target band to
-    manufacture a "raise your cadence" finding the runner did not warrant.
+    Trim to gaps near a reference, then average what survives: a median alone is quantized
+    onto a coarse cadence grid, a mean alone is wrecked by one spurious event.
 
-    A plain mean recovers the sub-frame value but is wrecked by the occasional spurious
-    contact: on that same clip 7 of 116 gaps were fragments (2-8 frames) from double-
-    detected events, dragging the mean to 176.2 spm (+4.5%).
-
-    So: trim to gaps near a reference, then average what survives. Robust and unquantized —
-    169.7 spm on the fixture (+0.7%).
-
-    `expect` is that reference when the caller already knows roughly what the interval should
-    be, measured independently of these gaps. Prefer it. The median is only a stand-in for a
-    reference, and it is not a robust one: it breaks down at 50% contamination, which is
-    exactly what a spurious event *per stride* produces. On the female_overstride fixture the
-    merged step gaps had a median of 0.358 s, so the window came out [0.215, 0.573] while the
-    true step period was 0.5837 s — the one correct gap in the list was trimmed away and the
-    result looked plausible at 126.9 spm. A reference that does not come from the contaminated
-    sample cannot fail that way, so it also earns a tighter window.
+    Pass `expect` whenever the caller knows the interval independently of these gaps. The
+    median is a poor stand-in for it — it breaks down at 50% contamination, which is what one
+    spurious event per stride produces, and then the trim discards the correct gaps rather
+    than the wrong ones. An independent reference also earns a tighter window.
     """
     if not gaps:
         return float("nan")
@@ -105,11 +67,9 @@ def _robust_period(gaps: List[float], expect: float = float("nan")) -> float:
     kept = [g for g in gaps if lo * anchor <= g <= hi * anchor]
     if kept:
         return mean(kept)
-    # Nothing observed supports the reference. Returning `anchor` here would report a period
-    # no detected gap is near — _robust_period([0.10, 0.12], 0.50) would answer 0.50, i.e.
-    # 120 spm from gaps that imply ~500. The prior's job is to say which observations are
-    # plausible, not to stand in for them, so say we do not know. Without a reference the
-    # median IS an observation, so that path keeps its old fallback.
+    # Nothing observed supports the reference, so say we do not know rather than report a
+    # period no gap is near. Without a reference the median IS an observation, so that path
+    # keeps its fallback.
     return float("nan") if (expect == expect and expect > 0) else median(gaps)
 
 
@@ -133,13 +93,8 @@ class GaitEvents:
 def _stride_seconds(ankle_y: List[float], seq: PoseSequence, fps: float) -> float:
     """Stride period in SECONDS, measured from the ankle-y signal alone.
 
-    Autocorrelation assumes a uniform sample spacing, so with real per-frame timestamps the
-    signal is resampled onto a uniform TIME grid first. Reading the lag in frame indices and
-    dividing by one average fps is only valid when the frames are evenly spaced, and
-    PoseSequence exists partly to support the case where they are not: the browser extractor
-    drops frames whenever the compositor is busy. On synthetic 172 spm pose with 7 of every 8
-    frames removed for four seconds (timestamps preserved), the index-space reading gave
-    121 spm; on the time axis it stays correct.
+    Resampled onto a uniform TIME grid first: reading the lag in frame indices and dividing
+    by one average fps assumes evenly spaced frames, which dropped-frame input is not.
     """
     ts = seq.timestamps
     if ts is not None and len(ts) == len(ankle_y) and len(ankle_y) > 3:
@@ -165,18 +120,10 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
     if n < 4:
         return ev
 
-    # Peaks are found per foot, so consecutive peaks on one side are a STRIDE apart, not a
-    # step, and the swing phase puts a secondary low between each pair of real ones.
-    # Rejecting that bump needs a spacing floor — but the bump sits at a roughly fixed
-    # FRACTION of the stride (~0.4), not at a fixed number of seconds, so an absolute-time
-    # floor cannot do it. `fps * 0.35` held at 168.9 spm (stride 0.71 s, bump 0.28 s out)
-    # and failed at 102.8 spm (stride 1.17 s, bump 0.47 s out), reporting 126.9 spm and
-    # twice the true number of contacts. No constant fixes that: rejecting a 100 spm
-    # runner's bump needs >0.5 s, admitting a 220 spm sprint stride needs <0.545 s.
-    #
-    # So measure the stride from the signal and scale the floor to it. 0.6 sits between the
-    # bump at ~0.4 and a real stride at 1.0 — the middle of a flat region, not a knife edge.
-    # See tests/integration/test_female_overstride_clip.py.
+    # Same-foot peaks are a STRIDE apart, with a swing-phase bump between each real pair at
+    # ~0.4 of the stride. The floor must scale to the stride: an absolute one rejects that
+    # bump at some cadences and not others. Fallback is only for a clip too short or flat to
+    # measure a period from.
     fallback_min_dist = max(3, int(fps * 0.35))
     stride_s: Dict[str, float] = {}
 
@@ -244,11 +191,9 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
         if contacts:
             ev.contact_time[side] = _robust_period(contacts)
 
-    # Cadence from the merged (either-foot) step interval. Merging is what makes this
-    # accurate — twice the samples, and the left/right phase jitter averages out — but it is
-    # also what makes it fragile, because one spurious peak on either foot lands next to a
-    # real one on the other and injects a near-zero gap. So anchor the trim on half the
-    # measured stride rather than on these gaps' own median.
+    # Cadence from the merged (either-foot) step interval: twice the samples, and L/R phase
+    # jitter averages out. Merging is also why the trim is anchored on half the measured
+    # stride — one spurious peak on either foot injects a near-zero gap into this list.
     all_mid = sorted(ev.midstances["l"] + ev.midstances["r"])
     steps = [seq.elapsed(all_mid[i], all_mid[i + 1]) for i in range(len(all_mid) - 1)]
     measured = [v for v in stride_s.values() if v == v and v > 0]
