@@ -1,12 +1,4 @@
-"""Crossover gait — feet crossing the midline at contact, rear view (boolean).
-
-Previously this fired by borrowing step_width's finding_text via a raw
-`str(MetricKey.STEP_WIDTH)` — which on this interpreter returns the class-qualified
-name ("MetricKey.STEP_WIDTH"), not the plain value, so the exercise-plan lookup
-for this finding silently failed. Giving crossover its own key/text/exercises
-(same content) fixes that at the root — the finding's `metric` is just its own
-key, resolved the same way every other finding is.
-"""
+"""Crossover gait — feet crossing the midline at contact, rear view (boolean)."""
 
 from __future__ import annotations
 

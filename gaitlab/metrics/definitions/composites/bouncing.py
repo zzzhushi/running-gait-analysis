@@ -1,6 +1,6 @@
 """Bouncing — high vertical oscillation at a low cadence means drive is going
 up instead of forward. Compares vertical oscillation against its WARN-band
-edge (18%), not the good-band edge (12%), matching the original threshold.
+edge (18%), not the good-band edge (12%).
 """
 
 from __future__ import annotations

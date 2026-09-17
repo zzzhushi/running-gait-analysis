@@ -1,18 +1,8 @@
-"""The runner's profile, and the calibration derived from it.
+"""Runner-supplied context and the calibration derived from it.
 
-A profile is the only user-supplied context the engine takes: sex and body
-measurements that personalize metric bands, plus treadmill speed. It used to be a
-bare dict threaded through six layers — `analyze()` rebuilt a subset of it by
-re-listing keys, `ctx._calibration()` read those keys again, and two metric
-modules read them a third time — so the field list existed in several places at
-once and adding a field meant finding all of them.
-
-`RunnerProfile` gives that shape one definition. `Calibration` names the two
-derived quantities the engine actually consumes.
-
-Deliberately decoupled from PoseSequence: `calibrate()` takes the two pixel
-measurements it needs as plain numbers rather than a pose, so the unit-conversion
-rules can be tested without constructing a skeleton.
+`RunnerProfile` owns the supported input fields. `Calibration` contains the derived scale
+and speed consumed by metrics. Calibration accepts pixel measurements rather than a
+`PoseSequence`, keeping unit conversion independent of pose construction.
 """
 
 from __future__ import annotations

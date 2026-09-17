@@ -1,22 +1,6 @@
-"""server.py's persistence layer: it must never destroy run history on its own.
+"""Persistence invariants: startup and demo seeding must never delete run history.
 
-The first tests server.py has ever had. It had none because every DB call read a
-module-level DB_PATH pointing at the developer's real database — so there was no
-way to exercise startup or seeding without risking it. DB_PATH is now overridable,
-and each test here points it at a throwaway file.
-
-Every case below is a regression test for behaviour that shipped and lost data:
-
-  - seeding demos ran an unqualified `DELETE FROM runs`, so one profile pressing
-    "Load demo runs" erased every other profile's history (and, because the demos
-    always went to the "Demo" user, left the caller's own library still empty)
-  - a schema-version mismatch dropped every table
-  - any failure reading _meta was treated as version 0, taking the same drop path,
-    so a damaged file was silently emptied instead of reported
-
-The assertions come in pairs on purpose: "the other profile's runs survived" and
-"the caller actually got the demos" are two different bugs, and fixing only the
-first would still leave the button broken.
+Each test uses a throwaway database through the overridable `server.DB_PATH`.
 """
 
 from __future__ import annotations
@@ -43,7 +27,6 @@ def _count(where: str = "", args=()) -> int:
 
 class TestSeedingIsScopedAndAdditive:
     def test_seeding_one_profile_leaves_another_profiles_runs_alone(self, db):
-        """The shipped bug: Alice loading demos deleted Bob's runs."""
         bob = server.create_user("Bob")["id"]
         server.store_run("Bob's run", server.synthetic.generate(duration=4), user_id=bob)
         alice = server.create_user("Alice")["id"]
@@ -53,8 +36,6 @@ class TestSeedingIsScopedAndAdditive:
         assert _count("WHERE user_id=?", (bob,)) == 1
 
     def test_seeding_puts_the_demos_on_the_profile_that_asked(self, db):
-        """The other half of the same bug: demos always landed on "Demo", so the
-        profile that clicked the button saw an empty library either way."""
         alice = server.create_user("Alice")["id"]
 
         added = server.seed_demo_runs(alice)
@@ -96,11 +77,9 @@ class TestSchemaVersionFailsClosed:
         with pytest.raises(server.SchemaVersionError, match="schema version"):
             server._init_db()
 
-        assert _count() == 1  # the old code dropped every table here
+        assert _count() == 1
 
     def test_missing_meta_on_a_populated_db_raises_and_keeps_the_data(self, db):
-        """A database with tables but no _meta is damaged, not new. The old code
-        couldn't tell the difference and wiped it."""
         server.store_run("keep me", server.synthetic.generate(duration=4))
         with server.db() as conn:
             conn.execute("DROP TABLE _meta")

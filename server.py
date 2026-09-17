@@ -35,9 +35,7 @@ from gaitlab import synthetic
 ROOT = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(ROOT, "web")
 DATA_DIR = os.path.join(ROOT, "data")
-# Overridable so tests can exercise the schema/seed paths against a throwaway file.
-# Without this every call here hardcodes the developer's real database, which is why
-# server.py had no tests at all — and why the data-loss bugs below went unnoticed.
+# Overridable so persistence tests use a throwaway database.
 DB_PATH = os.environ.get("GAITLAB_DB") or os.path.join(DATA_DIR, "gaitlab.db")
 VIDEO_DIR = os.path.join(DATA_DIR, "video")
 POSE_DIR = os.path.join(DATA_DIR, "pose")
@@ -47,12 +45,7 @@ SCHEMA_VERSION = 2  # bump when the DB schema changes
 
 
 class SchemaVersionError(RuntimeError):
-    """The database on disk can't be safely used with this build.
-
-    Raised instead of dropping tables, so an unreadable or newer-than-expected
-    database stops startup with something actionable rather than silently
-    destroying the history the app exists to accumulate.
-    """
+    """Raised when the on-disk database cannot be safely used by this build."""
 
 
 class ExtractionError(RuntimeError):
@@ -75,9 +68,7 @@ def _get_extract_lock(pose_path: str) -> threading.Lock:
 def _read_schema_version(conn: sqlite3.Connection):
     """Current schema version, or None for a database that has never been set up.
 
-    The distinction matters: a fresh file has no _meta table and should be
-    created, whereas a database that HAS tables but whose version can't be read
-    is damaged, and the safe response is to stop rather than guess.
+    A populated database without readable metadata is treated as damaged, not new.
     """
     has_meta = conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='_meta'"
@@ -100,12 +91,7 @@ def _read_schema_version(conn: sqlite3.Connection):
 
 
 def _init_db() -> None:
-    """One-time DB setup at startup: verify schema version, create tables if absent.
-
-    Never drops user data. An unexpected version raises SchemaVersionError instead
-    of wiping — a version bump is a migration to write, not a reason to discard
-    the history Library, Trends and Compare exist to show.
-    """
+    """Validate the schema and create missing tables without deleting user data."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -234,15 +220,7 @@ def delete_user(uid: str) -> None:
 
 
 def seed_demo_runs(user_id: str = None) -> int:
-    """Add the demo runs for `user_id` (the Demo profile when None). Returns how
-    many were added.
-
-    Additive and idempotent: never deletes, and a profile that already has the
-    demo runs gets nothing further. Previously this took force=True and ran an
-    unqualified `DELETE FROM runs`, so one profile loading demos erased every
-    other profile's history — and the demos landed on the Demo profile rather
-    than the one that asked, leaving the caller's library still empty.
-    """
+    """Idempotently add missing demos to `user_id`, defaulting to the Demo profile."""
     if user_id is None:
         with db() as conn:
             row = conn.execute("SELECT id FROM users WHERE name='Demo' LIMIT 1").fetchone()

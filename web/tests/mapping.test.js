@@ -68,10 +68,7 @@ describe("toCanonical", () => {
   });
 });
 
-// The fps we hand the engine is a time base, not a frame-spacing statistic: the engine
-// maps frame INDEX back to wall-clock as index/fps, so this must be the average rate over
-// the clip. Reporting 1/median(gap) instead silently inflates cadence in proportion to
-// however many frames the real-time playthrough dropped — a real 165 spm came back as 200.
+// FPS is the average rate that maps frame indices onto the full clip duration.
 describe("fpsFromTimestamps", () => {
   const grid = (n, step, from = 0) => Array.from({ length: n }, (_, i) => from + i * step);
 
@@ -79,15 +76,10 @@ describe("fpsFromTimestamps", () => {
     expect(fpsFromTimestamps(grid(301, 1 / 30))).toBeCloseTo(30, 6);
   });
 
-  // Drop every 6th frame while KEEPING the first and last, so the surviving span is a
-  // clean 10 s and the expected rate is exactly 250/10 = 25 with no edge effects to
-  // reason about. (Dropping index 0 and the last index instead shortens the span and
-  // makes the true answer 25.067 — a fine result, but a needlessly fiddly assertion.)
+  // Keep the endpoints so the thinned grid still spans exactly 10 seconds.
   const droppedGrid = () => grid(301, 1 / 30).filter((_, i) => i % 6 !== 5);
 
   it("reports the AVERAGE rate when frames are missing, not the surviving gap", () => {
-    // Survivors are still mostly 1/30 apart, so a median-gap reading would say ~30 and
-    // overstate the rate by 20% — which is exactly how cadence got inflated.
     const ts = droppedGrid();
     expect(fpsFromTimestamps(ts)).toBeCloseTo(25, 6);   // 5 of every 6 frames kept
     expect(fpsFromTimestamps(ts)).toBeLessThan(29);     // must NOT come back as ~30

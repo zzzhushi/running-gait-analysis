@@ -3,7 +3,7 @@ trunk signals the stance leg and core aren't holding the runner tall.
 
 Note the trunk-lean condition compares against the WARN-band edge (16°), not
 the good-band edge (12°) — this composite only fires once trunk lean is well
-past merely-suboptimal, matching the original hand-tuned threshold.
+past merely suboptimal.
 """
 
 from __future__ import annotations

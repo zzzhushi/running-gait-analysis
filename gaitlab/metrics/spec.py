@@ -1,30 +1,7 @@
-"""Single source of truth machinery.
+"""Shared record types and registries for metrics and composite findings.
 
-Every metric and composite is defined ONCE, in its own module under
-gaitlab/metrics/definitions/ (metrics) or gaitlab/metrics/definitions/composites/
-(composites). This module supplies the shared record types those modules build
-(`MetricDef`, `Composite`, `Cond`, `Ctx`) and the registry they register into.
-
-A metric module looks like:
-
-    from ..spec import MetricDef, register
-    from ...core import geometry as geo
-
-    def _compute(ctx, side):
-        ...  # the formula — the one piece that is genuinely per-metric code
-
-    register(MetricDef(
-        key=MetricKey.OVERSTRIDE, label="Overstride", unit="%leg",
-        good=(None, 8), warn=(None, 15), views=("side",), scored=True,
-        per_side=True, asym_direction="higher_worse", aggregate="worst_high",
-        keypoints=("l_hip", "l_ankle", "r_hip", "r_ankle"), foi="l_strike",
-        compute=_compute, finding_text={...}, exercises=[...],
-    ))
-
-Everything about a metric — its bands, coaching copy, exercises, formula, and any
-custom trigger/confidence/personalization rule — lives in that one file. Nothing
-about it is declared anywhere else; the generic engines (compute, feedback,
-asymmetry, analyze, exercises) only ever read the registry.
+Each module under `definitions/` owns one metric's formula, bands, presentation, and
+behavior hooks. Generic analysis and coaching code consume only this registry.
 """
 
 from __future__ import annotations
@@ -102,10 +79,8 @@ class MetricDef:
     scored: bool = True             # False = informational only, excluded from score
     per_side: bool = False          # True = tracked in the left/right asymmetry table
     asym_direction: str = "neutral" # "higher_better" | "higher_worse" | "neutral"
-    # Coaching text keyed by direction ("low", "high") or "any" (fires regardless
-    # of direction — used by metrics that only ever flag one way).
-    # Each value: {"title": str, "detail": str, "cue": str, "drill": str}.
-    # {value} in detail is replaced with the measured value via .format().
+    # Direction -> {title, detail, cue, drill}; "any" applies regardless of direction.
+    # `{value}` in detail is replaced with the measured value.
     finding_text: Dict[str, Dict[str, str]] = field(default_factory=dict)
     exercises: List[Dict[str, str]] = field(default_factory=list)
 
@@ -125,18 +100,13 @@ class MetricDef:
     # real band (both None) that would otherwise trivially compute "good".
     card_status: Optional[str] = None
 
-    # --- optional overrides of the generic engine behavior ----------------
-    # (defn, value, values, targets) -> (direction, severity) | None. Severity
-    # varies too much per metric (flat "low", bad-only "med", bad/warn -> high/med,
-    # ...) for one generic rule, so most metrics beyond the simplest register this.
+    # Optional hooks override generic triggering, confidence, personalization, or formatting.
     trigger_fn: Optional[Callable] = None
     value_confidence_fn: Optional[Callable] = None # (value) -> "low"|"moderate"|"high"
     personalize_fn: Optional[Callable] = None      # (defn, profile) -> MetricDef
     extra_fmt_fn: Optional[Callable] = None        # (values) -> dict of extra .format() args for finding_text
 
-    # ------------------------------------------------------------------
-    # Scoring (unchanged formula from the original targets.Target class)
-    # ------------------------------------------------------------------
+    # --- scoring ----------------------------------------------------------
 
     def status(self, value: float) -> str:
         if value is None or value != value:

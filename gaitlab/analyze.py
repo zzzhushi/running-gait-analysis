@@ -143,10 +143,8 @@ class AnalysisResult:
 def analyze(seq: PoseSequence, label: str = "", profile=None) -> AnalysisResult:
     seq.validate()  # reject malformed pose input early with a clear error
     ev = detect_events(seq)
-    # Accept either the wire dict or a RunnerProfile; convert once, here, so
-    # nothing downstream has to know which form it was handed. The raw input is
-    # kept for the summary echo below — callers (notably POST /api/analyze) may
-    # send keys the engine doesn't model, and those are reported back verbatim.
+    # Normalize the modeled profile once, while preserving the original payload for the
+    # response echo.
     runner = profile if isinstance(profile, RunnerProfile) else RunnerProfile.from_dict(profile)
     targets = personalize(runner)
     m = metrics_mod.compute(seq, ev, runner)

@@ -1,7 +1,5 @@
-// Pyodide bridge — the in-browser twin of server.py's /api/analyze. Boots Pyodide
-// once (singleton), unpacks the gaitlab/ engine zip into its virtual FS, and runs the
-// unchanged Python analyze() over a pose dict. Marshaling goes through JSON strings to
-// sidestep PyProxy edge cases.
+// Pyodide bridge for the unchanged Python engine. JSON-string marshaling avoids PyProxy
+// lifetime and conversion edge cases.
 
 import { PYODIDE_INDEX_URL, GAITLAB_ZIP_URL } from "./config.js";
 

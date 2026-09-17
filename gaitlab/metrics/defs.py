@@ -1,10 +1,7 @@
-"""Compatibility facade over the metric registry.
+"""Compatibility facade over the per-metric registry.
 
-`MetricDef`/`METRIC_DEFS`/`value_confidence`/`personalize` used to be defined
-here directly; the single source of truth has moved to one module per metric
-under gaitlab/metrics/definitions/ (see gaitlab/metrics/spec.py for the record
-shape). This module just re-exports the registry under the names existing
-callers already use, importing `definitions` for its registration side effect.
+Imports `definitions` for registration, then exposes the registry through the public names
+used by existing callers.
 """
 
 from __future__ import annotations

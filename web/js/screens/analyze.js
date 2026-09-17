@@ -92,11 +92,7 @@ export default async function analyze(app, params) {
   const series = r.series || {};
   const state = { frame: 0, playing: false, speed: 1, last: performance.now(), raf: 0 };
 
-  // Debug overlay — toggle with ?debug in the URL. Shows the live render state so a
-  // screenshot pins down overlay-alignment bugs: device pixel ratio, canvas vs video
-  // sizes, the transform actually in use vs the one the current canvas size implies
-  // (a mismatch = a stale transform), and time-sync drift. Also offers pose/result
-  // downloads so the exact failing input can be reproduced off the reporter's machine.
+  // ?debug exposes render geometry, timing drift, and downloadable reproduction inputs.
   const debugMode = location.search.includes("debug");
   const dbgPre = debugMode ? el("pre", { style: "margin:0;white-space:pre" }, "") : null;
   const download = (name, obj) => {
@@ -114,8 +110,7 @@ export default async function analyze(app, params) {
   function debugText(f) {
     const cr = canvas.getBoundingClientRect();
     const t = renderer.tf || {};
-    // What the transform SHOULD be for the current canvas size (object-fit: contain of
-    // the pose frame). If this differs from the live transform, it's stale.
+    // Compare the live transform with the current object-fit geometry.
     const s = Math.min(cr.width / (pose.width || 1), cr.height / (pose.height || 1));
     const want = { s, ox: (cr.width - s * (pose.width || 1)) / 2, oy: (cr.height - s * (pose.height || 1)) / 2 };
     const vt = video ? video.currentTime : 0, pt = timeAtFrame(f);
@@ -132,11 +127,7 @@ export default async function analyze(app, params) {
   requestAnimationFrame(() => { renderer.resize(); drawTimeline(tlCanvas, r); render(0); });
   const onResize = () => { renderer.resize(); drawTimeline(tlCanvas, r); render(Math.floor(state.frame)); };
   window.addEventListener("resize", onResize);
-  // The overlay transform is derived from the canvas's measured size. That one-time
-  // measure goes stale if the stage gets its real size *after* it (late layout, the
-  // player grid reflowing, a differing device pixel ratio) — leaving the skeleton scaled
-  // and offset off the video, since a plain "resize" listener only fires for the window.
-  // Observe the stage so the transform recomputes on the initial layout and any change.
+  // Observe stage layout changes that do not emit a window resize event.
   const ro = new ResizeObserver(onResize);
   ro.observe(stage);
 

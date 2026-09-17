@@ -1,14 +1,7 @@
-"""Every module must import cleanly — the guard against stale first-party imports.
+"""Smoke-test all modules for stale first-party imports.
 
-The core/ refactor (289d71a) moved schema.py and events.py into gaitlab/core/ but missed
-validate_run.py and extractor/extract_pose_mediapipe.py, which kept importing
-`gaitlab.schema`. Both stayed broken for a month because nothing in CI imports them: the
-suite only exercises gaitlab/, and the CLIs are invoked as subprocesses or not at all.
-
-Both extractors import their heavy third-party deps (rtmlib, cv2, mediapipe) lazily inside
-functions, so importing them here needs nothing installed. A missing *third-party* module
-still skips, so this stays green on a bare checkout — but a missing *first-party* module is
-exactly the bug this file exists to catch, and fails.
+Optional third-party dependencies are loaded lazily, so a bare checkout can still import
+the modules that reference them.
 """
 
 from __future__ import annotations

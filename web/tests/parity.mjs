@@ -1,7 +1,4 @@
-// Layer 2 — Pyodide == Python parity. Boots the SAME gaitlab engine inside Pyodide
-// (node build), runs each committed input pose through it, and deep-equals the result
-// against the Python-produced result.json. This is what proves the WASM path is faithful;
-// the JS side never re-implements the math.
+// Verify that the same gaitlab engine produces equivalent native-Python and Pyodide output.
 //
 //   python3 scripts/build_web.py && node web/tests/parity.mjs
 import { readFile, readdir } from "node:fs/promises";

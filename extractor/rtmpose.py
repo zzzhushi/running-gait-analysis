@@ -1,12 +1,6 @@
-"""RTMPose extraction (via rtmlib) — the default pose source, sharper foot keypoints.
+"""RTMPose extraction via rtmlib, the default source for detailed foot keypoints.
 
     pip install rtmlib onnxruntime opencv-python
-
-Historically the only way to run this was extract_pose.py's CLI, which spawned
-a subprocess to get it — nothing could import RTMPoseExtractor and swap it for
-another source. This module is what closes that gap: extract_pose.py is now a
-thin CLI over RTMPoseExtractor, and pipeline.py can inject any
-PoseExtractor (see MockExtractor for the one that unblocked testing it).
 """
 
 from __future__ import annotations
@@ -72,10 +66,7 @@ def to_canonical(kp, sc, idxmap):
 
 
 class RTMPoseExtractor(PoseExtractor):
-    """model/mode configure the instance (which RTMPose model to load, and its
-    speed/accuracy preset); extract() takes the per-call video and view —
-    mirroring httpx's Client(transport=...): configure once, call many times.
-    """
+    """Reusable extractor configured by model and speed/accuracy mode."""
 
     def __init__(self, model: str = "body26", mode: str = "balanced"):
         self.model = model

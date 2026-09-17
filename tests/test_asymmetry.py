@@ -58,14 +58,7 @@ def test_overall_diff_averages_flagged_only():
 
 
 def test_bandless_metric_is_not_auto_suppressed():
-    """A metric with no good band must still be able to flag a left/right imbalance.
-
-    `MetricDef.status()` returns "good" unconditionally when good == (None, None) — that is
-    deliberate for metrics where no value is inherently better (foot-strike angle). The
-    "both sides individually healthy" suppression must not read that sentinel as evidence
-    of health, or every asymmetry on such a metric is silently downgraded however large.
-    Regression guard: an 82% foot-strike difference once displayed as "good".
-    """
+    """Bandless status is a sentinel, not evidence that both sides are healthy."""
     from gaitlab.metrics.defs import METRIC_DEFS
 
     defn = METRIC_DEFS[MetricKey.FOOT_STRIKE_ANGLE]
@@ -80,7 +73,6 @@ def test_bandless_metric_is_not_auto_suppressed():
 
 
 def test_banded_metric_still_suppressed_when_both_sides_healthy():
-    """The suppression itself is intended behaviour where a band exists — keep it."""
     # knee drive good band is (20, None); both sides comfortably inside it.
     per_side = {"l": {"knee_drive": 26.0}, "r": {"knee_drive": 30.0}}
     out = A.compute(per_side)

@@ -1,13 +1,7 @@
-"""Per-frame presentation timestamps, shared by every video-based pose extractor.
+"""Per-frame presentation timestamps shared by Python video extractors.
 
-Only RTMPoseExtractor and MediaPipeExtractor need this — the in-browser
-extractor (web/js/pose.js) derives timestamps from a live playthrough instead,
-and every downstream consumer just reads `timestamps` off the pose JSON. Kept
-inside extractor/ rather than promoted to gaitlab/core/ for that reason: this
-is plumbing for the two video extractors, not part of the engine's contract.
-
-Was duplicated verbatim between extract_pose.py and extract_pose_mediapipe.py
-before this module existed.
+The browser derives its own timestamps; downstream consumers read the normalized values
+from `PoseSequence`.
 """
 
 from __future__ import annotations

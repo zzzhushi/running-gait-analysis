@@ -128,8 +128,7 @@ def _crossover(seq, strikes):
 
 
 def test_crossover_ignores_single_midline_touch():
-    # Three clean straddling strikes + one where the left ankle lands ~0.5% past the
-    # midline (noise). The old `> 0` test flagged crossover here; it must not now.
+    # One near-midline noisy strike must not outweigh three clean straddling strikes.
     seq = _rear_ankles([(470, 530), (470, 530), (470, 530), (501, 530)])
     assert _crossover(seq, {"l": [1, 3], "r": [0, 2]}) is False
 

@@ -21,8 +21,7 @@ Or with an explicit path and custom output:
 
 The pose source is swappable: anything that emits this same JSON (e.g. a MediaPipe
 extractor) can feed the identical analysis engine. This file is a thin CLI over
-RTMPoseExtractor (extractor/rtmpose.py) — the extraction logic itself lives there so
-it can be imported and swapped, which this script alone never allowed.
+RTMPoseExtractor (extractor/rtmpose.py).
 """
 
 from __future__ import annotations

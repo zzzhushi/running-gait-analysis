@@ -17,8 +17,7 @@ test:
 test-web: web-static
 	npm test
 
-# Which test layers can this machine actually run? CI runs three; a box missing one
-# (typically node) runs the rest and looks green while a regression ships.
+# Report missing local test layers instead of silently running a partial suite.
 check-env:
 	python3 scripts/check_env.py
 

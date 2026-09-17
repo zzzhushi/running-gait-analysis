@@ -1,9 +1,5 @@
-// In-browser pose extractor. MediaPipe Tasks-Vision PoseLandmarker (BlazePose 33)
-// driven frame-by-frame, mapped to the canonical 22-keypoint schema. Emits the exact
-// dict shape as PoseSequence.to_pose_dict() so the engine consumes it identically.
-//
-// The BLAZEPOSE map + toCanonical() are a verbatim port of
-// extractor/extract_pose_mediapipe.py:78-102 — keep them in lockstep.
+// In-browser BlazePose extraction mapped to the canonical PoseSequence schema.
+// Keep BLAZEPOSE and toCanonical() aligned with extractor/blazepose.py.
 
 import { TASKS_VISION_URL, POSE_MODEL_URL } from "./config.js";
 
@@ -48,9 +44,7 @@ export function toCanonical(lm, w, h) {
     } else if (name === "mid_hip") {
       frame.push(mid(P(23), P(24)));
     } else if (name === "head") {
-      // BlazePose has no crown-of-head point; the ear midpoint is a stable head-region
-      // proxy for lateral head sway / head drop (RTMPose-Halpe supplies one directly).
-      // Fall back to the nose when neither ear is visible (e.g. sharp profile).
+      // BlazePose lacks a crown point; use the ears when visible, otherwise the nose.
       const l = P(EAR_L), r = P(EAR_R);
       frame.push(l[2] > 0.1 || r[2] > 0.1 ? mid(l, r) : P(NOSE));
     } else {
@@ -64,16 +58,8 @@ const ZERO_FRAME = () => KEYPOINTS.map(() => [0.0, 0.0, 0.0]);
 const round3 = (p) => p.map((v) => Math.round(v * 1000) / 1000);
 
 let _landmarkerPromise = null;
-// The timestamps fed to detectForVideo drive TWO things: (1) they must be strictly
-// increasing for the LIFETIME of the cached singleton landmarker — a second extract()
-// restarting at 0 would throw ("Packet timestamp mismatch") — and (2) MediaPipe's VIDEO
-// mode uses the deltas between them to drive its temporal landmark-smoothing filter.
-// An earlier version passed a counter incrementing by 1 ms per frame, which satisfied
-// (1) but wrecked (2): MediaPipe believed the video ran at 1000 fps and smoothed ~33x
-// too hard, so landmarks lagged the real limbs by ~2 frames and under-swung their true
-// motion (~85% amplitude, ~3x-too-smooth inter-frame movement) — a sluggish skeleton
-// that never matched the video. So: pass REAL video time in ms, offset per run by
-// _mpEpoch so successive runs stay monotonic.
+// MediaPipe uses timestamp deltas for smoothing and requires them to increase across the
+// cached landmarker's lifetime. Offset real media time for each extraction run.
 let _mpEpoch = 0;
 async function getLandmarker() {
   if (_landmarkerPromise) return _landmarkerPromise;
@@ -108,20 +94,14 @@ function seekTo(video, t) {
   });
 }
 
-// Record every native frame's true presentation time via a lightweight real-time
-// playthrough: the rVFC callback only pushes a timestamp, so it never falls behind and
-// never coalesces frames the way running inference in the callback would. This is how we
-// learn the real frame grid (count + VFR-correct timing) without dropping anything;
-// extraction then seeks to each of these times and runs the model with no time pressure.
-// Returns ascending mediaTimes, or null when rVFC is unavailable (Firefox).
+// Collect presentation times without running inference in the callback, then process those
+// frames without real-time pressure. Returns null when rVFC is unavailable.
 function collectFrameTimes(video) {
   if (typeof video.requestVideoFrameCallback !== "function") return Promise.resolve(null);
   return new Promise((resolve) => {
     const times = [];
     let done = false;
-    // Once finished, stop the rVFC self-loop and hand back a COPY. Otherwise the final
-    // callback re-arms itself, and when extraction later seeks the video (no longer
-    // "ended") it keeps firing and appending to the array we're iterating over.
+    // Return a copy so later extraction seeks cannot mutate the collected grid.
     const finish = () => {
       if (done) return;
       done = true;
@@ -140,12 +120,8 @@ function collectFrameTimes(video) {
   });
 }
 
-// Drop sub-frame captures. A real-time playthrough on a display that refreshes faster
-// than the video (or a slightly VFR clip) yields some times spaced far closer than the
-// native frame period — e.g. 0.017s "half-frames" among 0.033s ones. Left in, they
-// inflate the count and drift the index→time mapping, so the overlay's seek-to-timestamp
-// lands on the wrong frame (a per-frame effect the cadence math, which reads the median
-// interval and frame indices, doesn't feel). Keep frames spaced >=60% of the median gap.
+// Discard display-refresh callbacks that occur too close to represent distinct video
+// frames; keeping them would distort the frame-index-to-time mapping.
 function dedupeFrameTimes(times) {
   if (times.length < 4) return times;
   const gaps = [];
@@ -161,20 +137,8 @@ function dedupeFrameTimes(times) {
   return kept;
 }
 
-// fps as the AVERAGE rate of the frames we actually decoded: (n-1) / (last - first).
-//
-// The engine reconstructs real time from frame INDICES (events.py: step_s =
-// median(step_in_frames) / fps), so the fps we report has to be the rate that maps index
-// back onto the wall clock across the whole clip. That is the average rate, not the
-// median inter-frame gap.
-//
-// This used to return 1/median(gap), which is only the same thing when no frames are
-// missing. The real-time playthrough in collectFrameTimes() drops frames whenever the
-// compositor is busy, and drops get likelier the longer the clip runs. A drop leaves the
-// median gap untouched (the surviving frames are still mostly adjacent) while the true
-// average rate falls, so index/fps compresses the timeline and cadence scales up by
-// exactly the drop factor. Measured on a 40 s clip: ~17% of frames dropped, median gap
-// still implied 30 fps, and a real 165 spm was reported as 200.
+// Use the average observed rate so frame index / fps spans the same elapsed time even when
+// frames are missing. Median frame gaps do not preserve total duration.
 export function fpsFromTimestamps(ts) {
   if (ts.length >= 2) {
     const span = ts[ts.length - 1] - ts[0];
@@ -191,24 +155,9 @@ export function fpsFromTimestamps(ts) {
   return med > 0 ? 1 / med : 30;
 }
 
-// Extract a pose dict from a video object-URL. onProgress(fraction 0..1, note).
-//
-// Extraction is deliberately NOT bound to real-time playback: we pause, seek to each
-// target time, wait for it to decode, then run inference (however long that takes). This
-// mirrors how the Python extractors read every frame from the file via cap.read()
-// (extract_pose.py / extract_pose_mediapipe.py), decoupled from wall-clock speed. An
-// earlier version drove extraction off requestVideoFrameCallback during real-time
-// playback, which silently dropped frames whenever inference (the "heavy" model) took
-// longer than one frame interval — the browser delivers only the *latest* rendered frame
-// to a busy callback, coalescing away everything in between.
-//
-// We first learn the true frame grid (collectFrameTimes), then seek to each frame time
-// and run the model. Because video.currentTime after a seek reports the *requested* time
-// (not the decoded frame's PTS) and rVFC doesn't fire on a paused seek, the frame times
-// from the playthrough are the only reliable source of true per-frame timing — so we
-// record those as the timestamps and derive fps from them. That keeps the frame count
-// deterministic (≈ the file's real frame count, like RTMPose) and the engine's cadence
-// (frame_index / fps) correct. Firefox lacks rVFC → fall back to a fixed 30fps seek grid.
+// Extract a pose dict from a video object URL. First collect the presentation-time grid,
+// then seek and run inference without real-time pressure. Preserve that grid as the pose
+// timestamps; browsers without rVFC use a fixed 30 fps grid.
 export async function extract(videoUrl, view, onProgress = () => {}) {
   onProgress(0, "Loading pose model…");
   const [landmarker, video] = await Promise.all([getLandmarker(), loadVideo(videoUrl)]);
@@ -227,8 +176,7 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
 
   const frames = [];
   const timestamps = [];
-  // Real per-frame time (ms) + a monotonic epoch so the smoothing filter sees true
-  // frame intervals while timestamps stay strictly increasing across runs.
+  // Preserve real frame deltas while keeping MediaPipe timestamps monotonic across runs.
   const epoch = _mpEpoch;
   let lastMs = -1;
 

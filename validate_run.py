@@ -34,10 +34,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Imported here rather than inside main(): these were function-local, so when the
-# core/ refactor moved them the stale paths only surfaced at Step 3/3 — after the
-# multi-minute pose extraction had already run. At module level, tests/test_imports.py
-# catches it instead.
+# Module-level imports let smoke tests catch stale first-party paths before extraction.
 from gaitlab import analyze  # noqa: E402
 from gaitlab.core.events import detect_events  # noqa: E402
 from gaitlab.core.schema import PoseSequence  # noqa: E402

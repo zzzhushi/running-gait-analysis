@@ -3,10 +3,7 @@
 
 const AXIAL = "#7f8c9b", LEFTC = "#4dabf7", RIGHTC = "#f59f00";
 
-// Don't draw joints the pose model isn't confident about. On a rear view the hands are
-// occluded, so wrists come back with ~0.2 confidence at essentially guessed positions —
-// drawing them made the forearm lines flail off the body ("arms don't match"). Below this
-// the joint (and any bone to it) is skipped, so the skeleton shows only what's tracked.
+// Hide low-confidence joints and their connected bones rather than drawing guessed poses.
 const MIN_DRAW_CONF = 0.35;
 
 const BONES = [

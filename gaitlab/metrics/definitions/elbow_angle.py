@@ -1,8 +1,6 @@
 """Elbow angle — relaxed arm-carry angle, side view.
 
-Custom trigger: a fixed 110° cutoff (not derived from the good/warn band) —
-this is a deliberate, coarser threshold than the scoring band, not a bug; it
-predates the band-driven trigger style used elsewhere in this file.
+Custom trigger: a fixed 110° cutoff, deliberately coarser than the scoring band.
 """
 
 from __future__ import annotations

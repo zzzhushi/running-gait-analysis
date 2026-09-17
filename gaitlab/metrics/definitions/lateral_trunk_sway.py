@@ -1,7 +1,7 @@
 """Lateral trunk sway — side-to-side upper-body sway per stride, rear view.
 
 Custom trigger: a fixed 9%leg cutoff (not derived from the good/warn band) —
-a deliberate, coarser threshold than the scoring band, not a bug.
+a deliberate, coarser threshold than the scoring band.
 """
 
 from __future__ import annotations

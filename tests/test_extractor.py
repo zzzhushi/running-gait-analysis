@@ -1,21 +1,7 @@
-"""The PoseExtractor seam: the base contract, both real implementations' pure
-logic, MockExtractor, and the pipeline that ties an extractor to analyze().
+"""PoseExtractor contracts, pure mapping logic, timestamps, and pipeline integration.
 
-Neither rtmlib, opencv, nor mediapipe is a project dependency (requirements.txt
-covers them only for someone actually extracting from real video), so none is
-installed in CI. The missing-dependency tests do not rely on that being true,
-though — see the `without_optional_deps` fixture. What's tested here:
-
-  - the base contract raises when unimplemented
-  - every PURE function each extractor's extract() calls (to_canonical,
-    pick_person) — these never touch cv2/rtmlib/mediapipe
-  - that missing-dependency paths fail with a clear RuntimeError rather than a
-    bare ImportError traceback
-  - MockExtractor and the full pipeline end to end, since MockExtractor is
-    exactly the seam that makes that possible with no video and no model
-  - the timestamp-selection logic, which is pure once given already-decoded
-    values, plus probe_timestamps' real graceful-degradation path when ffprobe
-    itself is absent (also genuinely true in CI)
+Real extractor dependencies are optional, so most coverage uses pure helpers and
+`MockExtractor`; separate tests verify clear failures when optional packages are absent.
 """
 
 from __future__ import annotations

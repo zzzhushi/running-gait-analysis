@@ -2,14 +2,8 @@
 
     pip install mediapipe opencv-python
 
-Named blazepose.py rather than mediapipe.py deliberately: this module does
-`import mediapipe as mp` internally, and shadowing that package name with a
-sibling module invites exactly the stack-trace and IDE confusion it costs
-nothing to avoid.
-
-Demonstrates the swappable pose source: MediaPipeExtractor emits the same
-PoseSequence shape as RTMPoseExtractor, so the engine and UI consume either
-identically.
+The filename avoids shadowing the `mediapipe` package. Output uses the same canonical
+`PoseSequence` as every other extractor.
 """
 
 from __future__ import annotations

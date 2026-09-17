@@ -1,22 +1,5 @@
-// Third-party attribution panel (issue #21).
-//
-// The app ships third-party code and a third-party ML model to every visitor, so it has
-// to say so in the UI. Versions are NOT repeated here — they are imported from config.js,
-// which is already the single source of truth for the pinned CDN/asset versions. Bumping
-// a version there updates this panel automatically.
-//
-// Verified obligations (do not downgrade these to guesses):
-//   Pyodide            MPL-2.0     Loaded from jsDelivr, never vendored or modified. CDN
-//                                  delivery is "Executable Form" (MPL §3.2), so the duty is
-//                                  to keep notices intact and point at the source — not to
-//                                  relicense anything. MPL is file-level copyleft and does
-//                                  not affect GaitLab's own MIT code.
-//   tasks-vision       Apache-2.0  Retain the notice; we make no modifications to state.
-//   pose_landmarker    Apache-2.0  Per Google's BlazePose GHUM model card, which is linked
-//                                  below as the authority (the solution docs page itself
-//                                  does not state the bundle's license).
-//   rtmlib / RTMPose   Apache-2.0  Local extractor only — never shipped to the browser, so
-//                                  it is credited in the README rather than here.
+// Attribution shown for browser-delivered dependencies. Versions come from config.js;
+// license and source links are declared with each component below.
 
 import { PYODIDE_VERSION, TASKS_VISION_VERSION } from "./config.js";
 import { el } from "./format.js";

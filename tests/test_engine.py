@@ -219,7 +219,7 @@ class TestHeadMetric(unittest.TestCase):
     def test_no_head_metric_without_keypoint(self):
         from gaitlab.core.schema import KEYPOINTS, PoseSequence
         seq = synthetic.generate("side-left", fps=60, duration=4, cadence=176, seed=55)
-        # Strip "head" from keypoint_names and frames to simulate an old pose JSON
+        # Simulate a pose produced before the optional head keypoint was available.
         idx = seq.keypoint_names.index("head")
         seq.keypoint_names = [k for k in seq.keypoint_names if k != "head"]
         seq.frames = [[p for j, p in enumerate(fr) if j != idx] for fr in seq.frames]
