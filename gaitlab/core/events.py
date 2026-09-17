@@ -28,19 +28,17 @@ from typing import Dict, List, Tuple
 from . import geometry as geo
 from .schema import PoseSequence
 
-# How far the ankle must rise from its midstance low before the foot counts as off the
+# How far the ankle must rise above its midstance low before the foot counts as off the
 # ground, as a fraction of its peak-to-peak range. Symmetric, so stance stays centred on
 # midstance.
 #
-# WRONG MODEL, not just a wrong value: most of that range is swing-phase lift, and the ankle
-# keeps moving through stance as the foot rolls. No constant fits both real clips — contact
-# time and duty factor are approximate until contact is defined by motion instead. Sweep and
-# failed alternatives: tests/integration/test_female_overstride_clip.py.
+# An amplitude fraction is a weak proxy for ground contact: most of that range is swing-phase
+# lift, and the ankle keeps moving through stance as the foot rolls. No single value suits
+# every runner, so contact time and duty factor are approximate.
 LIFT_FRACTION = 0.15
 
-# Peak spacing floor, as a fraction of the measured stride. The spurious swing-phase peak
-# sits near 0.4 of the stride and a real one at 1.0, so 0.6 separates them with margin on
-# both sides.
+# Peak spacing floor, as a fraction of the measured stride. The swing-phase bump sits near
+# 0.4 of a stride and a real peak at 1.0.
 PEAK_SPACING_FRACTION = 0.6
 # Stride periods the search will consider, in seconds: 240 spm down to 60 spm.
 MIN_STRIDE_S = 0.5
@@ -51,12 +49,11 @@ def _robust_period(gaps: List[float], expect: float = float("nan")) -> float:
     """Typical interval from a list of elapsed-time gaps.
 
     Trim to gaps near a reference, then average what survives: a median alone is quantized
-    onto a coarse cadence grid, a mean alone is wrecked by one spurious event.
+    onto a coarse cadence grid, a mean alone is skewed by a single spurious event.
 
-    Pass `expect` whenever the caller knows the interval independently of these gaps. The
-    median is a poor stand-in for it — it breaks down at 50% contamination, which is what one
-    spurious event per stride produces, and then the trim discards the correct gaps rather
-    than the wrong ones. An independent reference also earns a tighter window.
+    Pass `expect` when the caller knows the interval independently of these gaps. The median
+    is a poor stand-in, because it assumes most gaps are already real; where that fails the
+    trim keeps the wrong ones. An independent reference also allows a tighter window.
     """
     if not gaps:
         return float("nan")
@@ -67,9 +64,8 @@ def _robust_period(gaps: List[float], expect: float = float("nan")) -> float:
     kept = [g for g in gaps if lo * anchor <= g <= hi * anchor]
     if kept:
         return mean(kept)
-    # Nothing observed supports the reference, so say we do not know rather than report a
-    # period no gap is near. Without a reference the median IS an observation, so that path
-    # keeps its fallback.
+    # Nothing observed supports the reference: report unknown rather than a period no gap is
+    # near. Without a reference the median is itself an observation, so that path keeps it.
     return float("nan") if (expect == expect and expect > 0) else median(gaps)
 
 
@@ -93,8 +89,8 @@ class GaitEvents:
 def _stride_seconds(ankle_y: List[float], seq: PoseSequence, fps: float) -> float:
     """Stride period in SECONDS, measured from the ankle-y signal alone.
 
-    Resampled onto a uniform TIME grid first: reading the lag in frame indices and dividing
-    by one average fps assumes evenly spaced frames, which dropped-frame input is not.
+    Resampled onto a uniform time grid first: an autocorrelation lag counts samples, so
+    converting it with one average fps holds only while frames are evenly spaced.
     """
     ts = seq.timestamps
     if ts is not None and len(ts) == len(ankle_y) and len(ankle_y) > 3:
@@ -121,9 +117,9 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
         return ev
 
     # Same-foot peaks are a STRIDE apart, with a swing-phase bump between each real pair at
-    # ~0.4 of the stride. The floor must scale to the stride: an absolute one rejects that
-    # bump at some cadences and not others. Fallback is only for a clip too short or flat to
-    # measure a period from.
+    # ~0.4 of the stride. The floor scales to the measured stride because the bump's position
+    # scales with it; an absolute floor separates the two at one cadence only. The fallback
+    # covers a clip too short or flat to measure a period from.
     fallback_min_dist = max(3, int(fps * 0.35))
     stride_s: Dict[str, float] = {}
 
@@ -132,8 +128,8 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
         amp = geo.peak_to_peak(ankle_y)
         if amp != amp or amp <= 0:
             continue
-        # Stride period straight from the ankle-y signal, independent of the peaks below —
-        # a period derived from those peaks could not be used to judge whether they are real.
+        # From the signal, not from the peaks below: a period derived from those peaks cannot
+        # judge whether they are real.
         period = _stride_seconds(ankle_y, seq, fps)
         if period == period:
             stride_s[side] = period
@@ -191,9 +187,9 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
         if contacts:
             ev.contact_time[side] = _robust_period(contacts)
 
-    # Cadence from the merged (either-foot) step interval: twice the samples, and L/R phase
-    # jitter averages out. Merging is also why the trim is anchored on half the measured
-    # stride — one spurious peak on either foot injects a near-zero gap into this list.
+    # Merged (either-foot) step intervals: twice the samples, and L/R phase jitter averages
+    # out. The trim is anchored on half the measured stride because a spurious peak on one
+    # foot lands beside a real one on the other, injecting a near-zero gap here.
     all_mid = sorted(ev.midstances["l"] + ev.midstances["r"])
     steps = [seq.elapsed(all_mid[i], all_mid[i + 1]) for i in range(len(all_mid) - 1)]
     measured = [v for v in stride_s.values() if v == v and v > 0]

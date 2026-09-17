@@ -134,8 +134,8 @@ def resample_uniform(values: List[float], times: List[float], count: int) -> Lis
     """`values` sampled at `times` (ascending), linearly interpolated onto `count` points
     evenly spaced over the same span.
 
-    Frequency analysis needs uniform spacing, and PoseSequence supports variable frame rates
-    and dropped frames — so the raw series is not safe to autocorrelate directly.
+    Frequency analysis assumes uniform spacing, so unevenly sampled series must be regridded
+    before any lag or frequency is read from them.
     """
     n = len(values)
     if n < 2 or len(times) != n or count < 2:
@@ -165,17 +165,14 @@ SUBHARMONIC_TOLERANCE = 0.85
 
 
 def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
-    """Period of the strongest repeat in `values`, in frames, or nan.
+    """Period of the strongest repeat in `values`, in samples, or nan.
 
-    Normalized autocorrelation over `min_lag..max_lag`, returning the lag of the tallest
-    local maximum. NaNs are treated as zero deviation from the mean so a dropout weakens
-    the correlation rather than poisoning it.
+    Normalized autocorrelation over the inclusive `min_lag..max_lag`, returning the lag of
+    the strongest peak. NaNs count as zero deviation from the mean, so a dropout weakens the
+    correlation rather than poisoning it.
 
-    Measures the period WITHOUT detecting gait events first, which is the whole point: a
-    period derived from the peaks cannot judge whether those peaks are real.
-
-    Coarse by construction — a whole number of frames, so a 21.3-frame stride reads as 21.
-    Use it to decide which peaks are plausible, never as a timing measurement.
+    Coarse by construction: the answer is a whole number of samples. Use it to judge which
+    candidates are plausible, not as a measurement.
     """
     n = len(values)
     min_lag = max(1, min_lag)
@@ -197,8 +194,8 @@ def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
         for i in range(n - lag):
             acc += dev[i] * dev[i + lag]
         r.append(acc / (total * (n - lag) / n))
-    # Endpoints count as one-sided maxima: min_lag..max_lag is inclusive, so an interior-only
-    # scan makes the exact limits unreachable.
+    # Endpoints count as one-sided maxima: the range is inclusive, so an interior-only scan
+    # would make its own limits unreachable.
     last = len(r) - 1
     peaks = []
     if last >= 1 and r[0] >= r[1]:
@@ -213,9 +210,8 @@ def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
     if best_r <= 0.0:
         return float("nan")
     # Prefer the SMALLEST lag correlating about as well as the best: a periodic signal peaks
-    # at every multiple of its period, so the tallest is not reliably the fundamental. It
-    # cannot run away downward — min_lag is a physiological floor, below which the swing-phase
-    # bump this exists to reject already sits.
+    # at every multiple of its period, so the tallest is not reliably the fundamental.
+    # `min_lag` bounds how far down this can reach.
     for lag, v in peaks:
         if v >= best_r * SUBHARMONIC_TOLERANCE:
             return float(lag)
