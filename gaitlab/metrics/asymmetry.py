@@ -16,6 +16,11 @@ from .keys import MetricKey
 
 
 def diff_pct(l: float, r: float) -> float:
+    """Symmetric percent difference relative to the mean absolute magnitude.
+
+    `abs(l-r) / mean(abs(l), abs(r))` is order-independent and supports signed
+    angle metrics. Treat two near-zero values as equal because the ratio is unstable there.
+    """
     if l != l or r != r:
         return float("nan")
     denom = (abs(l) + abs(r)) / 2.0

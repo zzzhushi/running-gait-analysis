@@ -14,7 +14,11 @@ from ..core.schema import PoseSequence
 
 
 def _ground_slope(seq: PoseSequence, events):
-    """Slope (px-y per px-x) of the line through foot-contact points — a tilt/pan proxy."""
+    """OLS slope (px-y per px-x) through contact points, used as a tilt/pan proxy.
+
+    Contacts must span 25% of the frame width so the fit is not dominated by
+    pixel noise from a narrow treadmill cluster.
+    """
     pts = []
     for side in ("l", "r"):
         for s in events.strikes[side]:
@@ -63,6 +67,8 @@ def assess(seq: PoseSequence, events) -> List[dict]:
 
     if seq.is_side():
         slope = _ground_slope(seq, events)
+        # A 0.06 px/px slope is about 3.4 degrees from horizontal.
+        # TODO: add comment with validation data for the 25% span and 0.06 cutoff.
         if slope is not None and abs(slope) > 0.06:
             warn("The ground line looks tilted — keep the camera level (a tripod helps).")
 

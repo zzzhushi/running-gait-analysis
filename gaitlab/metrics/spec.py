@@ -118,7 +118,12 @@ class MetricDef:
         return BAD
 
     def score(self, value: float) -> float:
-        """0-100 score (100 = ideal mid-band, ~45 at warn edge, ~17 at deep BAD)."""
+        """Map a metric band to a bounded 0-100 heuristic score.
+
+        Every value in the good band receives 100. Beyond its nearest good edge,
+        distance is measured in warn-margin widths: one width scores 45 and the
+        1.5-width clamp bottoms out at 17.5. Missing values receive a neutral 50.
+        """
         if value is None or value != value:
             return 50.0
         if self.status(value) == GOOD:
@@ -133,6 +138,7 @@ class MetricDef:
             frac = (value - hi_g) / span if span else 1.0
         else:
             frac = 0.0
+        # TODO: add comment with the calibration or product rationale for 55 and 1.5.
         frac = max(0.0, min(1.5, frac))
         return max(0.0, 100.0 - 55.0 * frac)
 

@@ -35,6 +35,11 @@ def _personalize(defn, profile):
     height = profile.height_cm
     leg = profile.leg_length_cm
     speed = profile.speed_kmh
+    # Research supports the direction of this adjustment: shorter legs correlate with a
+    # higher self-selected step rate (Luedke et al., DOI 10.1519/JSC.0000000000002891).
+    # The 0.48 ratio, regression coefficients, clamps, and band widths are project heuristics,
+    # not values reported by that study.
+    # TODO: add comment with the calibration dataset or derivation for these exact constants.
     h = (leg / 0.48) if leg else height
     if not h:
         return defn

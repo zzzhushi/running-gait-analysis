@@ -17,6 +17,14 @@ from ..spec import MetricDef, register
 
 
 def _compute(ctx, side):
+    """Median sagittal foot-to-horizontal angle at initial contact.
+
+    Positive means the toe is above the heel (rearfoot-oriented); negative means
+    the toe is below it (forefoot-oriented). Image y increases downward, hence `-dy`.
+    This follows Altman and Davis' segment-to-ground definition
+    (DOI 10.1016/j.gaitpost.2011.09.104), but uses image horizontal and cannot apply
+    their standing-angle calibration.
+    """
     vals = []
     for s in ctx.ev.strikes[side]:
         heel = ctx.seq.xy(s, f"{side}_heel")

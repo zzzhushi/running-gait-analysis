@@ -68,11 +68,20 @@ Use comments for information the code cannot express clearly:
 - Why a non-obvious approach is necessary.
 - Invariants, units, coordinate systems, and compatibility constraints.
 - Important failure behavior or why a simpler alternative is incorrect.
+- For non-obvious formulas: the modeled quantity, units/sign convention,
+  normalization or aggregation, and the provenance of empirical coefficients.
+
+Label tuned constants and thresholds as heuristics unless they are validated. Cite the
+primary paper, standard, fixture, or calibration dataset for externally derived values; do
+not imply that research supports an exact coefficient when it supports only the general
+relationship. If provenance cannot be established, add a targeted `TODO: add comment` that
+names the missing evidence instead of inventing a rationale.
 
 Do not use production comments to:
 - Restate the code or narrate it line by line.
 - Preserve debugging history, previous outputs, or a single fixture's measurements.
 - Explain that a test now passes or list every rejected implementation.
+- Narrate obvious arithmetic or duplicate type annotations and parameter names.
 
 Keep inline comments short. Put concrete regressions in tests, measurement provenance in
 fixture metadata, experiments and rejected alternatives in design documentation, and

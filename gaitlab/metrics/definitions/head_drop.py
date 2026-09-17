@@ -26,6 +26,9 @@ def _compute(ctx, side=None):
 
 def _trigger(defn, value, values, targets):
     vo = values.get(MetricKey.VERTICAL_OSCILLATION)
+    # Require both 50% more motion than the hips and a 5%-of-leg absolute floor, so
+    # ordinary whole-body oscillation or very small hip motion does not trigger head bobbing.
+    # TODO: add comment with validation data for the 1.5 multiplier and 5% floor.
     if value != value or vo != vo or value <= max(vo * 1.5, 5.0):
         return None
     return "high", "low"

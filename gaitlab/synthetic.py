@@ -64,6 +64,7 @@ def _generate_side(view, fps, duration, cadence, width, height, asymmetry, noise
     upper_arm = 0.16 * H
     fore_arm = 0.15 * H
 
+    # Cadence counts both feet; one leg completes a stride every two steps.
     stride_freq = (cadence / 60.0) / 2.0
     vosc_amp = 0.028 * H
     trunk_lean = math.radians(8.0)
@@ -72,7 +73,8 @@ def _generate_side(view, fps, duration, cadence, width, height, asymmetry, noise
     for f in range(n):
         t = f / fps
         phase_l = 2 * math.pi * stride_freq * t
-        phase_r = phase_l + math.pi
+        phase_r = phase_l + math.pi  # contralateral leg is half a stride cycle apart
+        # The synthetic hip-height signal has two vertical extrema per stride, hence 2 * phase.
         hip_y = hipY0 - vosc_amp * math.cos(2 * phase_l)
         hip = (hipX, hip_y)
 
@@ -150,6 +152,7 @@ def _generate_rear(view, fps, duration, cadence, width, height, asymmetry, noise
     torso = 0.30 * H
     sway = 0.012 * H
 
+    # Same phase model as the side view: cadence counts two steps per stride.
     stride_freq = (cadence / 60.0) / 2.0
     vosc_amp = 0.026 * H
     # pelvic drop amplitude (px of vertical hip-line offset); asymmetry deepens one side
@@ -159,7 +162,8 @@ def _generate_rear(view, fps, duration, cadence, width, height, asymmetry, noise
     for f in range(n):
         t = f / fps
         phase_l = 2 * math.pi * stride_freq * t
-        phase_r = phase_l + math.pi
+        phase_r = phase_l + math.pi  # contralateral leg is half a stride cycle apart
+        # The synthetic body-height signal has two vertical extrema per stride.
         body_y = hipY0 - vosc_amp * math.cos(2 * phase_l)
         body_x = cx + sway * math.sin(phase_l)
 

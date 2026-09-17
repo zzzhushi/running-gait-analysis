@@ -16,6 +16,11 @@ from ..spec import MetricDef, register
 
 
 def _compute(ctx, side):
+    """Median frontal-plane heel-to-ankle angle at contact.
+
+    The side-dependent multiplier makes medial ankle displacement positive for
+    either foot. This is a 2-D roll-in proxy, not a clinical calcaneal-eversion angle.
+    """
     frames = ctx.ev.strikes[side] or ctx.ev.midstance(side) or list(range(0, ctx.n, max(1, ctx.n // 8)))
     vals = []
     for s in frames:
@@ -23,6 +28,7 @@ def _compute(ctx, side):
         heel = ctx.seq.xy(s, f"{side}_heel")
         mid = ctx.seq.xy(s, "mid_hip")[0]
         dx = ankle[0] - heel[0]
+        # Regularize a zero vertical separation without changing the angle materially.
         dy = abs(ankle[1] - heel[1]) + 1e-6
         toward_mid = 1.0 if ankle[0] < mid else -1.0
         vals.append(math.degrees(math.atan2(dx * toward_mid, dy)))

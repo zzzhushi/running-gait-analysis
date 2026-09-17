@@ -102,6 +102,9 @@ def find_peaks(values: List[float], min_distance: int = 1,
 
     Greedy: keeps the tallest candidate peaks first, then drops any that fall
     within `min_distance` of an already-accepted (taller) peak.
+
+    Here `min_prominence` means height above the signal's global minimum. It is
+    not topographic prominence, which uses each peak's surrounding contour.
     """
     n = len(values)
     if n < 3:
