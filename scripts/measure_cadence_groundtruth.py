@@ -61,9 +61,11 @@ APEX_SPACING_FRAC = 0.6
 # reliably the fundamental.
 SUBHARMONIC_TOLERANCE = 0.85
 
-# Frames per step below which the free-fall fit has too few samples to be meaningful. The
-# check is reported as unavailable rather than guessed at.
-MIN_FRAMES_PER_STEP_FOR_TIMEBASE = 20
+# Half-width of the free-fall fit, as a fraction of the step period, and its bounds. The
+# window has to stay near the flight phase: reaching past it into stance flattens the fitted
+# parabola, which understates gravity and overstates the capture rate.
+FIT_WINDOW_FRAC = 0.10
+MIN_FIT_HALF_WINDOW, MAX_FIT_HALF_WINDOW = 2, 5
 # Stature only sets the pixel scale, and the implied rate varies as its square root, so a
 # rough value still separates a 1x timebase from a 2x or 4x one.
 DEFAULT_STATURE_M = 1.70
@@ -74,6 +76,11 @@ TIMEBASE_TOLERANCE = 0.5
 
 # Relative gap above which a cross-check is treated as contradicting the count.
 CROSSCHECK_TOLERANCE = 0.08
+
+# Rates cameras actually record at. The free-fall estimate is snapped to the nearest of
+# these when suggesting a correction, since it is precise enough to choose between them and
+# not precise enough to be used directly.
+COMMON_CAPTURE_FPS = (24.0, 25.0, 30.0, 50.0, 60.0, 120.0, 240.0)
 
 
 def probe(path: str) -> Tuple[float, float]:
@@ -136,28 +143,36 @@ def bright_reference(raw: bytes, n: int) -> bytearray:
 
 
 def outline_rows(raw: bytes, n: int, ref: bytearray) -> Tuple[List[float], List[float]]:
-    """Topmost and bottommost occupied row per frame."""
+    """Topmost and bottommost occupied row per frame; the top to sub-pixel precision.
+
+    The top edge is interpolated across the row where the dark-pixel count crosses the
+    threshold. A whole-row answer quantizes the head trace, and near a flight apex the
+    curvature that the timebase check measures is on the order of one row.
+    """
     fsz = W * H
     top: List[float] = []
     bot: List[float] = []
     last_t = last_b = 0.0
     for f in range(n):
         off = f * fsz
-        hi = lo = None
+        hi = None
+        lo = None
+        prev = 0
         for r in range(H):
             base, rbase = off + r * W, r * W
             hits = 0
             for c in range(W):
                 if ref[rbase + c] - raw[base + c] > DARK_MARGIN:
                     hits += 1
-                    if hits >= DARK_RUN:
-                        break
             if hits >= DARK_RUN:
                 if hi is None:
-                    hi = r
-                lo = r
+                    span = hits - prev
+                    frac = (DARK_RUN - prev) / span if span > 0 else 0.0
+                    hi = (r - 1) + min(1.0, max(0.0, frac))
+                lo = float(r)
+            prev = hits
         if hi is not None:
-            last_t, last_b = float(hi), float(lo)
+            last_t, last_b = hi, lo
         top.append(last_t)
         bot.append(last_b)
     return top, bot
@@ -353,9 +368,10 @@ def main() -> Optional[int]:
     px_per_m = (heights[len(heights) // 2] / args.stature_m) if heights else float("nan")
 
     capture_fps = float("nan")
-    if frames_per_step >= MIN_FRAMES_PER_STEP_FOR_TIMEBASE and px_per_m == px_per_m:
-        capture_fps = implied_capture_fps(
-            head, apexes, px_per_m, max(3, min(8, int(frames_per_step * 0.12))))
+    if px_per_m == px_per_m:
+        half = max(MIN_FIT_HALF_WINDOW,
+                   min(MAX_FIT_HALF_WINDOW, round(frames_per_step * FIT_WINDOW_FRAC)))
+        capture_fps = implied_capture_fps(head, apexes, px_per_m, half)
 
     # Correcting the timebase automatically would mean choosing a whole factor from an
     # estimate that cannot reliably separate 3 from 4, and a wrong factor is worse than an
@@ -373,9 +389,10 @@ def main() -> Optional[int]:
     elif abs(capture_fps - real_fps) > real_fps * TIMEBASE_TOLERANCE:
         timebase_note = (f"CONTRADICTED — free fall implies {capture_fps:.0f} fps capture, not "
                          f"the {real_fps:.0f} fps assumed")
-        timebase_warning = (f"Re-run with --capture-fps near {capture_fps:.0f} if this clip was "
-                            f"shot in slow motion; every per-second figure below is wrong by "
-                            f"that factor if so.")
+        nearest = min(COMMON_CAPTURE_FPS, key=lambda c: abs(c - capture_fps))
+        timebase_warning = (f"If this clip was shot in slow motion, re-run with "
+                            f"--capture-fps {nearest:.0f}; every per-second figure below is "
+                            f"wrong by that factor until you do.")
     else:
         timebase_note = f"consistent — free fall implies {capture_fps:.0f} fps capture"
 
