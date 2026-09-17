@@ -71,7 +71,7 @@ Index  Name            Used?  Notes
 | What | URL | Notes |
 |---|---|---|
 | Dallam et al. 2005 — 180 spm myth origin | https://pubmed.ncbi.nlm.nih.gov/15793090/ | Daniels observed elites at 180+; not a universal target |
-| Luedke et al. 2016 — cadence prescription by height | https://pubmed.ncbi.nlm.nih.gov/26778467/ | Shorter runners run higher cadence; basis of our height-adjusted target |
+| Luedke et al. 2021 — factors associated with self-selected step rate | https://pubmed.ncbi.nlm.nih.gov/30335714/ | Shorter legs correlated with higher step rate; supports the direction, not the app's exact coefficients |
 | Willy et al. 2016 — real-time cadence feedback | https://journals.sagepub.com/doi/10.1177/0363546515621495 | Metronome cues reduce patellofemoral load |
 
 ---
@@ -109,7 +109,7 @@ Index  Name            Used?  Notes
 | What | URL | Notes |
 |---|---|---|
 | Lieberman et al. 2010 — foot strike and impact (Nature) | https://www.nature.com/articles/nature08723 | Heel-strike with overstride = higher collision force |
-| Altman & Davis 2012 — foot strike classification | https://pubmed.ncbi.nlm.nih.gov/22236580/ | Defines heel / midfoot / forefoot by contact angle |
+| Altman & Davis 2012 — foot strike classification | https://pubmed.ncbi.nlm.nih.gov/22075193/ | Defines foot-strike angle relative to the ground in the sagittal plane |
 | Crowell & Davis 2011 — shank angle retraining | https://pubmed.ncbi.nlm.nih.gov/20889020/ | Reducing overstride cuts peak tibial acceleration 20% |
 
 ---
