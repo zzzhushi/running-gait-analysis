@@ -11,12 +11,10 @@ found by walking outward from the peak until the foot has lifted `LIFT_FRACTION`
 vertical range. Using the same threshold on both sides keeps stance symmetric about
 midstance.
 
-This matters because it is the anchor for everything downstream. Reporting the peak itself
-as the strike put every contact-time metric about half a step late: measured on a real
-30 fps clip the peak lagged true touchdown by ~5 frames (167 ms, roughly half a step),
-which halved ground contact time (133 ms, physiological ~200-300) and duty factor (19%,
-physiological ~30-40), and moved overstride — defined as the foot's position *at contact*
-— from a large positive value to roughly zero. See tests/integration/test_male_side_clip.py.
+Keep that distinction, because these anchors are what every downstream metric is measured
+from. Treating midstance as the strike moves contact time, duty factor and overstride by
+about half a stance each, all in the same direction — so the report stays internally
+consistent while being uniformly wrong, which is the hardest kind of error to notice.
 """
 
 from __future__ import annotations
@@ -172,13 +170,10 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
         ev.stance[side] = stance
         ev.midstances[side] = midstances
 
-        # Stride/step timing comes from the PEAKS, not the refined contacts. The peak is a
-        # single well-defined extremum; the contact frame is a threshold crossing on a
-        # rounded shoulder, so it carries a frame or two of jitter. That jitter is
-        # irrelevant to stance duration (both edges move together) but it lands directly in
-        # the step intervals, and cadence is the most-read number in the report. Measured
-        # on the real-clip fixture, deriving cadence from refined contacts moved it from
-        # 163.6 to 180 spm against a measured truth of 168.6.
+        # Use midstance intervals for stride and step timing, not the refined contacts: an
+        # extremum is less sensitive to frame-level jitter than a threshold crossing on a
+        # rounded shoulder. That jitter cancels in stance duration, where both edges move
+        # together, but lands directly in the step intervals.
         same_foot = [seq.elapsed(midstances[i], midstances[i + 1])
                      for i in range(len(midstances) - 1)]
         if same_foot:
