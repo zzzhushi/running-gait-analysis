@@ -19,7 +19,7 @@ files exist so at least one test is anchored to something the engine did not pro
 | `female_bounding` | side-right | 129 spm | 120 | bounding drill |
 | `female_overstride` | side-right | 102.8 spm | 120 | slow run, long stride |
 
-Each clip has a `<clip>.mp4`, one `<clip>.<extractor>.pose.json` per extractor, and a
+Each clip has a `<clip>.mp4`, one `<clip>.pose.<extractor>.json` per extractor, and a
 `<clip>.groundtruth.json`. All are 720x1280 H.264 — one format, so no test needs to know which
 capture path a clip came from.
 

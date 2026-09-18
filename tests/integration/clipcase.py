@@ -112,7 +112,7 @@ def load_clips(extractors=None) -> List[Clip]:
         record = json.loads(path.read_text())
         stem = path.name[: -len(".groundtruth.json")]
         for extractor in (extractors or EXTRACTORS):
-            pose = DATA / f"{stem}.{extractor}.pose.json"
+            pose = DATA / f"{stem}.pose.{extractor}.json"
             if pose.exists():
                 out.append(Clip(stem, record, pose, extractor))
     return out
