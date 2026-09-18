@@ -137,3 +137,58 @@ def test_crossover_flags_persistent_crossing():
     # Both ankles clearly right of the midline on every strike (inner foot ~7% past it).
     seq = _rear_ankles([(515, 535), (515, 535), (515, 535), (515, 535)])
     assert _crossover(seq, {"l": [1, 3], "r": [0, 2]}) is True
+
+
+# --- flight time: measured from stance gaps, not derived -------------------
+
+
+def _blank_frames(n):
+    return [{} for _ in range(n)]
+
+
+def test_flight_time_is_the_median_gap_between_stances():
+    from gaitlab.metrics.definitions import flight_time as flight_time_mod
+
+    seq = pose_from_points("side-left", _blank_frames(50))
+    ev = GaitEvents(stance={"l": [(0, 10), (30, 40)], "r": [(15, 25)]})
+    ctx = Ctx(seq, ev, None)
+    # Airborne 10->15 and 25->30: 5 frames each, at 60 fps.
+    assert flight_time_mod._compute(ctx) == pytest.approx(5 / 60, abs=1e-6)
+
+
+def test_flight_time_ignores_contact_time_and_cadence():
+    """flight_time must not be derived from cadence/contact_time: both anchors are
+    independently uncalibrated, so deriving one from the other compounds their error
+    rather than measuring anything new."""
+    from gaitlab.metrics.definitions import flight_time as flight_time_mod
+
+    seq = pose_from_points("side-left", _blank_frames(50))
+    ev = GaitEvents(stance={"l": [(0, 10), (30, 40)], "r": [(15, 25)]},
+                     contact_time={"l": 999.0, "r": 999.0}, cadence_spm=float("nan"))
+    ctx = Ctx(seq, ev, None)
+    assert flight_time_mod._compute(ctx) == pytest.approx(5 / 60, abs=1e-6)
+
+
+# --- foot-strike angle: averaged over a small window around contact --------
+
+
+def test_foot_strike_angle_averages_a_window_around_the_contact_frame():
+    """A one-frame shift in which frame LIFT_FRACTION calls "contact" should not
+    flip the classification; averaging a small window around it is what buys
+    that stability."""
+    from gaitlab.metrics.definitions import foot_strike_angle as fsa_mod
+
+    heel_y = [500.0, 500.0, 500.0, 500.0, 500.0]
+    toe_y = [520.0, 510.0, 480.0, 470.0, 460.0]  # moves frame to frame
+    frames = [{"l_heel": (100.0, heel_y[i]), "l_big_toe": (150.0, toe_y[i])} for i in range(5)]
+    seq = pose_from_points("side-left", frames)
+    ev = GaitEvents(strikes={"l": [2], "r": []})
+    ctx = Ctx(seq, ev, None)
+
+    expected_heel = sum(heel_y[1:4]) / 3
+    expected_toe = sum(toe_y[1:4]) / 3
+    dx = (150.0 - 100.0) * ctx.facing
+    dy = expected_toe - expected_heel
+    expected = math.degrees(math.atan2(-dy, abs(dx) + 1e-6))
+
+    assert fsa_mod._compute(ctx, "l") == pytest.approx(expected, abs=0.5)
