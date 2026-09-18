@@ -9,7 +9,6 @@ const _override = _params.get("runtime") || (typeof window !== "undefined" && wi
 // Default to the static, client-side runtime (the shipped product). Local dev
 // against server.py opts in with ?runtime=server.
 export const RUNTIME = _override === "server" ? "server" : "static";
-export const IS_STATIC = RUNTIME === "static";
 
 // Build stamp — replaced with the short commit sha at deploy time by scripts/build_web.py
 // (stays "dev" locally). Shown in the footer and logged on boot so you can confirm which

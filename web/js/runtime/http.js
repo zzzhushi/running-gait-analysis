@@ -8,11 +8,14 @@ export async function readJson(response) {
     error.body = body;
     throw error;
   }
-  if (response.status === 204) return null;
   return response.json();
 }
 
-export async function requestJson(fetchImpl, url, init) {
+export async function requestRaw(fetchImpl, url, init) {
   if (typeof fetchImpl !== "function") throw new Error("Fetch is unavailable in the server runtime");
-  return readJson(await fetchImpl(url, init));
+  return fetchImpl(url, init);
+}
+
+export async function requestJson(fetchImpl, url, init) {
+  return readJson(await requestRaw(fetchImpl, url, init));
 }

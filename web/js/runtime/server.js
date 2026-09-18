@@ -1,6 +1,5 @@
-import { SERVER_CAPABILITIES } from "./capabilities.js";
 import { normalizeAnalysisResponse } from "./contract.js";
-import { readJson, requestJson } from "./http.js";
+import { readJson, requestJson, requestRaw } from "./http.js";
 
 const ACTIVE_USER_KEY = "gaitlab_active_user";
 const jsonHeaders = { "Content-Type": "application/json" };
@@ -12,6 +11,7 @@ function defaultStorage() {
 
 export function createServerRuntime({ fetchImpl = globalThis.fetch, storage = defaultStorage() } = {}) {
   let memoryUser = null;
+  let hasMemoryUser = false;
   const request = (url, init) => requestJson(fetchImpl, url, init);
   const post = (url, body) => request(url, {
     method: "POST",
@@ -21,7 +21,6 @@ export function createServerRuntime({ fetchImpl = globalThis.fetch, storage = de
 
   return Object.freeze({
     name: "server",
-    capabilities: SERVER_CAPABILITIES,
 
     listRuns(userId) {
       const query = userId ? "?" + new URLSearchParams({ user_id: userId }) : "";
@@ -29,8 +28,7 @@ export function createServerRuntime({ fetchImpl = globalThis.fetch, storage = de
     },
 
     async getRun(id) {
-      if (typeof fetchImpl !== "function") throw new Error("Fetch is unavailable in the server runtime");
-      const response = await fetchImpl("/api/runs/" + pathPart(id));
+      const response = await requestRaw(fetchImpl, "/api/runs/" + pathPart(id));
       if (response.status === 404) return null;
       return readJson(response);
     },
@@ -72,14 +70,16 @@ export function createServerRuntime({ fetchImpl = globalThis.fetch, storage = de
     },
 
     getActiveUser() {
+      if (hasMemoryUser) return memoryUser;
       try {
         const value = storage && storage.getItem(ACTIVE_USER_KEY);
-        return value ? JSON.parse(value) : memoryUser;
+        return value ? JSON.parse(value) : null;
       } catch { return memoryUser; }
     },
 
     setActiveUser(user) {
       memoryUser = user || null;
+      hasMemoryUser = true;
       try {
         if (storage) storage.setItem(ACTIVE_USER_KEY, JSON.stringify(memoryUser));
       } catch { /* an in-memory fallback still keeps this tab usable */ }

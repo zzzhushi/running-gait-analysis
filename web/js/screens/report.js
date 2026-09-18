@@ -9,7 +9,7 @@ export default async function report(app, params) {
   if (!r) { app.append(el("div", { class: "empty" }, "Run not found.")); return; }
   const s = r.summary;
 
-  app.append(api.capabilities.history
+  app.append(api.runtimeName === "server"
     ? el("div", { class: "crumb" }, [
         el("a", { "data-nav": "#/library" }, "← Library"), " · ",
         el("a", { "data-nav": "#/trends" }, "Trends"),
@@ -50,7 +50,7 @@ export default async function report(app, params) {
   const plan = planSection(r.plan);
   if (plan) app.append(plan);
 
-  if (api.capabilities.narrative) {
+  if (api.runtimeName === "server") {
     // Optional: rephrase the findings as a coach's note via a local LLM (Ollama).
     const narrOut = el("div", { style: "margin-top:12px;color:#c2ccd8;font-size:14px;white-space:pre-wrap;line-height:1.55" });
     const narrBtn = el("button", { class: "btn" }, "✨ Plain-English summary (optional, local LLM)");

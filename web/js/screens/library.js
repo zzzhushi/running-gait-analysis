@@ -18,12 +18,21 @@ export default async function library(app) {
 
   if (!runs.length) {
     const empty = [el("p", {}, "No runs yet.")];
-    if (api.capabilities.seed) {
-      empty.push(el("button", {
-        class: "btn btn-accent",
-        onclick: async () => { await api.reseed(activeUser?.id); location.reload(); },
-      }, "Load demo runs"));
-    }
+    const seedStatus = el("p", { style: "color:var(--bad);margin:8px 0 0" }, "");
+    const seedButton = el("button", {
+      class: "btn btn-accent",
+      onclick: async () => {
+        seedButton.disabled = true;
+        try {
+          await api.reseed(activeUser?.id);
+          location.reload();
+        } catch (error) {
+          seedStatus.textContent = "Could not load demo runs: " + error.message;
+          seedButton.disabled = false;
+        }
+      },
+    }, "Load demo runs");
+    empty.push(seedButton, seedStatus);
     app.append(el("div", { class: "empty" }, empty));
     return;
   }

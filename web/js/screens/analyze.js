@@ -69,7 +69,7 @@ export default async function analyze(app, params) {
     el("div", { style: "margin-top:14px" }, [el("a", { class: "btn btn-sm", href: "#/report/" + id }, "← Back to report")]),
   ]);
 
-  const crumb = api.capabilities.history
+  const crumb = api.runtimeName === "server"
     ? [el("a", { "data-nav": "#/library" }, "← Library"), " · ", el("a", { href: "#/report/" + id }, "Report")]
     : [el("a", { "data-nav": "#/upload" }, "← New analysis"), " · ", el("a", { href: "#/report/" + id }, "Report")];
   app.append(

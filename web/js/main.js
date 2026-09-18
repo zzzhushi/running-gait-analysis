@@ -8,10 +8,9 @@ import { el } from "./format.js";
 import * as api from "./api.js";
 import { BUILD_VERSION } from "./config.js";
 import { openLicenses } from "./licenses.js";
-import { enabledRouteNames, homeRoute } from "./runtime/capabilities.js";
 
-const HOME = homeRoute(api.capabilities);
-const enabledRoutes = new Set(enabledRouteNames(api.capabilities));
+const isServer = api.runtimeName === "server";
+const HOME = isServer ? "#/library" : "#/upload";
 
 const ROUTES = [
   ["library", /^#\/library$/, library, []],
@@ -20,7 +19,7 @@ const ROUTES = [
   ["combine", /^#\/combine$/, combine, []],
   ["report", /^#\/report\/(\w+)$/, report, ["id"]],
   ["analyze", /^#\/analyze\/(\w+)$/, analyze, ["id"]],
-].filter(([name]) => enabledRoutes.has(name));
+].filter(([name]) => isServer || (name !== "library" && name !== "trends" && name !== "combine"));
 
 let cleanup = null;
 
@@ -61,7 +60,7 @@ window.addEventListener("hashchange", route);
 // ---------------------------------------------------------------- user header
 async function initHeader() {
   const area = document.getElementById("user-area");
-  if (!area || !api.capabilities.users) return;
+  if (!area || !isServer) return;
 
   let users = [];
   try { users = await api.listUsers(); } catch { return; }
@@ -116,22 +115,11 @@ async function initHeader() {
   area.append(wrap);
 }
 
-function initRuntimeChrome() {
-  document.body.dataset.runtime = api.runtimeName;
-  const brand = document.querySelector(".brand[data-nav]");
-  if (brand) brand.setAttribute("data-nav", HOME);
-  document.querySelectorAll("[data-capability]").forEach((node) => {
-    node.hidden = !api.capabilities[node.dataset.capability];
-  });
-  const note = document.getElementById("runtime-note");
-  if (note) {
-    note.textContent = api.capabilities.browserAnalysis
-      ? "Runs entirely in your browser · no account, no upload · pose by MediaPipe (in-browser)"
-      : "Runs on this local server · run data stays on this machine";
-  }
-}
-
-initRuntimeChrome();
+document.body.classList.toggle("static", !isServer);
+const brand = document.querySelector(".brand[data-nav]");
+if (brand) brand.setAttribute("data-nav", HOME);
+const note = document.getElementById("runtime-note");
+if (note && isServer) note.textContent = "Runs on this local server · run data stays on this machine";
 // Build stamp: log it and append to the footer so you can confirm a browser picked up a
 // fresh deploy (compare against the sha shown in the GitHub Actions run).
 console.log(`GaitLab build ${BUILD_VERSION}`);

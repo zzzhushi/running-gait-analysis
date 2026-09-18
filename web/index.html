@@ -5,19 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GaitLab — Running Gait Analysis</title>
   <link rel="stylesheet" href="./css/app.css" />
+  <style>
+    body.static .topnav a[data-nav="#/library"],
+    body.static .topnav a[data-nav="#/trends"],
+    body.static .topnav a[data-nav="#/combine"],
+    body.static #user-area { display: none; }
+  </style>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand" data-nav="#/upload">
+    <div class="brand" data-nav="#/library">
       <span class="brand-mark">⏱</span>
       <span class="brand-name">GaitLab</span>
       <span class="brand-tag">running gait analysis</span>
     </div>
     <nav class="topnav">
-      <a data-nav="#/library" data-capability="history" hidden>Library</a>
-      <a data-nav="#/trends" data-capability="history" hidden>Trends</a>
-      <a data-nav="#/combine" data-capability="history" hidden>Combine</a>
-      <div id="user-area" data-capability="users" hidden></div>
+      <a data-nav="#/library">Library</a>
+      <a data-nav="#/trends">Trends</a>
+      <a data-nav="#/combine">Combine</a>
+      <div id="user-area"></div>
       <a class="btn btn-accent" data-nav="#/upload">+ New analysis</a>
     </nav>
   </header>

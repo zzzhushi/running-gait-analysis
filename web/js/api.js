@@ -15,7 +15,7 @@ const adapter = RUNTIME === "server"
 // Anything the active runtime does not implement still resolves here and rejects
 // with UnsupportedRuntimeOperation when called -- see ./runtime/facade.js.
 export const {
-  runtimeName, capabilities,
+  runtimeName,
   listRuns, getRun, analyzePose, deleteRun, reseed, narrative,
   listUsers, createUser, updateUser, deleteUser, getActiveUser, setActiveUser,
   listVideos, ingest, setVideoUrl, getVideoUrl,

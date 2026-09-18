@@ -1,4 +1,3 @@
-import { STATIC_CAPABILITIES } from "./capabilities.js";
 import { normalizeAnalysisResponse } from "./contract.js";
 
 let sequence = 0;
@@ -17,7 +16,6 @@ export function createStaticRuntime({ engine, idFactory = nextId } = {}) {
 
   return Object.freeze({
     name: "static",
-    capabilities: STATIC_CAPABILITIES,
 
     async getRun(id) {
       return runs.get(id) || null;

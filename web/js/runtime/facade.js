@@ -7,37 +7,38 @@ export class UnsupportedRuntimeOperation extends Error {
   }
 }
 
-const ASYNC_OPERATIONS = [
-  "listRuns", "getRun", "analyzePose", "deleteRun", "reseed", "narrative",
-  "listUsers", "createUser", "updateUser", "deleteUser", "listVideos", "ingest",
-];
-const SYNC_OPERATIONS = ["getActiveUser", "setActiveUser"];
+function asyncOperation(adapter, operation, name, values) {
+  if (typeof operation !== "function") {
+    return Promise.reject(new UnsupportedRuntimeOperation(adapter.name, name));
+  }
+  try { return Promise.resolve(operation(...values)); }
+  catch (error) { return Promise.reject(error); }
+}
+
+function syncOperation(adapter, operation, name, values) {
+  if (typeof operation !== "function") {
+    throw new UnsupportedRuntimeOperation(adapter.name, name);
+  }
+  return operation(...values);
+}
 
 export function createRuntimeApi(adapter) {
   const api = {
     runtimeName: adapter.name,
-    capabilities: adapter.capabilities,
-  };
-
-  for (const operation of ASYNC_OPERATIONS) {
-    api[operation] = (...args) => {
-      const implementation = adapter[operation];
-      if (typeof implementation !== "function") {
-        return Promise.reject(new UnsupportedRuntimeOperation(adapter.name, operation));
-      }
-      try { return Promise.resolve(implementation(...args)); }
-      catch (error) { return Promise.reject(error); }
-    };
-  }
-
-  for (const operation of SYNC_OPERATIONS) {
-    api[operation] = (...args) => {
-      const implementation = adapter[operation];
-      if (typeof implementation !== "function") {
-        throw new UnsupportedRuntimeOperation(adapter.name, operation);
-      }
-      return implementation(...args);
-    };
+    listRuns: (...values) => asyncOperation(adapter, adapter.listRuns, "listRuns", values),
+    getRun: (...values) => asyncOperation(adapter, adapter.getRun, "getRun", values),
+    analyzePose: (...values) => asyncOperation(adapter, adapter.analyzePose, "analyzePose", values),
+    deleteRun: (...values) => asyncOperation(adapter, adapter.deleteRun, "deleteRun", values),
+    reseed: (...values) => asyncOperation(adapter, adapter.reseed, "reseed", values),
+    narrative: (...values) => asyncOperation(adapter, adapter.narrative, "narrative", values),
+    listUsers: (...values) => asyncOperation(adapter, adapter.listUsers, "listUsers", values),
+    createUser: (...values) => asyncOperation(adapter, adapter.createUser, "createUser", values),
+    updateUser: (...values) => asyncOperation(adapter, adapter.updateUser, "updateUser", values),
+    deleteUser: (...values) => asyncOperation(adapter, adapter.deleteUser, "deleteUser", values),
+    getActiveUser: (...values) => syncOperation(adapter, adapter.getActiveUser, "getActiveUser", values),
+    setActiveUser: (...values) => syncOperation(adapter, adapter.setActiveUser, "setActiveUser", values),
+    listVideos: (...values) => asyncOperation(adapter, adapter.listVideos, "listVideos", values),
+    ingest: (...values) => asyncOperation(adapter, adapter.ingest, "ingest", values),
   }
 
   // Video object URLs belong to the browser session in either runtime and are
