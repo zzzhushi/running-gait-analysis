@@ -13,10 +13,13 @@ DATA = Path(__file__).resolve().parents[1] / "data"
 # any clip, so it lives here; a clip overrides it only when its own measurement is looser.
 TOLERANCE_PCT: Dict[str, float] = {
     "cadence_spm": 2.0,
-    "duration_s": 0.5,
     "overstride": 25.0,
     "vertical_oscillation": 15.0,
 }
+
+# duration_s isn't a gait metric, it's the clip's own real duration -- checked separately as
+# fixture integrity in test_pose_fixture_matches_its_record, against this tolerance.
+DURATION_TOLERANCE_PCT = 0.5
 
 # Metrics the engine reports that no clip asserts yet, with the reason. A metric in neither
 # this set nor some clip's record fails test_every_metric_is_validated_or_listed.

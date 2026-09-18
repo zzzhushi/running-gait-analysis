@@ -2,9 +2,9 @@
   "clip": "female_bounding.mp4",
   "view": "side-right",
   "subject": "zzzhushi",
+  "duration_s": 12.22,
   "metrics": {
-    "cadence_spm": 128.57,
-    "duration_s": 12.22
+    "cadence_spm": 128.57
   },
   "tolerance_pct": {}
 }

@@ -2,9 +2,9 @@
   "clip": "female_rear_view.mp4",
   "view": "rear",
   "subject": "zzzhushi",
+  "duration_s": 14.26,
   "metrics": {
-    "cadence_spm": 180.54,
-    "duration_s": 14.26
+    "cadence_spm": 180.54
   },
   "tolerance_pct": {}
 }

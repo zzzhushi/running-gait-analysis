@@ -2,9 +2,9 @@
   "clip": "female_high_cadence.mp4",
   "view": "side-right",
   "subject": "zzzhushi",
+  "duration_s": 11.88,
   "metrics": {
-    "cadence_spm": 205.13,
-    "duration_s": 11.88
+    "cadence_spm": 205.13
   },
   "tolerance_pct": {}
 }

@@ -55,11 +55,16 @@ One `<clip>.groundtruth.json` per clip, holding assertions and nothing else:
   "clip": "female_overstride.mp4",
   "view": "side-right",
   "subject": "zzzhushi",
-  "metrics": { "cadence_spm": 102.8, "duration_s": 9.675 },
+  "duration_s": 9.675,
+  "metrics": { "cadence_spm": 102.8 },
   "tolerance_pct": {},
   "xfail": { "some_metric": "why this clip's value for it is not asserted yet" }
 }
 ```
+
+`duration_s` is the clip's own real duration, not a gait metric — checked separately as
+fixture integrity (a truncated or re-encoded fixture would drift from it), not against a
+tolerance in `metrics`.
 
 A `metrics` entry is either a value, compared within tolerance, or a bound:
 

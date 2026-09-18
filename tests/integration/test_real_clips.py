@@ -18,7 +18,9 @@ import json
 
 import pytest
 
-from tests.integration.clipcase import UNMEASURED, UNVALIDATED, analyse, check, load_clips
+from tests.integration.clipcase import (
+    DURATION_TOLERANCE_PCT, UNMEASURED, UNVALIDATED, analyse, check, load_clips,
+)
 
 CLIPS = load_clips()
 pytestmark = pytest.mark.skipif(not CLIPS, reason="no real-clip fixtures present")
@@ -101,12 +103,19 @@ def test_both_feet_are_tracked(case):
 
 
 def test_pose_fixture_matches_its_record(case):
-    """The fixture must be from the extractor its filename claims."""
-    clip, _ = case
+    """The fixture must be from the extractor its filename claims, and span the clip's
+    real duration -- catching a truncated fixture or a stale duration_s alike."""
+    clip, actual = case
     assert clip.record["clip"].split(".")[0] == clip.name
     source = json.loads(clip.pose_path.read_text())["source"]
     assert clip.extractor in source.replace("mediapipe-", ""), (
         f"{clip.id}: fixture says source {source!r}"
+    )
+    expected = clip.record["duration_s"]
+    err = abs(actual["duration_s"] - expected) / expected * 100
+    assert err <= DURATION_TOLERANCE_PCT, (
+        f"{clip.id}: fixture duration {actual['duration_s']:.2f}s vs recorded "
+        f"{expected}s ({err:.1f}% off)"
     )
 
 
@@ -128,7 +137,7 @@ def test_every_metric_key_is_real():
     """A mistyped key would otherwise assert nothing and pass."""
     from gaitlab.metrics.defs import METRIC_DEFS
 
-    known = {str(getattr(k, "value", k)) for k in METRIC_DEFS} | {"cadence_spm", "duration_s"}
+    known = {str(getattr(k, "value", k)) for k in METRIC_DEFS} | {"cadence_spm"}
     for clip in CLIPS:
         for key in list(clip.metrics) + list(clip.record.get("xfail", {})):
             assert key in known, (
