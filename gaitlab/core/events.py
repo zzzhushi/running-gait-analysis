@@ -23,6 +23,7 @@ from typing import Dict, List, Tuple
 
 from . import geometry as geo
 from .schema import PoseSequence
+from .tracking import leg_trust
 
 # Uncalibrated heuristic for stance boundaries; contact time and duty factor remain approximate.
 LIFT_FRACTION = 0.15
@@ -111,6 +112,11 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
 
     for side in ("l", "r"):
         raw_y = seq.series_y(f"{side}_ankle")
+        # Untrusted frames (low confidence, or a geometrically implausible limb) must not
+        # seed stance detection: a mistracked ankle can hold a high reported confidence,
+        # so masking to NaN here is what actually keeps it out of the smoothed signal.
+        trust = leg_trust(seq, side)
+        raw_y = [y if t else float("nan") for y, t in zip(raw_y, trust)]
         # Preliminary smoothing only estimates the stride-scaled final window.
         rough_y = geo.moving_average(raw_y, 3)
         rough_amp = geo.peak_to_peak(rough_y)
@@ -137,6 +143,7 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
         strikes: List[int] = []
         toeoffs: List[int] = []
         stance: List[Tuple[int, int]] = []
+        last_stride_toeoff_truncated = False
         for k, mid in enumerate(midstances):
             top = ankle_y[mid]
 
@@ -153,6 +160,11 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
                 if top - ankle_y[i] >= lift_thresh:
                     to = i
                     break
+            # Only the last stride's forward search is bounded by the recording's own end
+            # rather than a real next stride, so exhausting it here (unlike mid-clip) means
+            # the clip ended mid-stance: the fallback window below is a placeholder, not a
+            # measured toe-off, and is excluded from contact_time below.
+            last_stride_toeoff_truncated = to is None and k == len(midstances) - 1
             if to is None:
                 to = min(next_mid - 1, mid + int(fps * 0.20))
 
@@ -173,6 +185,8 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
             if period == period:
                 ev.stride_time[side] = period
         contacts = [seq.elapsed(s, to) for (s, to) in stance]
+        if last_stride_toeoff_truncated and contacts:
+            contacts = contacts[:-1]
         if contacts:
             ev.contact_time[side] = _robust_period(contacts)
 
