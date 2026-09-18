@@ -46,12 +46,23 @@ UNMEASURED = {
 }
 
 
+# Extractors a clip may carry a pose fixture for, and how much slack each needs beyond the
+# per-metric tolerance. BlazePose has 4 foot keypoints to RTMPose's 6 and no small toe, so it
+# is expected to be looser; the multiplier records that rather than hiding it.
+EXTRACTORS = {"rtmpose": 1.0, "blazepose": 2.0}
+
+
 @dataclass(frozen=True)
 class Clip:
-    """One ground-truth record plus the fixture files it names."""
+    """One ground-truth record plus the pose fixture for one extractor."""
     name: str
     record: Dict[str, Any]
     pose_path: Path
+    extractor: str = "rtmpose"
+
+    @property
+    def id(self) -> str:
+        return f"{self.name}-{self.extractor}"
 
     @property
     def metrics(self) -> Dict[str, Any]:
@@ -63,15 +74,14 @@ class Clip:
 
     def tolerance(self, key: str) -> float:
         override = self.record.get("tolerance_pct", {}).get(key)
-        if override is not None:
-            return float(override)
-        if key not in TOLERANCE_PCT:
+        if override is None and key not in TOLERANCE_PCT:
             raise AssertionError(
                 f"{self.name}: no tolerance for {key!r}. Add one to TOLERANCE_PCT, or a "
                 f"tolerance_pct override on the clip. Defaulting silently would let a "
                 f"mistyped key assert nothing."
             )
-        return TOLERANCE_PCT[key]
+        base = override if override is not None else TOLERANCE_PCT[key]
+        return float(base) * EXTRACTORS[self.extractor]
 
     def subject(self) -> Dict[str, Any]:
         subjects = json.loads((DATA / "subjects.json").read_text())
@@ -82,17 +92,16 @@ def _records() -> List[Path]:
     return sorted(p for p in DATA.glob("*.groundtruth.json"))
 
 
-def load_clips(extractor: str = "rtmpose") -> List[Clip]:
-    """Every clip whose pose fixture for `extractor` is present."""
+def load_clips(extractors=None) -> List[Clip]:
+    """Every (clip, extractor) pair whose pose fixture is present."""
     out = []
     for path in _records():
         record = json.loads(path.read_text())
         stem = path.name[: -len(".groundtruth.json")]
-        pose = DATA / f"{stem}.{extractor}.pose.json"
-        if not pose.exists():
-            pose = DATA / f"{stem}.pose.json"
-        if pose.exists():
-            out.append(Clip(stem, record, pose))
+        for extractor in (extractors or EXTRACTORS):
+            pose = DATA / f"{stem}.{extractor}.pose.json"
+            if pose.exists():
+                out.append(Clip(stem, record, pose, extractor))
     return out
 
 
@@ -103,7 +112,7 @@ def analyse(clip: Clip) -> Dict[str, Any]:
 
     seq = PoseSequence.from_pose_dict(json.loads(clip.pose_path.read_text())).validate()
     assert seq.view == clip.record["view"], (
-        f"{clip.name}: pose fixture says view {seq.view!r}, record says "
+        f"{clip.id}: pose fixture says view {seq.view!r}, record says "
         f"{clip.record['view']!r}"
     )
     result = analyze(seq, label=clip.name).to_dict()
@@ -124,13 +133,13 @@ def check(clip: Clip, key: str, expected: Any, actual: float) -> None:
     if isinstance(expected, dict):
         lo, hi = expected.get("min"), expected.get("max")
         if lo is not None:
-            assert actual >= lo, f"{clip.name}: {key} is {actual:.2f}, expected at least {lo}"
+            assert actual >= lo, f"{clip.id}: {key} is {actual:.2f}, expected at least {lo}"
         if hi is not None:
-            assert actual <= hi, f"{clip.name}: {key} is {actual:.2f}, expected at most {hi}"
+            assert actual <= hi, f"{clip.id}: {key} is {actual:.2f}, expected at most {hi}"
         return
     tol = clip.tolerance(key)
     err = abs(actual - expected) / expected * 100 if expected else abs(actual - expected)
     assert err <= tol, (
-        f"{clip.name}: {key} is {actual:.2f}, measured truth is {expected} "
+        f"{clip.id}: {key} is {actual:.2f}, measured truth is {expected} "
         f"({err:.1f}% off, tolerance {tol}%)"
     )

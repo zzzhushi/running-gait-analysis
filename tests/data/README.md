@@ -13,7 +13,7 @@ files exist so at least one test is anchored to something the engine did not pro
 | File | What it is |
 |---|---|
 | `male_side.mp4` | Treadmill, side view, runner facing image-left. 720x1280, 30 fps, 360 frames, 12.0 s — a re-encoded trim (t=10-22s) of a 40s source recording. |
-| `male_side.pose.json` | Landmarks extracted from it with `extractor/extract_pose.py` (RTMPose-Halpe26). What the tests actually load. |
+| `male_side.<extractor>.pose.json` | Landmarks, one file per extractor (`rtmpose`, `blazepose`). What the tests actually load. |
 | `male_side.groundtruth.json` | Measured cadence + provenance, and the physiological bands the tests assert. |
 
 Ground truth is **168.9 ± 0.5 spm**, measured from raw pixels by two independent methods
@@ -39,7 +39,7 @@ Record the same for any clip you add — see "Before adding another clip" below.
 | File | What it is |
 |---|---|
 | `female_overstride.mp4` | Treadmill, side view, runner facing image-right. 720x1280, **120 fps**, 1160 frames, 9.675 s. Re-encode of a 1080x1920 HEVC phone clip; not trimmed (the source is only 9.675 s). |
-| `female_overstride.pose.json` | Landmarks from `extractor/extract_pose.py` (RTMPose-Halpe26). What the tests load. |
+| `female_overstride.<extractor>.pose.json` | Landmarks, one file per extractor (`rtmpose`, `blazepose`). What the tests load. |
 | `female_overstride.groundtruth.json` | Measured cadence, contact and flight, full provenance, and the root-cause analysis of what the engine gets wrong on it. |
 
 Ground truth is **102.8 ± 0.6 spm**, from four independent pixel signals (head-top row,

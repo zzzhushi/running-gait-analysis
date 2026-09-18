@@ -14,6 +14,8 @@ the suite green while testing less than it appears to.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from tests.integration.clipcase import UNMEASURED, UNVALIDATED, analyse, check, load_clips
@@ -23,7 +25,7 @@ pytestmark = pytest.mark.skipif(not CLIPS, reason="no real-clip fixtures present
 
 
 def _ids(clip):
-    return clip.name
+    return clip.id
 
 
 @pytest.fixture(scope="module", params=CLIPS, ids=_ids)
@@ -38,10 +40,10 @@ def test_metrics_match_measured_truth(case):
     for key, expected in clip.metrics.items():
         if key in skipped:
             continue
-        assert key in actual, f"{clip.name}: engine reports no {key!r}"
+        assert key in actual, f"{clip.id}: engine reports no {key!r}"
         check(clip, key, expected, actual[key])
         checked += 1
-    assert checked, f"{clip.name}: asserted nothing — every metric is xfailed?"
+    assert checked, f"{clip.id}: asserted nothing — every metric is xfailed?"
 
 
 def test_composites_match_measured_truth(case):
@@ -49,7 +51,7 @@ def test_composites_match_measured_truth(case):
     for name, should_fire in clip.composites.items():
         fired = name in actual["_findings"]
         assert fired == should_fire, (
-            f"{clip.name}: composite {name!r} "
+            f"{clip.id}: composite {name!r} "
             f"{'did not fire but should have' if should_fire else 'fired but should not have'}"
         )
 
@@ -67,7 +69,7 @@ def test_strike_count_matches_cadence(case):
     found = sum(actual["_strikes"].values())
     err = abs(found - expected) / expected * 100
     assert err <= 10.0, (
-        f"{clip.name}: {found} strikes over {actual['duration_s']:.2f}s, but the measured "
+        f"{clip.id}: {found} strikes over {actual['duration_s']:.2f}s, but the measured "
         f"cadence implies ~{expected:.0f} ({err:.0f}% off)"
     )
 
@@ -76,16 +78,33 @@ def test_both_feet_are_tracked(case):
     """A side view occludes the far leg; if it degrades badly, per-side metrics are noise."""
     clip, actual = case
     left, right = actual["_strikes"]["l"], actual["_strikes"]["r"]
-    assert min(left, right) > 0, f"{clip.name}: one foot produced no contacts"
+    assert min(left, right) > 0, f"{clip.id}: one foot produced no contacts"
     imbalance = abs(left - right) / max(left, right) * 100
     assert imbalance <= 20.0, (
-        f"{clip.name}: left/right strike counts differ by {imbalance:.0f}% (L={left} R={right})"
+        f"{clip.id}: left/right strike counts differ by {imbalance:.0f}% (L={left} R={right})"
     )
 
 
 def test_pose_fixture_matches_its_record(case):
+    """The fixture must be from the extractor its filename claims."""
     clip, _ = case
     assert clip.record["clip"].split(".")[0] == clip.name
+    source = json.loads(clip.pose_path.read_text())["source"]
+    assert clip.extractor in source.replace("mediapipe-", ""), (
+        f"{clip.id}: fixture says source {source!r}"
+    )
+
+
+def test_every_clip_has_a_fixture_for_every_extractor():
+    """A missing fixture silently halves coverage, since load_clips only yields what exists."""
+    from tests.integration.clipcase import EXTRACTORS
+
+    by_name = {}
+    for clip in CLIPS:
+        by_name.setdefault(clip.name, set()).add(clip.extractor)
+    for name, found in sorted(by_name.items()):
+        missing = set(EXTRACTORS) - found
+        assert not missing, f"{name}: no pose fixture for {sorted(missing)}"
 
 
 # ------------------------------------------------------------------ coverage guards
@@ -98,7 +117,7 @@ def test_every_metric_key_is_real():
     for clip in CLIPS:
         for key in list(clip.metrics) + list(clip.record.get("xfail", {})):
             assert key in known, (
-                f"{clip.name}: {key!r} is not a metric the engine reports. A typo here "
+                f"{clip.id}: {key!r} is not a metric the engine reports. A typo here "
                 f"silently removes an assertion."
             )
 
@@ -132,4 +151,4 @@ def test_corpus_spans_the_cadence_range_that_breaks_detection():
 
 def test_every_clip_asserts_something():
     for clip in CLIPS:
-        assert clip.metrics or clip.composites, f"{clip.name}: record asserts nothing"
+        assert clip.metrics or clip.composites, f"{clip.id}: record asserts nothing"

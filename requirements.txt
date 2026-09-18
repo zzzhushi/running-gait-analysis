@@ -11,5 +11,9 @@ opencv-python>=4.8   # video decoding
 numpy>=1.24          # pulled in by the above; pinned for clarity
 
 # Optional alternative extractor (extractor/extract_pose_mediapipe.py):
-#   pip install mediapipe opencv-python
+#   pip install 'mediapipe<1.0' opencv-python
+#
+# The upper bound is required, not caution: mediapipe 1.0 removed mp.solutions, which
+# extractor/blazepose.py is written against. Moving to the Tasks API would also align this
+# extractor with the browser, which already uses PoseLandmarker from tasks-vision.
 # Optional plain-English summaries: install Ollama (ollama.com), `ollama run llama3.2`.
