@@ -115,11 +115,7 @@ def load_clips(extractors=None) -> List[Clip]:
 
 
 def _profile_dict(subject: Dict[str, Any]) -> Dict[str, Any]:
-    """subjects.json's field names onto what RunnerProfile.from_dict expects.
-
-    Only the name differs (stature_cm vs height_cm); from_dict already ignores keys it
-    doesn't recognize, so nothing else needs mapping.
-    """
+    """Map subjects.json fields to the RunnerProfile wire format."""
     d = dict(subject)
     if "stature_cm" in d:
         d["height_cm"] = d.pop("stature_cm")
@@ -140,6 +136,7 @@ def analyse(clip: Clip) -> Dict[str, Any]:
     result = analyze(seq, label=clip.name, profile=profile).to_dict()
     flat = {m["key"]: m["value"] for m in result["metrics"]}
     flat["cadence_spm"] = result["summary"]["cadence"]
+    flat["_profile"] = result["summary"]["profile"]
     flat["duration_s"] = seq.duration
     from gaitlab.core.events import detect_events
 

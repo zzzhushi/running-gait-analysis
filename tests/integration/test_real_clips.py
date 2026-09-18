@@ -23,10 +23,7 @@ from tests.integration.clipcase import (
 )
 
 CLIPS = load_clips()
-# No module-level skip: every fixture here is a committed file, never genuinely absent, and
-# a blanket skip previously hid the exact failure the coverage guards below exist to catch --
-# if the whole corpus were deleted or misnamed, CLIPS == [] would skip everything, including
-# test_corpus_spans_the_cadence_range_that_breaks_detection, and CI would stay green.
+# An empty corpus is a coverage failure: every fixture is committed and expected to be present.
 
 
 def _ids(clip):
@@ -120,6 +117,14 @@ def test_pose_fixture_matches_its_record(case):
         f"{clip.id}: fixture duration {actual['duration_s']:.2f}s vs recorded "
         f"{expected}s ({err:.1f}% off)"
     )
+
+
+def test_subject_profile_reaches_engine(case):
+    clip, actual = case
+    expected = dict(clip.subject())
+    if "stature_cm" in expected:
+        expected["height_cm"] = expected.pop("stature_cm")
+    assert actual["_profile"] == expected
 
 
 def test_every_clip_has_a_fixture_for_every_extractor():
