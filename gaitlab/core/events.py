@@ -1,4 +1,4 @@
-"""Gait-event detection from normalized landmarks.
+"""Gait-event detection from canonical landmarks.
 
 A foot is on the ground while its ankle sits near its lowest point in the image (largest
 y). Over one stance phase that traces a plateau in the ankle-y signal, not a spike: the
@@ -24,20 +24,16 @@ from typing import Dict, List, Tuple
 from . import geometry as geo
 from .schema import PoseSequence
 
-# Fraction of ankle vertical range used to estimate stance boundaries. Ankle motion during
-# stance varies by runner, so contact time and duty factor remain approximate.
+# Uncalibrated heuristic for stance boundaries; contact time and duty factor remain approximate.
 LIFT_FRACTION = 0.15
 
-# Peak spacing floor, as a fraction of the measured stride. The swing-phase bump sits near
-# 0.4 of a stride and a real peak at 1.0.
+# Heuristic minimum spacing between same-foot peaks, scaled by measured stride.
+# TODO: calibrate against high-frame-rate reference clips.
 PEAK_SPACING_FRACTION = 0.6
 
-# Ankle-y smoothing window, as a fraction of the measured stride. A fixed sample count is a
-# different amount of time at every frame rate — 3 samples is 100ms at 30fps but 25ms at
-# 120fps — while ground contact stays a roughly fixed fraction of the stride at any frame
-# rate. Too little smoothing leaves the flat plateau at each stance riddled with tied or
-# near-tied local maxima, and which one is tallest is then decided by pose-estimation noise
-# rather than by gait.
+# Heuristic smoothing window, scaled to stride duration so filtering stays comparable across
+# frame rates and pose noise cannot select among near-tied stance plateaus.
+# TODO: calibrate against high-frame-rate reference clips.
 SMOOTH_STRIDE_FRACTION = 0.10
 # Stride periods the search will consider, in seconds: 240 spm down to 60 spm.
 MIN_STRIDE_S = 0.5
@@ -115,8 +111,7 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
 
     for side in ("l", "r"):
         raw_y = seq.series_y(f"{side}_ankle")
-        # A rough pass gives a stride estimate to size the real smoothing window against;
-        # 3 samples is arbitrary but the peak-finding below never sees this pass.
+        # Preliminary smoothing only estimates the stride-scaled final window.
         rough_y = geo.moving_average(raw_y, 3)
         rough_amp = geo.peak_to_peak(rough_y)
         if rough_amp != rough_amp or rough_amp <= 0:
@@ -126,8 +121,7 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
                      if rough_period == rough_period else 3)
         ankle_y = geo.moving_average(raw_y, smooth_win)
         amp = geo.peak_to_peak(ankle_y)
-        # From the signal, not from the peaks below: a period derived from those peaks cannot
-        # judge whether they are real.
+        # Estimate the period before peak detection to avoid circular filtering.
         period = _stride_seconds(ankle_y, seq, fps)
         if period == period:
             stride_s[side] = period
@@ -175,20 +169,14 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
                      for i in range(len(midstances) - 1)]
         if same_foot:
             period = _robust_period(same_foot, stride_s.get(side, float("nan")))
-            # Record a value only when one is usable, so "side in stride_time" means the
-            # same thing everywhere it's checked; nan-at-a-present-key would let a
-            # consumer that only checks presence read a value that was never trustworthy.
+            # Omit unusable sides; key presence means a valid stride time.
             if period == period:
                 ev.stride_time[side] = period
         contacts = [seq.elapsed(s, to) for (s, to) in stance]
         if contacts:
             ev.contact_time[side] = _robust_period(contacts)
 
-    # Merge both feet for cadence; anchor filtering on half-stride so a spurious peak from
-    # either side cannot dominate the interval distribution. When only one foot is tracked
-    # (the other undetected, e.g. full occlusion), there is nothing to interleave with: the
-    # merged gaps are that foot's own STRIDE, two steps wide rather than one, so halving the
-    # reference against them would reject every real gap.
+    # With both feet, merged gaps represent steps; with one, they represent two-step strides.
     both_sides = bool(ev.midstances["l"]) and bool(ev.midstances["r"])
     all_mid = sorted(ev.midstances["l"] + ev.midstances["r"])
     gaps = [seq.elapsed(all_mid[i], all_mid[i + 1]) for i in range(len(all_mid) - 1)]

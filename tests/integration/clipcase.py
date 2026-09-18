@@ -9,16 +9,15 @@ from typing import Any, Dict, List
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 
-# How precisely each metric can be known, in percent. A property of the metric rather than of
-# any clip, so it lives here; a clip overrides it only when its own measurement is looser.
+# Regression allowances for comparing engine output with fixture measurements, not validated
+# measurement-error bounds. A fixture may override an allowance when its reference is looser.
 TOLERANCE_PCT: Dict[str, float] = {
     "cadence_spm": 2.0,
     "overstride": 25.0,
     "vertical_oscillation": 15.0,
 }
 
-# duration_s isn't a gait metric, it's the clip's own real duration -- checked separately as
-# fixture integrity in test_pose_fixture_matches_its_record, against this tolerance.
+# Fixture-integrity allowance for recorded duration, not a gait-metric error bound.
 DURATION_TOLERANCE_PCT = 0.5
 
 # Metrics the engine reports that no clip asserts yet, with the reason. A metric in neither
@@ -42,9 +41,8 @@ UNMEASURED = {
 }
 
 
-# Extractors a clip may carry a pose fixture for, and how much slack each needs beyond the
-# per-metric tolerance. BlazePose has 4 foot keypoints to RTMPose's 6 and no small toe, so it
-# is expected to be looser; the multiplier records that rather than hiding it.
+# Test-only multiplier for the sparser BlazePose foot map.
+# TODO: replace with measured cross-extractor error once the validation corpus supports it.
 EXTRACTORS = {"rtmpose": 1.0, "blazepose": 2.0}
 
 
