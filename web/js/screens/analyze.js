@@ -69,10 +69,11 @@ export default async function analyze(app, params) {
     el("div", { style: "margin-top:14px" }, [el("a", { class: "btn btn-sm", href: "#/report/" + id }, "← Back to report")]),
   ]);
 
+  const crumb = api.capabilities.history
+    ? [el("a", { "data-nav": "#/library" }, "← Library"), " · ", el("a", { href: "#/report/" + id }, "Report")]
+    : [el("a", { "data-nav": "#/upload" }, "← New analysis"), " · ", el("a", { href: "#/report/" + id }, "Report")];
   app.append(
-    el("div", { class: "crumb" }, [
-      el("a", { "data-nav": "#/library" }, "← Library"), " · ", el("a", { href: "#/report/" + id }, "Report"),
-    ]),
+    el("div", { class: "crumb" }, crumb),
     el("div", { class: "player" }, [
       el("div", { class: "stage-wrap" }, [
         stage,

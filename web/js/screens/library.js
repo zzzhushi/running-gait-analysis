@@ -17,13 +17,14 @@ export default async function library(app) {
   ]));
 
   if (!runs.length) {
-    app.append(el("div", { class: "empty" }, [
-      el("p", {}, "No runs yet."),
-      el("button", {
+    const empty = [el("p", {}, "No runs yet.")];
+    if (api.capabilities.seed) {
+      empty.push(el("button", {
         class: "btn btn-accent",
         onclick: async () => { await api.reseed(activeUser?.id); location.reload(); },
-      }, "Load demo runs"),
-    ]));
+      }, "Load demo runs"));
+    }
+    app.append(el("div", { class: "empty" }, empty));
     return;
   }
 
@@ -61,7 +62,7 @@ export default async function library(app) {
 
   // Lazy skeleton thumbnails (fetch each run's pose, draw one representative frame).
   for (let i = 0; i < runs.length; i++) {
-    const detail = await api.getRun(runs[i].id);
+    const detail = await loadThumbnailRun(api, runs[i].id);
     if (!detail) continue;
     const canvas = grid.children[i].querySelector("canvas");
     try {
@@ -70,5 +71,14 @@ export default async function library(app) {
       const f = foi.l_strike ?? foi.max_pelvic_drop ?? Math.floor(detail.pose.frames.length / 2);
       rend.render(f, { skeleton: true, angles: false, refs: false, trails: false });
     } catch (e) { /* ignore */ }
+  }
+}
+
+export async function loadThumbnailRun(client, runId, onError = console.warn) {
+  try {
+    return await client.getRun(runId);
+  } catch (error) {
+    onError(`Could not load thumbnail for run ${runId}`, error);
+    return null;
   }
 }

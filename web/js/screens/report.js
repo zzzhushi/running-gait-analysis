@@ -9,10 +9,12 @@ export default async function report(app, params) {
   if (!r) { app.append(el("div", { class: "empty" }, "Run not found.")); return; }
   const s = r.summary;
 
-  app.append(el("div", { class: "crumb" }, [
-    el("a", { "data-nav": "#/library" }, "← Library"), " · ",
-    el("a", { "data-nav": "#/trends" }, "Trends"),
-  ]));
+  app.append(api.capabilities.history
+    ? el("div", { class: "crumb" }, [
+        el("a", { "data-nav": "#/library" }, "← Library"), " · ",
+        el("a", { "data-nav": "#/trends" }, "Trends"),
+      ])
+    : el("div", { class: "crumb" }, [el("a", { "data-nav": "#/upload" }, "← New analysis")]));
 
   app.append(el("div", { class: "scorecard" }, [
     el("div", { class: "big " + scoreClass(s.overall_score) }, fmt(s.overall_score, 0)),
@@ -48,22 +50,24 @@ export default async function report(app, params) {
   const plan = planSection(r.plan);
   if (plan) app.append(plan);
 
-  // Optional: rephrase the findings as a coach's note via a local LLM (Ollama).
-  const narrOut = el("div", { style: "margin-top:12px;color:#c2ccd8;font-size:14px;white-space:pre-wrap;line-height:1.55" });
-  const narrBtn = el("button", { class: "btn" }, "✨ Plain-English summary (optional, local LLM)");
-  narrBtn.addEventListener("click", async () => {
-    narrBtn.disabled = true; narrBtn.textContent = "Asking your local LLM…";
-    try {
-      const res = await api.narrative(id);
-      narrOut.textContent = res.available ? (res.text || "(empty response)") : (res.error || "Local LLM not available.");
-    } catch (e) { narrOut.textContent = "Failed: " + e.message; }
-    narrBtn.disabled = false; narrBtn.textContent = "✨ Regenerate summary";
-  });
-  app.append(el("div", { class: "panel", style: "margin-top:18px" }, [
-    el("div", { style: "color:var(--muted);font-size:13px;margin-bottom:10px" },
-      "The rule-based feedback above is the source of truth. Optionally rephrase it as a coach's note using a local LLM — nothing leaves your machine."),
-    narrBtn, narrOut,
-  ]));
+  if (api.capabilities.narrative) {
+    // Optional: rephrase the findings as a coach's note via a local LLM (Ollama).
+    const narrOut = el("div", { style: "margin-top:12px;color:#c2ccd8;font-size:14px;white-space:pre-wrap;line-height:1.55" });
+    const narrBtn = el("button", { class: "btn" }, "✨ Plain-English summary (optional, local LLM)");
+    narrBtn.addEventListener("click", async () => {
+      narrBtn.disabled = true; narrBtn.textContent = "Asking your local LLM…";
+      try {
+        const res = await api.narrative(id);
+        narrOut.textContent = res.available ? (res.text || "(empty response)") : (res.error || "Local LLM not available.");
+      } catch (e) { narrOut.textContent = "Failed: " + e.message; }
+      narrBtn.disabled = false; narrBtn.textContent = "✨ Regenerate summary";
+    });
+    app.append(el("div", { class: "panel", style: "margin-top:18px" }, [
+      el("div", { style: "color:var(--muted);font-size:13px;margin-bottom:10px" },
+        "The rule-based feedback above is the source of truth. Optionally rephrase it as a coach's note using a local LLM — nothing leaves your machine."),
+      narrBtn, narrOut,
+    ]));
+  }
 }
 
 export function metricCard(m) {
