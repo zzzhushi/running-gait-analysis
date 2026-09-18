@@ -216,6 +216,7 @@ class Composite:
     cue: str
     drill: str
     supersedes: Tuple[str, ...]
+    foi: Optional[str] = None  # frames_of_interest key this composite anchors on the overlay
 
     def fires(self, values: Dict, targets: Dict) -> bool:
         return all(c.holds(values, targets) for c in self.all_of)

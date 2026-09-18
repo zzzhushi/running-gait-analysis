@@ -85,16 +85,20 @@ def compute(seq: PoseSequence, events: Optional[GaitEvents] = None,
     values["cadence"] = ev.cadence_spm
 
     # frames_of_interest: generic, event-derived anchors the overlay/report point to.
+    # A middle stride is as representative of the run as any other and, unlike the
+    # first, is never a partial stride the clip happened to start mid-way through.
     foi = res["frames_of_interest"]
     if view_str == "side":
-        if ev.strikes["l"]:
-            foi["l_strike"] = ev.strikes["l"][0]
+        l_mid, l_strikes, l_toe = ev.midstance("l"), ev.strikes["l"], ev.toeoffs["l"]
+        if l_mid:
+            k = len(l_mid) // 2
+            foi["l_midstance"] = l_mid[k]
+            if k < len(l_strikes):
+                foi["l_strike"] = l_strikes[k]
+            if k < len(l_toe):
+                foi["l_toeoff"] = l_toe[k]
         if ev.strikes["r"]:
-            foi["r_strike"] = ev.strikes["r"][0]
-        if ev.midstance("l"):
-            foi["l_midstance"] = ev.midstance("l")[0]
-        if ev.toeoffs["l"]:
-            foi["l_toeoff"] = ev.toeoffs["l"][0]
+            foi["r_strike"] = ev.strikes["r"][len(ev.strikes["r"]) // 2]
         res["series"] = {
             "trunk_lean": ctx.trunk_lean_series(),
             "knee_flexion_l": ctx.knee_flexion_series("l"),

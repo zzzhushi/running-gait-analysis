@@ -24,4 +24,5 @@ register_composite(Composite(
     cue="Lift cadence and keep the crown of your head on a level line.",
     drill="Run-tall-past-a-rail (4×20s) and pogo hops (3×10).",
     supersedes=("vertical_oscillation", "cadence"),
+    foi="l_midstance",
 ))

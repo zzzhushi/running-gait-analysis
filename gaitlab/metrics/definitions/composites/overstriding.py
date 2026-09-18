@@ -24,4 +24,5 @@ register_composite(Composite(
     cue="Lift cadence ~5-10% and let the foot land under your hips.",
     drill="High-cadence strides (6×20s) + couch stretch and glute bridges for hip extension.",
     supersedes=("overstride", "hip_extension", "cadence"),
+    foi="l_strike",
 ))

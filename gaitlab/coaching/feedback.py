@@ -60,14 +60,17 @@ def _single_metric_findings(values: Dict, view: str, targets: Dict, foi: Dict) -
     return items
 
 
-def _composite_findings(values: Dict, view: str, targets: Dict) -> List[Tuple[dict, set]]:
+def _composite_findings(values: Dict, view: str, targets: Dict, foi: Dict) -> List[Tuple[dict, set]]:
     view_str = "side" if view in ("side-left", "side-right") else "rear"
     out: List[Tuple[dict, set]] = []
     for comp in registry.all_composites():
         if comp.view != view_str:
             continue
         if comp.fires(values, targets):
-            out.append((comp.finding(values), set(comp.supersedes)))
+            finding = comp.finding(values)
+            if comp.foi:
+                finding["frame"] = foi.get(comp.foi)
+            out.append((finding, set(comp.supersedes)))
     return out
 
 
@@ -77,7 +80,7 @@ def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
     items = _single_metric_findings(values, view, targets, foi)
 
     # composites outrank (supersede) the single-metric findings of the metrics they name
-    for finding, superseded in _composite_findings(values, view, targets):
+    for finding, superseded in _composite_findings(values, view, targets, foi):
         items[:] = [i for i in items if i.get("metric") not in superseded]
         items.append(finding)
 
