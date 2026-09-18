@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+import types
 
 import pytest
 
@@ -227,6 +228,102 @@ class TestTimestamps:
         """ffprobe is genuinely not installed here, so this is the real path,
         not a mocked one — probe_timestamps must degrade gracefully."""
         assert probe_timestamps("/nonexistent/video.mp4") is None
+
+
+class _ScoreRow(list):
+    """Duck-types rtmlib's numpy score arrays: pick_person only calls .mean()."""
+
+    def mean(self):
+        return sum(self) / len(self)
+
+
+class _RotatedCapture:
+    """Simulates the FFMPEG backend on a portrait clip carrying a display-matrix
+    rotation: FRAME_WIDTH/HEIGHT report the coded (unrotated) landscape size until
+    ORIENTATION_AUTO is enabled, matching cv2's real behavior on such a file."""
+
+    def __init__(self, coded_w=1920, coded_h=1080, n_frames=3):
+        self._coded_w, self._coded_h = coded_w, coded_h
+        self._n_frames = n_frames
+        self._read = 0
+        self._auto = 0
+
+    def isOpened(self):
+        return True
+
+    def get(self, prop):
+        import cv2
+        if prop == cv2.CAP_PROP_FPS:
+            return 120.0
+        if prop == cv2.CAP_PROP_FRAME_WIDTH:
+            return float(self._coded_h if self._auto else self._coded_w)
+        if prop == cv2.CAP_PROP_FRAME_HEIGHT:
+            return float(self._coded_w if self._auto else self._coded_h)
+        return 0.0
+
+    def set(self, prop, value):
+        import cv2
+        if prop == cv2.CAP_PROP_ORIENTATION_AUTO:
+            self._auto = value
+        return True
+
+    def read(self):
+        if self._read >= self._n_frames:
+            return False, None
+        self._read += 1
+        return True, object()  # pixel content is irrelevant; the pose model is faked below
+
+    def release(self):
+        pass
+
+
+def _install_fake_cv2(monkeypatch, capture):
+    fake = types.ModuleType("cv2")
+    fake.CAP_PROP_FPS = 5
+    fake.CAP_PROP_FRAME_WIDTH = 3
+    fake.CAP_PROP_FRAME_HEIGHT = 4
+    fake.CAP_PROP_POS_MSEC = 0
+    fake.CAP_PROP_ORIENTATION_AUTO = 48
+    fake.COLOR_BGR2RGB = 4
+    fake.VideoCapture = lambda path: capture
+    fake.cvtColor = lambda img, code: img
+    monkeypatch.setitem(sys.modules, "cv2", fake)
+
+
+class TestOrientation:
+    """A phone clip's display-matrix rotation is container metadata, not pixel data —
+    cv2 only applies it when CAP_PROP_ORIENTATION_AUTO is enabled. Without it, a
+    portrait recording decodes as landscape and every geometry-based metric (trunk
+    lean, hip extension, foot-strike angle, ...) is measured in the wrong frame."""
+
+    def test_rtmpose_reports_the_rotated_orientation(self, monkeypatch):
+        from extractor.rtmpose import HALPE26, RTMPoseExtractor
+
+        capture = _RotatedCapture(coded_w=1920, coded_h=1080)
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right", no_ffprobe=True)
+
+        assert (seq.width, seq.height) == (1080, 1920)
+
+    def test_blazepose_reports_the_rotated_orientation(self, monkeypatch):
+        capture = _RotatedCapture(coded_w=1920, coded_h=1080)
+        _install_fake_cv2(monkeypatch, capture)
+        fake_pose = types.SimpleNamespace(
+            process=lambda img: types.SimpleNamespace(pose_landmarks=None)
+        )
+        fake_mp = types.SimpleNamespace(
+            solutions=types.SimpleNamespace(pose=types.SimpleNamespace(Pose=lambda **kw: fake_pose))
+        )
+        monkeypatch.setitem(sys.modules, "mediapipe", fake_mp)
+
+        seq = MediaPipeExtractor().extract("clip.mov", "side-right", no_ffprobe=True)
+
+        assert (seq.width, seq.height) == (1080, 1920)
 
 
 class TestResolveVideo:
