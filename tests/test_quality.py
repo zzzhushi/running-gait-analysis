@@ -42,9 +42,7 @@ def test_no_dropout_warning_on_a_clean_clip(synth):
     assert not any("tracking" in m.lower() for m in _checks(seq, "warn"))
 
 
-def test_dropout_warning_when_both_legs_lose_tracking(synth):
-    seq = synth("side-left", fps=60, duration=6, cadence=170, seed=1)
-    lo, hi = seq.n // 2, seq.n // 2 + 45  # 0.75s at 60fps
+def _drop_legs(seq, lo, hi):
     frames = list(seq.frames)
     for i in range(lo, hi):
         flat = list(frames[i])
@@ -52,8 +50,28 @@ def test_dropout_warning_when_both_legs_lose_tracking(synth):
             x, y, _ = flat[KP_INDEX[name]]
             flat[KP_INDEX[name]] = (x, y, 0.05)
         frames[i] = flat
-    dropped = replace(seq, frames=frames)
+    return replace(seq, frames=frames)
+
+
+def test_dropout_warning_when_both_legs_lose_tracking(synth):
+    seq = synth("side-left", fps=60, duration=6, cadence=170, seed=1)
+    dropped = _drop_legs(seq, seq.n // 2, seq.n // 2 + 45)  # 0.75s at 60fps
     assert any("tracking" in m.lower() for m in _checks(dropped, "warn"))
+
+
+def test_dropout_warning_carries_its_frame_span_for_the_overlay(synth):
+    """The timeline ribbon (web/js/overlay.js) needs a frame range to hatch out, not
+    just a human-readable message — the two must describe the same span."""
+    seq = synth("side-left", fps=60, duration=6, cadence=170, seed=1)
+    lo, hi = seq.n // 2, seq.n // 2 + 45
+    dropped = _drop_legs(seq, lo, hi)
+    ev = detect_events(dropped)
+    checks = quality.assess(dropped, ev)
+    dropout = next(c for c in checks if "tracking" in c["message"].lower())
+    assert dropout.get("frames") is not None
+    f0, f1 = dropout["frames"]
+    assert lo - 2 <= f0 <= lo + 2
+    assert hi - 2 <= f1 <= hi + 2
 
 
 # ------------------------------------------------------------------ ground-slope trust
