@@ -174,7 +174,12 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
         same_foot = [seq.elapsed(midstances[i], midstances[i + 1])
                      for i in range(len(midstances) - 1)]
         if same_foot:
-            ev.stride_time[side] = _robust_period(same_foot, stride_s.get(side, float("nan")))
+            period = _robust_period(same_foot, stride_s.get(side, float("nan")))
+            # Record a value only when one is usable, so "side in stride_time" means the
+            # same thing everywhere it's checked; nan-at-a-present-key would let a
+            # consumer that only checks presence read a value that was never trustworthy.
+            if period == period:
+                ev.stride_time[side] = period
         contacts = [seq.elapsed(s, to) for (s, to) in stance]
         if contacts:
             ev.contact_time[side] = _robust_period(contacts)

@@ -66,6 +66,7 @@ def test_cadence_with_one_fully_occluded_foot(synth):
     assert ev.midstances["r"] == []
     assert ev.midstances["l"]
     assert ev.cadence_spm == pytest.approx(172, rel=0.05)
+    assert "r" not in ev.stride_time  # no usable value, not a nan at a present key
 
 
 def test_real_timestamps_control_temporal_metrics(synth):
