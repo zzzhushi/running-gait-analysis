@@ -114,6 +114,18 @@ def load_clips(extractors=None) -> List[Clip]:
     return out
 
 
+def _profile_dict(subject: Dict[str, Any]) -> Dict[str, Any]:
+    """subjects.json's field names onto what RunnerProfile.from_dict expects.
+
+    Only the name differs (stature_cm vs height_cm); from_dict already ignores keys it
+    doesn't recognize, so nothing else needs mapping.
+    """
+    d = dict(subject)
+    if "stature_cm" in d:
+        d["height_cm"] = d.pop("stature_cm")
+    return d
+
+
 def analyse(clip: Clip) -> Dict[str, Any]:
     """Run the engine over a clip's pose fixture and flatten the report."""
     from gaitlab.analyze import analyze
@@ -124,7 +136,8 @@ def analyse(clip: Clip) -> Dict[str, Any]:
         f"{clip.id}: pose fixture says view {seq.view!r}, record says "
         f"{clip.record['view']!r}"
     )
-    result = analyze(seq, label=clip.name).to_dict()
+    profile = _profile_dict(clip.subject())
+    result = analyze(seq, label=clip.name, profile=profile).to_dict()
     flat = {m["key"]: m["value"] for m in result["metrics"]}
     flat["cadence_spm"] = result["summary"]["cadence"]
     flat["duration_s"] = seq.duration

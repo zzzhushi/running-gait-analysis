@@ -5,7 +5,7 @@ adding that record and a pose fixture, not writing a test — which is what keep
 from drifting into six near-identical modules as the corpus grows.
 
 A clip earns its own module only when it has something specific to say; see
-test_female_overstride_clip.py, which owns the contact-time xfails and their reasoning.
+test_female_overstride_clip.py, which owns the frame-rate-independence and ground-tilt checks.
 
 The coverage tests at the bottom exist because data-driven suites fail quietly. A mistyped
 metric key, a deleted record, or a corpus that no longer spans low cadence would all leave
@@ -23,7 +23,10 @@ from tests.integration.clipcase import (
 )
 
 CLIPS = load_clips()
-pytestmark = pytest.mark.skipif(not CLIPS, reason="no real-clip fixtures present")
+# No module-level skip: every fixture here is a committed file, never genuinely absent, and
+# a blanket skip previously hid the exact failure the coverage guards below exist to catch --
+# if the whole corpus were deleted or misnamed, CLIPS == [] would skip everything, including
+# test_corpus_spans_the_cadence_range_that_breaks_detection, and CI would stay green.
 
 
 def _ids(clip):
