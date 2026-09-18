@@ -124,3 +124,19 @@ def test_robust_period_refuses_a_reference_no_gap_supports():
     assert math.isnan(_robust_period([0.10, 0.12], 0.50))
     # Without a reference the median IS an observation, so that fallback still stands.
     assert _robust_period([0.10, 0.12]) == pytest.approx(0.11)
+
+
+# ----------------------------------------------------------------- boundary stances
+
+
+def test_contact_time_excludes_a_final_stance_the_clip_never_saw_lift_off_from(synth):
+    """The last stride's forward toe-off search is bounded by the recording's own
+    end rather than a real next stride. If it never finds a genuine lift there,
+    the clip ended mid-stance and the fallback-window duration is not a
+    measurement of how long the foot was actually on the ground."""
+    seq = synth("side-left", fps=60, duration=6, cadence=170, seed=4)
+    # Cut just past the first stride's midstance, before the foot ever lifts.
+    trimmed = replace(seq, frames=seq.frames[:13])
+    ev = detect_events(trimmed)
+    assert len(ev.stance["l"]) == 1  # confirms the scenario: one, unresolved, stance
+    assert "l" not in ev.contact_time
