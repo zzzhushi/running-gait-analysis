@@ -160,6 +160,12 @@ def resample_uniform(values: List[float], times: List[float], count: int) -> Lis
 
 
 # How close a shorter lag must come to the best correlation before it is preferred over it.
+#
+# scripts/measure_cadence_groundtruth.py defines the same constant independently rather than
+# importing this module: that script exists to be a ground-truth oracle independent of this
+# engine, and importing anything under the `gaitlab` package runs gaitlab/__init__.py, which
+# pulls in the full analysis engine as a side effect -- exactly the coupling the script is
+# built to avoid. A tuning change here should be considered for that copy too.
 SUBHARMONIC_TOLERANCE = 0.85
 
 
@@ -189,15 +195,19 @@ def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
         for i in range(n - lag):
             acc += dev[i] * dev[i + lag]
         r.append(acc / (total * (n - lag) / n))
-    # Inclusive search bounds make endpoints eligible as one-sided maxima.
+    # Inclusive search bounds make endpoints eligible as one-sided maxima. A single-lag range
+    # has no neighbour to compare against, so that one lag is the answer by construction.
     last = len(r) - 1
     peaks = []
-    if last >= 1 and r[0] >= r[1]:
+    if last == 0:
         peaks.append((min_lag, r[0]))
-    peaks += [(min_lag + i, r[i]) for i in range(1, last)
-              if r[i] >= r[i - 1] and r[i] >= r[i + 1]]
-    if last >= 1 and r[last] >= r[last - 1]:
-        peaks.append((min_lag + last, r[last]))
+    else:
+        if r[0] >= r[1]:
+            peaks.append((min_lag, r[0]))
+        peaks += [(min_lag + i, r[i]) for i in range(1, last)
+                  if r[i] >= r[i - 1] and r[i] >= r[i + 1]]
+        if r[last] >= r[last - 1]:
+            peaks.append((min_lag + last, r[last]))
     if not peaks:
         return float("nan")
     best_r = max(v for _, v in peaks)

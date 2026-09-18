@@ -59,6 +59,14 @@ APEX_SPACING_FRAC = 0.6
 # How close a shorter lag must come to the best correlation before it is preferred. A
 # periodic signal correlates at every multiple of its period, so the tallest peak is not
 # reliably the fundamental.
+#
+# gaitlab/core/geometry.py's dominant_period does the same search and defines this same
+# constant independently, rather than this script importing it: this script is a ground-truth
+# oracle for the engine, and importing anything under `gaitlab` runs gaitlab/__init__.py,
+# which pulls in the full analysis engine as a side effect. A tuning change here should be
+# considered for that copy too. The two are not fully equivalent -- this one additionally
+# skips the zero-lag correlation skirt and requires a harmonic to be an integer divisor of the
+# best-scoring lag, neither of which dominant_period currently does.
 SUBHARMONIC_TOLERANCE = 0.85
 
 # Half-width of the free-fall fit, as a fraction of the step period, and its bounds. The
