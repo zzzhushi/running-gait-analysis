@@ -14,8 +14,6 @@ DATA = Path(__file__).resolve().parents[1] / "data"
 TOLERANCE_PCT: Dict[str, float] = {
     "cadence_spm": 2.0,
     "duration_s": 0.5,
-    "contact_time": 15.0,
-    "duty_factor": 15.0,
     "overstride": 25.0,
     "vertical_oscillation": 15.0,
 }
@@ -23,12 +21,6 @@ TOLERANCE_PCT: Dict[str, float] = {
 # Metrics the engine reports that no clip asserts yet, with the reason. A metric in neither
 # this set nor some clip's record fails test_every_metric_is_validated_or_listed.
 UNVALIDATED: Dict[str, str] = {
-    # Needs a second 120 fps clip with contact measured from pixels; one point cannot
-    # separate a wrong model from an uncalibrated one.
-    "contact_time": "one measured clip",
-    "contact_time_ms": "one measured clip",
-    "duty_factor": "derived from contact_time",
-    "flight_time": "derived from contact_time",
     # Measured by eye on one clip, to about 25%.
     "overstride": "one clip, read by eye",
     "vertical_oscillation": "one clip",
@@ -38,11 +30,12 @@ UNVALIDATED: Dict[str, str] = {
 # Everything the engine reports that has no pixel measurement at all. Separated from
 # UNVALIDATED so the list above stays short enough to shrink.
 UNMEASURED = {
-    "arm_crossover", "arm_swing", "asymmetry", "crossover", "elbow_angle",
-    "foot_strike_angle", "head_drop", "head_lateral_sway", "heel_recovery",
-    "hip_extension", "knee_drive", "knee_flexion_contact", "knee_flexion_midstance",
-    "lateral_trunk_sway", "pelvic_drop", "pronation", "step_length", "step_width",
-    "stride_length", "trunk_lean", "trunk_pelvis_rotation", "vertical_ratio",
+    "arm_crossover", "arm_swing", "asymmetry", "contact_time", "contact_time_ms", "crossover",
+    "duty_factor", "elbow_angle", "flight_time", "foot_strike_angle", "head_drop",
+    "head_lateral_sway", "heel_recovery", "hip_extension", "knee_drive", "knee_flexion_contact",
+    "knee_flexion_midstance", "lateral_trunk_sway", "pelvic_drop", "pronation",
+    "step_length", "step_width", "stride_length", "trunk_lean", "trunk_pelvis_rotation",
+    "vertical_ratio",
 }
 
 

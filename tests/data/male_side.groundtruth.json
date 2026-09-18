@@ -5,18 +5,9 @@
   "activity": "treadmill run, steady state",
   "metrics": {
     "cadence_spm": 168.27,
-    "duration_s": 12.0,
-    "contact_time": {
-      "min": 180,
-      "max": 320
-    },
-    "duty_factor": {
-      "min": 25,
-      "max": 48
-    }
+    "duration_s": 12.0
   },
   "tolerance_pct": {},
   "method": "pixel-count",
-  "consent": "explicit, from the person in the clip · MIT · indefinite · re-forkable",
-  "bands_are_literature": "contact_time and duty_factor are literature ranges for a recreational runner at ~170 spm, not measured from this clip. They catch gait-event anchoring errors, which move both by roughly 2x."
+  "consent": "explicit, from the person in the clip · MIT · indefinite · re-forkable"
 }

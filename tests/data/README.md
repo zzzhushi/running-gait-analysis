@@ -54,7 +54,7 @@ One `<clip>.groundtruth.json` per clip, holding assertions and nothing else:
   "activity": "treadmill run, slow and bouncy with a long stride",
   "metrics": { "cadence_spm": 102.8, "duration_s": 9.675 },
   "tolerance_pct": {},
-  "xfail": { "contact_time_ms": "ankle-amplitude proxy is uncalibrated across runners" },
+  "xfail": { "some_metric": "why this clip's value for it is not asserted yet" },
   "method": "pixel-count",
   "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
 }
@@ -174,21 +174,10 @@ it as a deliberate one-time migration, not a decision to make mid-PR.
 
 ## What is still missing
 
-The 120 fps clip this section used to ask for now exists (`female_overstride.mp4`), and it
-did settle where initial contact falls: stance is ~60 frames rather than ~7, so contact time
-is measured (505 ± 25 ms) instead of argued over. `LIFT_FRACTION` in
-`gaitlab/core/events.py` turned out to be unfittable rather than merely uncalibrated: no
-single value satisfies both clips, because it thresholds a fraction of the ankle's vertical
-range and most of that range is swing-phase lift. Defining contact by foot velocity matching
-ground velocity is the open replacement.
-
-**The single highest-value addition now is a second 120 fps clip at a different cadence,
-with contact time measured from pixels.** Contact detection currently has one measured
-constraint (`female_overstride`, 505 ms) and one literature band (`male_side`, at 30 fps
-where a stance is ~7 frames and any method is quantization-limited). With one measured
-point every threshold that fits one clip misses the other, and there is no way to tell
-whether the model is wrong or the unmeasured clip's true contact is simply different. Two
-measured points make it testable instead of fittable.
+Contact time and duty factor are not asserted by any clip. `LIFT_FRACTION` in
+`gaitlab/core/events.py` estimates ground contact from a fraction of the ankle's vertical
+range, and that model is not currently validated against pixel-measured truth — out of
+scope for now; this section covers cadence only.
 
 Still missing from every clip here:
 

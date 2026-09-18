@@ -8,10 +8,6 @@
     "duration_s": 9.68
   },
   "tolerance_pct": {},
-  "xfail": {
-    "contact_time": "ankle-amplitude contact proxy is uncalibrated across runners",
-    "duty_factor": "same proxy as contact_time"
-  },
   "method": "pixel-count",
   "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
 }
