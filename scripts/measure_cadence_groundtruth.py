@@ -25,19 +25,36 @@ Three stages, each able to invalidate the answer:
     python3 scripts/measure_cadence_groundtruth.py tests/data/male_side.mp4
 
 Assumes one person, filmed from a fixed camera, whole body in frame. Requires ffmpeg and
-ffprobe on PATH. Everything else is stdlib.
+ffprobe on PATH. No pose model and no analysis engine: the one exception is loading
+gaitlab/core/geometry.py directly by file path for its autocorrelation and peak-finding
+primitives, which are pure arithmetic with no pose-detection or gait-interpretation logic of
+their own -- see the module load below for why it is done this way rather than a normal
+import. Everything else is stdlib.
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import math
+import pathlib
 import shutil
 import subprocess
 import sys
 from collections import deque
 from typing import List, Optional, Tuple
+
+# Load gaitlab/core/geometry.py by file path rather than `import gaitlab...`: a normal import
+# of anything under the gaitlab package runs gaitlab/__init__.py, which pulls in the full
+# analysis engine as a side effect. Loading the file directly executes only geometry.py
+# itself, which imports nothing beyond stdlib math -- so this script keeps zero coupling to
+# the engine it is meant to check, while still sharing the neutral autocorrelation and
+# peak-finding arithmetic instead of re-deriving it.
+_geometry_path = pathlib.Path(__file__).resolve().parent.parent / "gaitlab" / "core" / "geometry.py"
+_spec = importlib.util.spec_from_file_location("_ground_truth_geometry", _geometry_path)
+_geometry = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_geometry)
 
 # Downscale used throughout. Small enough for pure-Python arithmetic over a whole clip,
 # large enough to keep the limbs several pixels wide.
@@ -56,19 +73,6 @@ MIN_STEP_S, MAX_STEP_S = 0.20, 2.50
 # Apex spacing floor as a fraction of the measured step period. A real apex sits at 1.0 and
 # any secondary bump well below it.
 APEX_SPACING_FRAC = 0.6
-# How close a shorter lag must come to the best correlation before it is preferred. A
-# periodic signal correlates at every multiple of its period, so the tallest peak is not
-# reliably the fundamental.
-#
-# gaitlab/core/geometry.py's dominant_period does the same search and defines this same
-# constant independently, rather than this script importing it: this script is a ground-truth
-# oracle for the engine, and importing anything under `gaitlab` runs gaitlab/__init__.py,
-# which pulls in the full analysis engine as a side effect. A tuning change here should be
-# considered for that copy too. The two are not fully equivalent -- this one additionally
-# skips the zero-lag correlation skirt and requires a harmonic to be an integer divisor of the
-# best-scoring lag, neither of which dominant_period currently does.
-SUBHARMONIC_TOLERANCE = 0.85
-
 # Half-width of the free-fall fit, as a fraction of the step period, and its bounds. The
 # window has to stay near the flight phase: reaching past it into stance flattens the fitted
 # parabola, which understates gravity and overstates the capture rate.
@@ -191,49 +195,35 @@ def outline_rows(raw: bytes, n: int, ref: bytearray) -> Tuple[List[float], List[
 def dominant_lag(xs: List[float], min_lag: int, max_lag: int) -> float:
     """Lag of the strongest repeat, in frames, or nan.
 
-    Prefers the smallest lag correlating about as well as the best, so a multiple of the
-    period cannot win over the period itself.
+    Skips the zero-lag correlation skirt, then prefers the smallest lag that both correlates
+    within SUBHARMONIC_TOLERANCE of the best and divides it evenly -- only an actual divisor
+    can be the fundamental a taller, harmonic peak is a multiple of.
+
+    The skirt is found over the signal's full 0..max_lag correlation, independent of min_lag:
+    a min_lag already past the skirt's true end must not be mistaken for still being inside
+    it, which is what searching for the skirt only within min_lag..max_lag would do.
     """
     n = len(xs)
     min_lag = max(1, min_lag)
     max_lag = min(max_lag, n - 2)
     if n < 4 or max_lag < min_lag:
         return float("nan")
-    m = sum(xs) / n
-    dev = [v - m for v in xs]
-    total = sum(d * d for d in dev)
-    if total <= 0.0:
+    corr = _geometry.normalized_autocorrelation(xs, max_lag)
+    if not corr:
         return float("nan")
-    r: List[float] = []
-    for lag in range(min_lag, max_lag + 1):
-        acc = 0.0
-        for i in range(n - lag):
-            acc += dev[i] * dev[i + lag]
-        r.append(acc / (total * (n - lag) / n))
-    # Every signal correlates with itself at short lags regardless of period, so the shortest
-    # lags are the skirt of the zero-lag lobe rather than evidence of repetition. Start after
-    # the correlation first goes negative, which is past that lobe.
-    start = next((i for i, v in enumerate(r) if v < 0.0), 0)
-    last = len(r) - 1
-    peaks: List[Tuple[int, float]] = [
-        (min_lag + i, r[i]) for i in range(max(start, 1), last)
-        if r[i] >= r[i - 1] and r[i] >= r[i + 1]]
-    # The top of the range is a legitimate period, so it counts as a one-sided maximum.
-    if last > start and r[last] >= r[last - 1]:
-        peaks.append((min_lag + last, r[last]))
+    first_negative = next((lag for lag in range(1, len(corr)) if corr[lag] < 0.0), None)
+    search_lo = max(min_lag, first_negative) if first_negative is not None else min_lag
+    peaks = _geometry.local_maxima(corr, search_lo, max_lag)
     if not peaks:
         return float("nan")
     best_lag, best = max(peaks, key=lambda t: t[1])
     if best <= 0.0:
         return float("nan")
-    # A harmonic sits at an integer multiple of the period, so only a lag that divides the
-    # strongest one can be the fundamental it was a multiple of. Without that constraint any
-    # short-lag noise peak qualifies, and smoothing makes nearby samples correlate.
     for lag, v in peaks:
         if lag >= best_lag:
             break
         ratio = best_lag / lag
-        if abs(ratio - round(ratio)) <= 0.1 and v >= best * SUBHARMONIC_TOLERANCE:
+        if abs(ratio - round(ratio)) <= 0.1 and v >= best * _geometry.SUBHARMONIC_TOLERANCE:
             return float(lag)
     return float(best_lag)
 
