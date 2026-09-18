@@ -233,6 +233,10 @@ def dominant_period(values: List[float], min_lag: int, max_lag: int) -> float:
     corr = normalized_autocorrelation(values, max_lag)
     if not corr:
         return float("nan")
+    # A short clip can collapse the valid range to one lag. There is then no competing
+    # candidate to compare against, so retain it whenever the observed correlation is positive.
+    if min_lag == max_lag:
+        return float(min_lag) if corr[min_lag] > 0.0 else float("nan")
     peaks = local_maxima(corr, min_lag, max_lag)
     if not peaks:
         return float("nan")

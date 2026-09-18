@@ -8,6 +8,7 @@ from dataclasses import replace
 import pytest
 
 from gaitlab.core.events import detect_events
+from gaitlab.core.schema import KP_INDEX
 
 
 def test_cadence_matches_synthetic_input(synth):
@@ -48,6 +49,23 @@ def test_faster_cadence_more_strikes(synth):
     n_slow = len(slow.strikes["l"]) + len(slow.strikes["r"])
     n_fast = len(fast.strikes["l"]) + len(fast.strikes["r"])
     assert n_fast > n_slow
+
+
+def test_cadence_with_one_fully_occluded_foot(synth):
+    """One visible foot supplies stride gaps, each representing two steps."""
+    seq = synth("side-left", fps=60, duration=8, cadence=172, seed=1)
+    ankle = KP_INDEX["r_ankle"]
+    frames = []
+    for frame in seq.frames:
+        flat = list(frame)
+        x, _, confidence = flat[ankle]
+        flat[ankle] = (x, float(seq.height - 20), confidence)
+        frames.append(flat)
+
+    ev = detect_events(replace(seq, frames=frames))
+    assert ev.midstances["r"] == []
+    assert ev.midstances["l"]
+    assert ev.cadence_spm == pytest.approx(172, rel=0.05)
 
 
 def test_real_timestamps_control_temporal_metrics(synth):

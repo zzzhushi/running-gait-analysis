@@ -40,6 +40,11 @@ def test_period_at_both_search_endpoints():
     assert dominant_lag(sine(15), 5, 15) == 15.0  # true period at the high end
 
 
+def test_production_accepts_a_positive_single_candidate():
+    """A short clip can leave exactly one valid physiological lag to consider."""
+    assert geo.dominant_period(sine(10, n=12), 10, 10) == 10.0
+
+
 def test_shorter_fundamental_wins_over_its_own_harmonics():
     """A pure repeating pulse train correlates near-equally at every multiple of its true
     period; both selectors must prefer the shortest of those ties."""
