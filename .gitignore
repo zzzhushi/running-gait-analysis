@@ -25,6 +25,3 @@ venv/
 
 # Node (web tests)
 node_modules/
-# Ground-truth records for clips without recorded consent. Committing a clip or its
-# derived measurements needs consent first — see tests/data/README.md.
-tests/data/IMG_*.groundtruth.json
