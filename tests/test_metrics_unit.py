@@ -152,8 +152,8 @@ def test_flight_time_is_the_median_gap_between_stances():
     seq = pose_from_points("side-left", _blank_frames(50))
     ev = GaitEvents(stance={"l": [(0, 10), (30, 40)], "r": [(15, 25)]})
     ctx = Ctx(seq, ev, None)
-    # Airborne 10->15 and 25->30: 5 frames each, at 60 fps.
-    assert flight_time_mod._compute(ctx) == pytest.approx(5 / 60, abs=1e-6)
+    # Airborne 10->15 and 25->30: 5 frames each, at 60 fps -> 83.33 ms (the card's unit).
+    assert flight_time_mod._compute(ctx) == pytest.approx(5 / 60 * 1000.0, abs=1e-3)
 
 
 def test_flight_time_ignores_contact_time_and_cadence():
@@ -166,7 +166,7 @@ def test_flight_time_ignores_contact_time_and_cadence():
     ev = GaitEvents(stance={"l": [(0, 10), (30, 40)], "r": [(15, 25)]},
                      contact_time={"l": 999.0, "r": 999.0}, cadence_spm=float("nan"))
     ctx = Ctx(seq, ev, None)
-    assert flight_time_mod._compute(ctx) == pytest.approx(5 / 60, abs=1e-6)
+    assert flight_time_mod._compute(ctx) == pytest.approx(5 / 60 * 1000.0, abs=1e-3)
 
 
 # --- foot-strike angle: averaged over a small window around contact --------
