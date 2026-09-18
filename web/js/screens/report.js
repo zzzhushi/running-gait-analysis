@@ -25,7 +25,7 @@ export default async function report(app, params) {
     ]),
   ]));
 
-  const qp = qualityPanel(r.quality);
+  const qp = qualityPanel(r.quality, api.getCaptureMeta(id));
   if (qp) app.append(qp);
 
   app.append(el("h3", { class: "sectitle" }, "Metrics"));
@@ -145,16 +145,25 @@ export function qItem(level, msg) {
   return el("div", { style: `font-size:13px;color:${color};padding:3px 0` }, `${icon}  ${msg}`);
 }
 
-export function qualityPanel(checks) {
-  if (!checks || !checks.length) return null;
-  const warns = checks.filter((c) => c.level === "warn");
+export function qualityPanel(checks, captureMeta) {
+  checks = checks || [];
   const rows = [];
-  if (!warns.length) {
+  // Client-side extraction diagnostic (web/js/pose.js), not part of the engine's own
+  // checks: it never reaches the analysis result, so it rides in via captureMeta.
+  if (captureMeta && captureMeta.timestampSource === "assumed") {
+    rows.push(qItem("warn",
+      "Couldn't read this video's real frame timing (the tab may have lost focus during " +
+      "extraction) — falling back to an assumed constant frame rate. Re-run with the tab " +
+      "in the foreground for more accurate event timing."));
+  }
+  const warns = checks.filter((c) => c.level === "warn");
+  if (!warns.length && !rows.length) {
     const ok = checks.find((c) => c.level === "ok");
     if (ok) rows.push(qItem("ok", ok.message));
   }
   warns.forEach((c) => rows.push(qItem("warn", c.message)));
   checks.filter((c) => c.level === "info").forEach((c) => rows.push(qItem("info", c.message)));
+  if (!rows.length) return null;
   return el("div", { class: "panel", style: "margin:14px 0" }, [
     el("div", { style: "color:var(--muted);font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px" }, "Capture quality"),
     ...rows,

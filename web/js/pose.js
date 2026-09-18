@@ -87,8 +87,16 @@ function loadVideo(url) {
   });
 }
 
-function seekTo(video, t) {
+// Real-time playback lets the compositor skip presenting a frame it can't keep up
+// with, so requestVideoFrameCallback silently sees fewer frames than the video has.
+// Slowing playback during collection is what makes every frame actually get presented.
+export const EXTRACTION_PLAYBACK_RATE = 0.25;
+
+export function seekTo(video, t) {
   return new Promise((resolve) => {
+    // currentTime already equal to t (e.g. the first requested frame, at 0) would
+    // never fire its own "seeked" event, hanging extraction on frame one.
+    if (Math.abs(video.currentTime - t) < 1e-3) { resolve(); return; }
     video.addEventListener("seeked", resolve, { once: true });
     video.currentTime = t;
   });
@@ -96,7 +104,7 @@ function seekTo(video, t) {
 
 // Collect presentation times without running inference in the callback, then process those
 // frames without real-time pressure. Returns null when rVFC is unavailable.
-function collectFrameTimes(video) {
+export function collectFrameTimes(video) {
   if (typeof video.requestVideoFrameCallback !== "function") return Promise.resolve(null);
   return new Promise((resolve) => {
     const times = [];
@@ -116,8 +124,39 @@ function collectFrameTimes(video) {
     };
     video.addEventListener("ended", finish, { once: true });
     video.requestVideoFrameCallback(onFrame);
-    video.play().catch(finish); // autoplay blocked -> fall back below
+    video.playbackRate = EXTRACTION_PLAYBACK_RATE;
+    const tryPlay = () => {
+      video.play().catch((e) => {
+        // A backgrounded tab aborts video-only playback; retry once the tab is
+        // visible again rather than silently falling back to an assumed grid.
+        const backgrounded = e && e.name === "AbortError" &&
+          typeof document !== "undefined" && document.hidden;
+        if (!backgrounded) { finish(); return; }
+        const onVisible = () => {
+          if (document.hidden) return;
+          document.removeEventListener("visibilitychange", onVisible);
+          tryPlay();
+        };
+        document.addEventListener("visibilitychange", onVisible);
+      });
+    };
+    tryPlay();
   });
+}
+
+// Race a promise against a timeout so a stalled extraction (e.g. a tab that never
+// comes back to the foreground) falls back instead of hanging indefinitely.
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);
+}
+
+// Fraction of frames the browser itself reports dropping during collection, when it
+// exposes that count. A debug/diagnostic signal only — no browser guarantees this API.
+function droppedFrameRatio(video) {
+  if (typeof video.getVideoPlaybackQuality !== "function") return null;
+  const q = video.getVideoPlaybackQuality();
+  const total = q.totalVideoFrames || 0;
+  return total ? (q.droppedVideoFrames || 0) / total : null;
 }
 
 // Discard display-refresh callbacks that occur too close to represent distinct video
@@ -166,10 +205,16 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
   const duration = video.duration || 0;
 
   onProgress(0, "Scanning frames…");
-  let frameTimes = await collectFrameTimes(video);
+  // At EXTRACTION_PLAYBACK_RATE, collection itself takes ~1/rate real time; add slack
+  // on top for the tab to regain focus once if it gets backgrounded mid-collection.
+  const collectTimeoutMs = Math.max(15000, (duration * 1000) / EXTRACTION_PLAYBACK_RATE + 20000);
+  let frameTimes = await withTimeout(collectFrameTimes(video), collectTimeoutMs);
+  const droppedRatio = droppedFrameRatio(video);
+  let timestampSource = "measured";
   if (!frameTimes || frameTimes.length < 4) {
     frameTimes = [];
     for (let t = 0; t < duration; t += 1 / 30) frameTimes.push(t);
+    timestampSource = "assumed";
   }
   frameTimes = dedupeFrameTimes(frameTimes);
   await seekTo(video, 0);
@@ -205,5 +250,10 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
     keypoint_names: KEYPOINTS.slice(),
     frames,
     timestamps,
+    // Client-side capture diagnostics. The Python engine's from_pose_dict() reads a
+    // fixed set of keys and round-trips only those, so these never reach the analysis
+    // result — upload.js reads them straight off this return value instead.
+    timestamp_source: timestampSource,
+    dropped_frame_ratio: droppedRatio,
   };
 }

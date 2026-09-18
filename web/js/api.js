@@ -94,3 +94,10 @@ export const ingest = (video, view, opts = {}) =>
 const videoUrls = new Map();
 export const setVideoUrl = (id, url) => videoUrls.set(id, url);
 export const getVideoUrl = (id) => videoUrls.get(id);
+
+// Client-side extraction diagnostics (timestamp_source, dropped_frame_ratio). Not part
+// of the analysis result: the Python engine echoes back only the pose fields it knows
+// about, so this rides alongside the run rather than through it.
+const captureMeta = new Map();
+export const setCaptureMeta = (id, meta) => captureMeta.set(id, meta);
+export const getCaptureMeta = (id) => captureMeta.get(id) || null;

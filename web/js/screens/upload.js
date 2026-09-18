@@ -165,6 +165,10 @@ export default async function upload(app) {
         const poseDict = await pose.extract(url, view, onProgress);
         const res = await api.analyzePose(poseDict, label, profile, onProgress);
         api.setVideoUrl(res.id, url);
+        api.setCaptureMeta(res.id, {
+          timestampSource: poseDict.timestamp_source,
+          droppedFrameRatio: poseDict.dropped_frame_ratio,
+        });
         statusEl.textContent = "✓ Analysis complete  ·  navigating…";
         statusEl.style.color = "var(--accent, #4caf50)";
         location.hash = "#/report/" + res.id;
