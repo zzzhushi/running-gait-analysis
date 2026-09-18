@@ -61,6 +61,16 @@ def test_composite_ranks_above_components(make_values):
     assert items[0]["severity"] == "high"
 
 
+def test_composite_finding_carries_a_frame_from_frames_of_interest(make_values):
+    """A composite finding needs a "View frame" anchor just as much as the
+    single-metric findings it supersedes — losing the anchor was a side effect
+    of superseding, not something the report can afford to drop."""
+    values = make_values("side-left", overstride=20, hip_extension=4, cadence=150)
+    items, _s, _g = fb.build(values, {}, [], "side-left", {"l_strike": 42})
+    overstriding = next(i for i in items if i["metric"] == "overstriding")
+    assert overstriding["frame"] == 42
+
+
 @pytest.mark.xfail(reason="lateral-chain composite deferred: needs knee valgus, rejected for 2-D rear (§7.3)")
 def test_lateral_chain_composite_pending(make_values):
     values = make_values("rear", pelvic_drop=12)
