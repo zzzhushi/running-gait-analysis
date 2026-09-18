@@ -11,17 +11,45 @@ from typing import List
 
 from .ctx import _body_px_height
 from ..core.schema import PoseSequence
+from ..core.tracking import leg_trust
+
+# A dropout shorter than this could just be a single noisy frame; only a sustained loss
+# is worth telling the runner their metrics have a gap in them.
+MIN_DROPOUT_S = 0.5
 
 
-def _ground_slope(seq: PoseSequence, events):
+def _dropout_spans(lost: List[bool], seq: PoseSequence, min_seconds: float = MIN_DROPOUT_S):
+    """Contiguous spans of `lost` at least `min_seconds` long, as (start_s, end_s)."""
+    spans = []
+    n = len(lost)
+    i = 0
+    while i < n:
+        if lost[i]:
+            j = i
+            while j < n and lost[j]:
+                j += 1
+            if seq.elapsed(i, j - 1) >= min_seconds:
+                spans.append((seq.time_at(i), seq.time_at(j - 1)))
+            i = j
+        else:
+            i += 1
+    return spans
+
+
+def _ground_slope(seq: PoseSequence, events, trust=None):
     """OLS slope (px-y per px-x) through contact points, used as a tilt/pan proxy.
 
     Contacts must span 25% of the frame width so the fit is not dominated by
-    pixel noise from a narrow treadmill cluster.
+    pixel noise from a narrow treadmill cluster. `trust`, when given, is a
+    {side: [bool]} mask (see gaitlab.core.tracking.leg_trust) excluding strikes
+    whose ankle position cannot be trusted from skewing the fit.
     """
     pts = []
     for side in ("l", "r"):
+        side_trust = trust.get(side) if trust else None
         for s in events.strikes[side]:
+            if side_trust is not None and not side_trust[s]:
+                continue
             pts.append(seq.xy(s, f"{side}_ankle"))
     if len(pts) < 4:
         return None
@@ -62,11 +90,17 @@ def assess(seq: PoseSequence, events) -> List[dict]:
     if bph and seq.height and bph / seq.height < 0.4:
         warn("You fill little of the frame. Move the camera closer / zoom so you're ~60–80% of frame height.")
 
-    if fps < 120:
+    if round(fps) < 120:
         info(f"At {fps:.0f} fps, ground-contact timing is approximate — use 120/240 fps slow-mo for it.")
 
     if seq.is_side():
-        slope = _ground_slope(seq, events)
+        l_trust, r_trust = leg_trust(seq, "l"), leg_trust(seq, "r")
+        both_lost = [not (lt or rt) for lt, rt in zip(l_trust, r_trust)]
+        for t0, t1 in _dropout_spans(both_lost, seq):
+            warn(f"Tracking lost both legs from {t0:.1f}s to {t1:.1f}s — treat metrics from "
+                 "that span as unreliable. Steady lighting and a fitted silhouette help.")
+
+        slope = _ground_slope(seq, events, trust={"l": l_trust, "r": r_trust})
         # A 0.06 px/px slope is about 3.4 degrees from horizontal.
         # TODO: add comment with validation data for the 25% span and 0.06 cutoff.
         if slope is not None and abs(slope) > 0.06:
