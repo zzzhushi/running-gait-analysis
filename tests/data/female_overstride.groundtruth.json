@@ -3,19 +3,15 @@
   "view": "side-right",
   "subject": "zzzhushi",
   "activity": "treadmill run, slow and bouncy with a long stride",
-
   "metrics": {
     "cadence_spm": 102.8,
     "duration_s": 9.675
   },
-
   "tolerance_pct": {},
-
   "xfail": {
-    "contact_time_ms": "ankle-amplitude contact proxy is uncalibrated across runners",
-    "duty_factor_pct": "same proxy as contact_time_ms"
+    "contact_time": "ankle-amplitude contact proxy is uncalibrated across runners",
+    "duty_factor": "same proxy as contact_time"
   },
-
   "method": "pixel-count",
   "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
 }

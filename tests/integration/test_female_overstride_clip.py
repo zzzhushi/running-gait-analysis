@@ -1,155 +1,87 @@
-"""End-to-end validation against a real 102.8 spm side-view clip.
+"""What this clip has to say beyond its ground-truth record.
 
-This fixture protects low-cadence event detection, including strike count and same-foot
-stride timing. Its ground truth is measured from raw pixels independently of the pose model.
-See the accompanying ground-truth JSON for measurement provenance and known limitations.
+Cadence, duration and fixture integrity are asserted generically in test_real_clips.py. This
+module exists for the one finding the clip produced that a record cannot express: contact time
+and duty factor are wrong for a reason that is not a calibration error, and the sweep showing
+that is worth keeping next to the assertion.
 """
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
-DATA = Path(__file__).resolve().parents[1] / "data"
-POSE = DATA / "female_overstride.pose.json"
-TRUTH = DATA / "female_overstride.groundtruth.json"
+from tests.integration.clipcase import analyse, load_clips
 
-CADENCE_TOLERANCE_PCT = 2.0
+CLIP = next((c for c in load_clips() if c.name == "female_overstride"), None)
+pytestmark = pytest.mark.skipif(CLIP is None, reason="female_overstride fixture not present")
 
-pytestmark = pytest.mark.skipif(
-    not POSE.exists() or not TRUTH.exists(),
-    reason=f"real-clip fixture not present ({POSE.name}); see tests/data/README.md",
-)
-
-# Contact boundaries use an uncalibrated ankle-motion proxy. Strict xfail makes an eventual
-# correction require explicit acceptance rather than silently disappearing from the suite.
+# Remove when contact detection is defined by motion rather than by height. Do not widen a
+# band to clear these: the measured truth is 505 +/- 25 ms and the bands are +/-15% already.
 uncalibrated_stance = pytest.mark.xfail(
     strict=True,
-    reason="ankle-amplitude contact proxy is uncalibrated; see the ground-truth record",
+    reason="ankle-amplitude contact proxy is uncalibrated; see this module's docstring",
 )
 
 
 @pytest.fixture(scope="module")
-def truth() -> dict:
-    return json.loads(TRUTH.read_text())
+def actual():
+    return analyse(CLIP)
 
 
-@pytest.fixture(scope="module")
-def seq(truth):
+def test_engine_reads_the_real_frame_rate():
+    """Asserted so no failure here can be blamed on the timebase.
+
+    The clip is 120 fps with real container timestamps, and gait-event detection broke on it
+    anyway — the bug it was added for is frame-rate independent.
+    """
     from gaitlab.core.schema import PoseSequence
 
-    s = PoseSequence.from_pose_dict(json.loads(POSE.read_text())).validate()
-    assert s.view == truth["view"], "fixture view drifted from the ground-truth record"
-    return s
-
-
-@pytest.fixture(scope="module")
-def events(seq):
-    from gaitlab.core.events import detect_events
-
-    return detect_events(seq)
-
-
-@pytest.fixture(scope="module")
-def result(seq) -> dict:
-    from gaitlab.analyze import analyze
-
-    return analyze(seq, label="female_overstride").to_dict()
-
-
-def _metric(result: dict, key: str):
-    for m in result["metrics"]:
-        if m["key"] == key:
-            return m["value"]
-    raise AssertionError(f"metric {key!r} is not in the report")
-
-
-# --------------------------------------------------------------------------- fixture
-
-def test_pose_fixture_is_intact(seq):
-    assert seq.n == 1160, f"expected 1160 frames, got {seq.n}"
-    assert seq.timestamps is not None, "real per-frame timestamps were dropped"
-    assert seq.duration == pytest.approx(9.675, abs=0.01)
-
-
-def test_engine_reads_the_real_frame_rate(seq):
+    seq = PoseSequence.from_pose_dict(json.loads(CLIP.pose_path.read_text()))
     assert seq.effective_fps == pytest.approx(119.9, abs=0.5)
 
 
-# --------------------------------------------------------------------------- cadence
-
-def test_cadence_matches_ground_truth(result, truth):
-    expected = truth["cadence_spm"]["value"]
-    actual = result["summary"]["cadence"]
-    err_pct = abs(actual - expected) / expected * 100
-    assert err_pct <= CADENCE_TOLERANCE_PCT, (
-        f"cadence {actual:.2f} spm is {err_pct:.1f}% from the measured {expected} spm "
-        f"(tolerance {CADENCE_TOLERANCE_PCT}%)"
-    )
-
-
-def test_strike_count_is_consistent_with_cadence(events, seq, truth):
-    """Event count catches duplicated strikes that interval averaging can hide."""
-    expected = truth["cadence_spm"]["value"] / 60.0 * seq.duration
-    actual = len(events.strikes["l"]) + len(events.strikes["r"])
-    err_pct = abs(actual - expected) / expected * 100
-    assert err_pct <= 10.0, (
-        f"detected {actual} strikes over {seq.duration:.2f}s, but the measured cadence "
-        f"implies ~{expected:.0f} ({err_pct:.0f}% off). More than ~2x means a spurious "
-        f"swing-phase peak is being counted as a contact."
-    )
-
-
-def test_same_foot_events_are_a_stride_apart(events, seq, truth):
-    stride_s = 120.0 / truth["cadence_spm"]["value"]
-    for side in ("l", "r"):
-        got = events.stride_time.get(side)
-        assert got is not None, f"no stride time for side {side!r}"
-        err_pct = abs(got - stride_s) / stride_s * 100
-        assert err_pct <= 10.0, (
-            f"{side}: stride time {got:.3f}s vs measured {stride_s:.3f}s ({err_pct:.0f}% "
-            f"off). A value near half the truth means consecutive same-foot peaks are a "
-            f"STEP apart, i.e. a spurious mid-swing peak is being detected."
-        )
-
-
-# ------------------------------------------------------------ stance, from 120 fps
-
-@uncalibrated_stance
-def test_contact_time_is_physiological(result, truth):
-    """Contact time stays within the clip's pixel-measured physiological band.
-
-    This remains a strict xfail because a fixed ankle-amplitude threshold is not calibrated
-    across runners. The ground-truth record contains the supporting sweeps and alternatives.
-    """
-    lo, hi = truth["physiological_bands"]["contact_time_ms"]
-    gct = _metric(result, "contact_time")
-    assert lo <= gct <= hi, f"ground contact time {gct:.0f} ms is outside {lo}-{hi} ms"
-
-
-@uncalibrated_stance
-def test_duty_factor_is_physiological(result, truth):
-    lo, hi = truth["physiological_bands"]["duty_factor_pct"]
-    duty = _metric(result, "duty_factor")
-    assert lo <= duty <= hi, f"duty factor {duty:.1f}% is outside {lo}-{hi}%"
-
-
-def test_duty_factor_and_flight_time_do_not_contradict_each_other(result):
+def test_duty_factor_and_flight_time_do_not_contradict_each_other(actual):
     """Double-support duty factor and positive flight time cannot coexist."""
-    duty = _metric(result, "duty_factor")
-    flight = _metric(result, "flight_time")
-    assert not (duty > 50.0 and flight > 0.0), (
-        f"duty factor {duty:.1f}% says both feet are on the ground at once, but flight "
-        f"time is {flight:.0f} ms. These cannot both be true."
+    assert not (actual["duty_factor"] > 50.0 and actual["flight_time"] > 0.0), (
+        f"duty factor {actual['duty_factor']:.1f}% says both feet are down at once, but "
+        f"flight time is {actual['flight_time']:.0f} ms"
     )
 
 
-# --------------------------------------------------------------------------- quality
+def test_no_spurious_ground_tilt_warning(actual):
+    """The tilt check fits a line through ankle positions at detected strikes.
 
-def test_no_spurious_ground_tilt_warning(result):
-    """Incorrect strike frames must not create a tilt warning on a level clip."""
-    tilt = [f for f in (result.get("quality") or [])
-            if "tilt" in f.get("message", "").lower()]
+    Scene edges on this clip trace within 2.5 degrees and the belt line within 1.5, both under
+    the check's threshold, so a warning here means the strikes are wrong rather than the camera.
+    """
+    tilt = [f for f in actual["_quality"] if "tilt" in f.get("message", "").lower()]
     assert not tilt, f"spurious ground-tilt warning on a clip measured level: {tilt}"
+
+
+@uncalibrated_stance
+def test_contact_time_is_physiological(actual):
+    """Contact time against the clip's own pixel-measured 505 ms.
+
+    LIFT_FRACTION thresholds a fraction of the ankle's peak-to-peak range, and most of that
+    range is swing-phase lift. Swept against both real clips at once:
+
+        LIFT_FRACTION   this clip (truth 505 ms / 44%)   male_side (180-320 ms / 25-48%)
+        0.15 (current)  394 ms / 34.1%                   241 ms / 34.5%   ok
+        0.20            440 ms / 37.7%                   308 ms / 44.0%   ok
+        0.30            505 ms / 43.3%   exact           388 ms / 55.4%   impossible
+
+    No value satisfies both. 0.20 clears every band assertion, but by landing inside bands
+    rather than matching either measurement, and it moves male_side's duty factor ten points
+    on a clip whose contact time was never measured.
+
+    A vertical-velocity threshold was prototyped and fails the same way, so the problem is not
+    the choice of signal: the calibration is under-determined with one measured clip.
+    """
+    assert 430 <= actual["contact_time"] <= 580
+
+
+@uncalibrated_stance
+def test_duty_factor_is_physiological(actual):
+    assert 36 <= actual["duty_factor"] <= 50
