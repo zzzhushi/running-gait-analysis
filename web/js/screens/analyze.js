@@ -81,6 +81,7 @@ export default async function analyze(app, params) {
         el("div", { class: "legend" }, [
           legend("var(--left)", "Left side"), legend("var(--right)", "Right side"),
           legend("#fff", "Foot strike"), el("span", {}, "Bands = stance (foot on ground)"),
+          (r.quality || []).some((c) => c.frames) ? legend("rgba(220,53,69,0.7)", "Tracking lost") : null,
         ]),
         toggles,
       ]),

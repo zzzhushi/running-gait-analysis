@@ -171,6 +171,20 @@ export class SkeletonRenderer {
 }
 
 // Draw the gait-cycle phase ribbon (stance bands per side + strike ticks).
+// Pixel (x, width) spans for any tracking-dropout the engine flagged (a quality check
+// carrying "frames": [f0, f1] — see gaitlab/metrics/quality.py), so the ribbon can hatch
+// out a span whose stance bands are an artifact of lost tracking, not a real reading.
+export function dropoutPixelSpans(quality, n, width) {
+  const spans = [];
+  for (const c of quality || []) {
+    if (!Array.isArray(c.frames)) continue;
+    const [f0, f1] = c.frames;
+    const x0 = (f0 / n) * width;
+    spans.push([x0, Math.max(1, ((f1 - f0) / n) * width)]);
+  }
+  return spans;
+}
+
 export function drawTimeline(canvas, result) {
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
@@ -192,5 +206,11 @@ export function drawTimeline(canvas, result) {
     for (const s of result.events.strikes[side] || []) {
       ctx.fillRect((s / n) * W - 0.5, lane.y, 1.5, lh);
     }
+  }
+  // Drawn last so it tints over whatever bands/strikes landed in a dropout span,
+  // rather than being hidden under them.
+  ctx.fillStyle = "rgba(220,53,69,0.4)";
+  for (const [x, w] of dropoutPixelSpans(result.quality, n, W)) {
+    ctx.fillRect(x, 0, w, H);
   }
 }
