@@ -9,10 +9,5 @@
   },
   "tolerance_pct": {},
   "method": "pixel-count",
-  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable",
-  "xfail": {
-    "cadence_spm": {
-      "rtmpose": "merged midstances include near-coincident left/right events; the trim keeps 2 of 33 gaps"
-    }
-  }
+  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
 }

@@ -9,10 +9,5 @@
   },
   "tolerance_pct": {},
   "method": "pixel-count",
-  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable",
-  "xfail": {
-    "cadence_spm": {
-      "rtmpose": "trim discards 9 of 40 gaps and biases low; span over all events gives 206.7"
-    }
-  }
+  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
 }

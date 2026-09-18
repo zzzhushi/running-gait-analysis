@@ -31,6 +31,14 @@ LIFT_FRACTION = 0.15
 # Peak spacing floor, as a fraction of the measured stride. The swing-phase bump sits near
 # 0.4 of a stride and a real peak at 1.0.
 PEAK_SPACING_FRACTION = 0.6
+
+# Ankle-y smoothing window, as a fraction of the measured stride. A fixed sample count is a
+# different amount of time at every frame rate — 3 samples is 100ms at 30fps but 25ms at
+# 120fps — while ground contact stays a roughly fixed fraction of the stride at any frame
+# rate. Too little smoothing leaves the flat plateau at each stance riddled with tied or
+# near-tied local maxima, and which one is tallest is then decided by pose-estimation noise
+# rather than by gait.
+SMOOTH_STRIDE_FRACTION = 0.10
 # Stride periods the search will consider, in seconds: 240 spm down to 60 spm.
 MIN_STRIDE_S = 0.5
 MAX_STRIDE_S = 2.0
@@ -106,10 +114,18 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
     stride_s: Dict[str, float] = {}
 
     for side in ("l", "r"):
-        ankle_y = geo.moving_average(seq.series_y(f"{side}_ankle"), 3)
-        amp = geo.peak_to_peak(ankle_y)
-        if amp != amp or amp <= 0:
+        raw_y = seq.series_y(f"{side}_ankle")
+        # A rough pass gives a stride estimate to size the real smoothing window against;
+        # 3 samples is arbitrary but the peak-finding below never sees this pass.
+        rough_y = geo.moving_average(raw_y, 3)
+        rough_amp = geo.peak_to_peak(rough_y)
+        if rough_amp != rough_amp or rough_amp <= 0:
             continue
+        rough_period = _stride_seconds(rough_y, seq, fps)
+        smooth_win = (max(3, int(round(rough_period * fps * SMOOTH_STRIDE_FRACTION)) | 1)
+                     if rough_period == rough_period else 3)
+        ankle_y = geo.moving_average(raw_y, smooth_win)
+        amp = geo.peak_to_peak(ankle_y)
         # From the signal, not from the peaks below: a period derived from those peaks cannot
         # judge whether they are real.
         period = _stride_seconds(ankle_y, seq, fps)
