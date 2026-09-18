@@ -159,8 +159,8 @@ video ──▶ extract_pose.py (RTMPose / rtmlib)
   frames:[[[x,y,score],…]]}`, 21 canonical keypoints incl. heel/toe. The swappable seam.
 - **Analysis engine** (`gaitlab/`, pure Python, stdlib only): gait-event detection →
   per-stride metrics → asymmetry → target scoring → rule-based feedback. Unit-tested.
-- **Server** (`server.py`, stdlib `http.server` + `sqlite3`): serves the UI + JSON API,
-  stores runs locally, seeds synthetic demos when empty.
+- **Local app** (`gaitlab_local/`, wired by `server.py`, stdlib `http.server` + `sqlite3`):
+  serves the UI + JSON API, stores runs locally, seeds synthetic demos when empty.
 - **UI** (`web/`, no build step): ES-module vanilla JS + Canvas overlay + SVG charts.
 
 ## 9. Accuracy, calibration & known limitations
