@@ -18,7 +18,7 @@ export default async function report(app, params) {
     el("div", { class: "big " + scoreClass(s.overall_score) }, fmt(s.overall_score, 0)),
     el("div", { class: "sc-meta" }, [
       el("h2", {}, s.label || viewLabel(s.view) + " run"),
-      el("p", {}, `${viewLabel(s.view)} view · ${fmt(s.cadence, 0)} spm · ${fmt(s.duration, 1)}s · ${s.n_findings} finding${s.n_findings === 1 ? "" : "s"}${profileStr(s.profile)}`),
+      el("p", {}, `${viewLabel(s.view)} view · ${fmt(s.fps, 0)} fps · ${fmt(s.cadence, 0)} spm · ${fmt(s.duration, 1)}s · ${s.n_findings} finding${s.n_findings === 1 ? "" : "s"}${profileStr(s.profile)}`),
     ]),
     el("div", { style: "margin-left:auto" }, [
       el("a", { class: "btn btn-accent", href: "#/analyze/" + id }, "▶ Open player"),
