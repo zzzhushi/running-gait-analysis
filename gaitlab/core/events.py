@@ -180,12 +180,18 @@ def detect_events(seq: PoseSequence) -> GaitEvents:
             ev.contact_time[side] = _robust_period(contacts)
 
     # Merge both feet for cadence; anchor filtering on half-stride so a spurious peak from
-    # either side cannot dominate the interval distribution.
+    # either side cannot dominate the interval distribution. When only one foot is tracked
+    # (the other undetected, e.g. full occlusion), there is nothing to interleave with: the
+    # merged gaps are that foot's own STRIDE, two steps wide rather than one, so halving the
+    # reference against them would reject every real gap.
+    both_sides = bool(ev.midstances["l"]) and bool(ev.midstances["r"])
     all_mid = sorted(ev.midstances["l"] + ev.midstances["r"])
-    steps = [seq.elapsed(all_mid[i], all_mid[i + 1]) for i in range(len(all_mid) - 1)]
+    gaps = [seq.elapsed(all_mid[i], all_mid[i + 1]) for i in range(len(all_mid) - 1)]
     measured = [v for v in stride_s.values() if v == v and v > 0]
-    expect_step = (sum(measured) / len(measured) / 2.0) if measured else float("nan")
-    step_s = _robust_period(steps, expect_step)
-    if step_s == step_s and step_s > 0:
-        ev.cadence_spm = 60.0 / step_s
+    avg_stride = (sum(measured) / len(measured)) if measured else float("nan")
+    expect_gap = avg_stride / 2.0 if both_sides else avg_stride
+    gap_s = _robust_period(gaps, expect_gap)
+    if gap_s == gap_s and gap_s > 0:
+        steps_per_gap = 1.0 if both_sides else 2.0
+        ev.cadence_spm = 60.0 * steps_per_gap / gap_s
     return ev

@@ -199,9 +199,10 @@ def main():
     n_r = len(ev.strikes.get("r", []))
     events_ok = n_l >= 4 and n_r >= 4
     print("GAIT EVENTS")
+    cadence_str = f"{ev.cadence_spm:.1f} spm" if ev.cadence_spm == ev.cadence_spm else "n/a"
     print(f"  {_sym(events_ok, n_l < 6 or n_r < 6)}  "
           f"Left strikes: {n_l}   Right strikes: {n_r}   "
-          f"Cadence: {ev.cadence_spm:.1f} spm")
+          f"Cadence: {cadence_str}")
     if not events_ok:
         print(f"  {ANSI_BAD} Too few strikes — is the runner visible in the frame?")
     print()
