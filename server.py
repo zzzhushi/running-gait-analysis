@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 import webbrowser
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -21,7 +22,7 @@ from gaitlab_local.application import LocalApplication
 from gaitlab_local.cache import PoseCache
 from gaitlab_local.http import make_handler
 from gaitlab_local.ingest import VideoIngestor
-from gaitlab_local.repository import SQLiteRepository
+from gaitlab_local.repository import SQLiteRepository, SchemaError
 
 ROOT = Path(__file__).resolve().parent
 WEB_DIR = ROOT / "web"
@@ -63,7 +64,10 @@ def main() -> None:
     parser.add_argument("--no-open", action="store_true", help="don't open a browser")
     args = parser.parse_args()
 
-    application = build_application()
+    try:
+        application = build_application()
+    except SchemaError as exc:
+        sys.exit(f"GaitLab can't start:\n  {exc}")
     application.seed_demo_runs(only_if_empty=True)
     handler = make_handler(application, WEB_DIR)
 

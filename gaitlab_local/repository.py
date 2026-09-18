@@ -73,7 +73,9 @@ class SQLiteRepository:
                 elif version != SCHEMA_VERSION:
                     raise UnsupportedSchemaVersion(
                         f"database {self.db_path} has schema version {version}; "
-                        f"this build requires version {SCHEMA_VERSION}"
+                        f"this build requires version {SCHEMA_VERSION}. No migration exists "
+                        "for that step, so the database was left untouched. Back it up "
+                        "and move it aside to start fresh."
                     )
                 self._verify_v2(conn)
         finally:
@@ -112,7 +114,8 @@ class SQLiteRepository:
             return 0
         raise SchemaError(
             f"database {self.db_path} is populated but has no schema metadata; "
-            "it may be damaged or from an unsupported release, so no data was changed"
+            "it may be damaged or from an unsupported release, so no data was changed. "
+            "Back it up and move it aside to start fresh."
         )
 
     def _create_v2(self, conn: sqlite3.Connection) -> None:
@@ -244,7 +247,7 @@ class SQLiteRepository:
             "id, created_at, label, view, source, score, grade, cadence, "
             "n_findings, speed_kmh, user_id"
         )
-        with closing(self.connect()) as conn, conn:
+        with closing(self.connect()) as conn:
             if user_id:
                 rows = conn.execute(
                     f"SELECT {columns} FROM runs WHERE user_id=? ORDER BY created_at DESC",
@@ -257,7 +260,7 @@ class SQLiteRepository:
         return [dict(row) for row in rows]
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
-        with closing(self.connect()) as conn, conn:
+        with closing(self.connect()) as conn:
             row = conn.execute(
                 "SELECT result_json FROM runs WHERE id=?", (run_id,)
             ).fetchone()
@@ -268,11 +271,11 @@ class SQLiteRepository:
             conn.execute("DELETE FROM runs WHERE id=?", (run_id,))
 
     def count_runs(self) -> int:
-        with closing(self.connect()) as conn, conn:
+        with closing(self.connect()) as conn:
             return int(conn.execute("SELECT COUNT(*) FROM runs").fetchone()[0])
 
     def run_identities(self, user_id: str) -> set[tuple[str, str, str]]:
-        with closing(self.connect()) as conn, conn:
+        with closing(self.connect()) as conn:
             rows = conn.execute(
                 "SELECT label, view, source FROM runs WHERE user_id=?", (user_id,)
             ).fetchall()
@@ -280,7 +283,7 @@ class SQLiteRepository:
 
     # -- users -------------------------------------------------------------
     def list_users(self) -> list[dict[str, Any]]:
-        with closing(self.connect()) as conn, conn:
+        with closing(self.connect()) as conn:
             rows = conn.execute("SELECT * FROM users ORDER BY created_at").fetchall()
         return [dict(row) for row in rows]
 
@@ -309,12 +312,12 @@ class SQLiteRepository:
         return user
 
     def get_user(self, user_id: str) -> dict[str, Any] | None:
-        with closing(self.connect()) as conn, conn:
+        with closing(self.connect()) as conn:
             row = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
         return dict(row) if row else None
 
     def find_user_by_name(self, name: str) -> dict[str, Any] | None:
-        with closing(self.connect()) as conn, conn:
+        with closing(self.connect()) as conn:
             row = conn.execute(
                 "SELECT * FROM users WHERE name=? ORDER BY created_at LIMIT 1", (name,)
             ).fetchone()

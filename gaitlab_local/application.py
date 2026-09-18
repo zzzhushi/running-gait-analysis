@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from gaitlab import analyze, synthetic
 from gaitlab.coaching import narrative
 from gaitlab.core.schema import PoseSequence, PoseValidationError
 
-from .cache import InvalidPoseCache
 from .ingest import VideoIngestor
 from .repository import SQLiteRepository
 
@@ -23,6 +22,10 @@ class NotFoundError(LookupError):
     """A requested local resource does not exist."""
 
 
+class AnalysisOutput(Protocol):
+    def to_dict(self) -> dict: ...
+
+
 class LocalApplication:
     """Coordinate the engine, local files, and persistence behind small use cases."""
 
@@ -31,7 +34,7 @@ class LocalApplication:
         repository: SQLiteRepository,
         ingestor: VideoIngestor,
         *,
-        analyze_fn: Callable[..., Any] = analyze,
+        analyze_fn: Callable[..., AnalysisOutput] = analyze,
         demo_runs_fn: Callable[[], Iterable[tuple[str, PoseSequence, Mapping | None]]] = (
             synthetic.demo_runs
         ),
@@ -88,10 +91,9 @@ class LocalApplication:
     ) -> dict:
         self._require_user(user_id)
         try:
-            result_obj = self._analyze(sequence, label=label, profile=profile)
+            result = self._analyze(sequence, label=label, profile=profile).to_dict()
         except PoseValidationError as exc:
             raise InvalidInput(str(exc)) from exc
-        result = result_obj.to_dict() if hasattr(result_obj, "to_dict") else dict(result_obj)
         speed_kmh = (profile or {}).get("speed_kmh")
         run_id = self.repository.create_run(
             result, user_id=user_id, speed_kmh=speed_kmh
@@ -119,23 +121,25 @@ class LocalApplication:
             demo_user = self.repository.find_or_create_user_by_name("Demo")
             user_id = demo_user["id"]
 
+        existing = self.repository.run_identities(user_id)
         added = 0
         for label, sequence, profile in self._demo_runs():
+            identity = (label, sequence.view, sequence.source)
+            if identity in existing:
+                continue
             try:
-                result_obj = self._analyze(sequence, label=label, profile=profile)
+                result = self._analyze(
+                    sequence, label=label, profile=profile
+                ).to_dict()
             except PoseValidationError as exc:
                 raise InvalidInput(str(exc)) from exc
-            result = (
-                result_obj.to_dict()
-                if hasattr(result_obj, "to_dict")
-                else dict(result_obj)
-            )
             run_id = self.repository.create_run_if_absent(
                 result,
                 user_id=user_id,
                 speed_kmh=(profile or {}).get("speed_kmh"),
             )
             if run_id is not None:
+                existing.add(identity)
                 added += 1
         return added
 
@@ -181,6 +185,8 @@ class LocalApplication:
             return self.ingestor.resolve_video(video_stem)
         except ValueError as exc:
             raise InvalidInput(str(exc)) from exc
+        except FileNotFoundError as exc:
+            raise NotFoundError(str(exc)) from exc
 
     def ingest_video(
         self,
@@ -196,8 +202,6 @@ class LocalApplication:
         self._require_user(user_id)
         try:
             ingested = self.ingestor.ingest(video_stem, view, force=force)
-        except InvalidPoseCache:
-            raise  # a corrupt cache on this machine is not the caller's fault
         except ValueError as exc:
             raise InvalidInput(str(exc)) from exc
         stored = self.store_sequence(

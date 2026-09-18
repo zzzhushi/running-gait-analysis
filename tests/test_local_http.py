@@ -18,6 +18,14 @@ from gaitlab_local.ingest import VideoIngestor
 from gaitlab_local.repository import SQLiteRepository
 
 
+class _AnalysisOutput:
+    def __init__(self, result: dict) -> None:
+        self.result = result
+
+    def to_dict(self) -> dict:
+        return self.result
+
+
 def _pose(*, source: str = "browser") -> dict:
     point = (0.5, 0.5, 1.0)
     return PoseSequence(
@@ -105,8 +113,8 @@ def _application(tmp_path):
     application = LocalApplication(
         repository,
         ingestor,
-        analyze_fn=lambda sequence, *, label="", profile=None: _result(
-            sequence, label, profile
+        analyze_fn=lambda sequence, *, label="", profile=None: _AnalysisOutput(
+            _result(sequence, label, profile)
         ),
         demo_runs_fn=lambda: (
             ("Demo run", PoseSequence.from_pose_dict(_pose(source="demo")), None),
@@ -201,8 +209,6 @@ def test_http_analysis_ingest_persistence_and_seed_contracts(tmp_path):
         assert status == 200
         assert video == b"video bytes"
 
-        # The old route deleted every run before reseeding. It is now additive while
-        # keeping the response shape (the complete run list) unchanged.
         status, after_seed = _request(
             address, "POST", "/api/seed", {"user_id": user["id"]}
         )

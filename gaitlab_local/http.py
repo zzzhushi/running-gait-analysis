@@ -83,7 +83,7 @@ def make_handler(
         def _handle_exception(self, exc: Exception) -> None:
             if isinstance(exc, InvalidInput):
                 self._json({"error": str(exc)}, 400)
-            elif isinstance(exc, (NotFoundError, FileNotFoundError)):
+            elif isinstance(exc, NotFoundError):
                 self._json({"error": str(exc)}, 404)
             elif isinstance(exc, ExtractionTimeout):
                 self._json({"error": str(exc)}, 504)
@@ -125,7 +125,7 @@ def make_handler(
                     stem = os.path.basename(path[len("/api/video/") :])
                     try:
                         video_path = bound_application.video_path(stem)
-                    except (InvalidInput, FileNotFoundError):
+                    except (InvalidInput, NotFoundError):
                         self.send_error(404)
                     else:
                         self._serve_file(video_path)

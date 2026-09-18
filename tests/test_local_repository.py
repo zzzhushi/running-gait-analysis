@@ -47,6 +47,18 @@ class _UnusedIngestor:
     pass
 
 
+class _AnalysisOutput:
+    def __init__(self, result: dict) -> None:
+        self.result = result
+
+    def to_dict(self) -> dict:
+        return self.result
+
+
+def _analyze(sequence, *, label="", profile=None) -> _AnalysisOutput:
+    return _AnalysisOutput(_result(label, sequence))
+
+
 def test_repository_round_trips_runs_and_nulls_user_on_delete(tmp_path):
     identifiers = iter(("user-1", "run-1"))
     repository = SQLiteRepository(
@@ -167,13 +179,16 @@ def test_demo_seed_is_additive_and_idempotent(tmp_path):
     )
     repository.initialize()
 
-    def analyze(sequence, *, label="", profile=None):
-        return _result(label, sequence)
-
     demos = (
         ("Demo one", _sequence(source="demo-one"), None),
         ("Demo two", _sequence(source="demo-two"), {"speed_kmh": 10}),
     )
+    analyzed = []
+
+    def analyze(sequence, *, label="", profile=None):
+        analyzed.append(label)
+        return _analyze(sequence, label=label, profile=profile)
+
     application = LocalApplication(
         repository,
         _UnusedIngestor(),
@@ -184,7 +199,9 @@ def test_demo_seed_is_additive_and_idempotent(tmp_path):
     application.store_sequence("My run", _sequence(source="personal"), user_id=user["id"])
 
     assert application.seed_demo_runs() == 2
+    analyzed_before_second_seed = list(analyzed)
     assert application.seed_demo_runs() == 0
+    assert analyzed == analyzed_before_second_seed
 
     runs = repository.list_runs()
     assert {run["label"] for run in runs} == {"My run", "Demo one", "Demo two"}
@@ -201,7 +218,7 @@ def test_startup_seed_preserves_the_original_seed_only_when_empty_contract(tmp_p
     application = LocalApplication(
         repository,
         _UnusedIngestor(),
-        analyze_fn=lambda sequence, *, label="", profile=None: _result(label, sequence),
+        analyze_fn=_analyze,
         demo_runs_fn=lambda: (("Demo", _sequence(source="demo"), None),),
     )
     user = application.create_user("Runner")
@@ -218,7 +235,7 @@ def test_concurrent_demo_seed_inserts_each_identity_once(tmp_path):
     application = LocalApplication(
         repository,
         _UnusedIngestor(),
-        analyze_fn=lambda sequence, *, label="", profile=None: _result(label, sequence),
+        analyze_fn=_analyze,
         demo_runs_fn=lambda: (
             ("Demo one", _sequence(source="demo-one"), None),
             ("Demo two", _sequence(source="demo-two"), None),
@@ -244,7 +261,7 @@ def test_an_unknown_user_is_rejected_before_the_run_is_analyzed(tmp_path):
 
     def analyze(sequence, *, label="", profile=None):
         analyzed.append(label)
-        return _result(label, sequence)
+        return _AnalysisOutput(_result(label, sequence))
 
     application = LocalApplication(
         repository, _UnusedIngestor(), analyze_fn=analyze
@@ -253,6 +270,5 @@ def test_an_unknown_user_is_rejected_before_the_run_is_analyzed(tmp_path):
     with pytest.raises(NotFoundError, match="user not found"):
         application.store_sequence("Orphan", _sequence(), user_id="deleted-user")
 
-    # The old code let this reach SQLite and fail the foreign key *after* analysis.
     assert analyzed == []
     assert repository.count_runs() == 0
