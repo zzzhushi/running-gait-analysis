@@ -1,0 +1,13 @@
+{
+  "clip": "female_rear_view.mp4",
+  "view": "rear",
+  "subject": "zzzhushi",
+  "activity": "treadmill run, filmed from behind",
+  "metrics": {
+    "cadence_spm": 180.54,
+    "duration_s": 14.26
+  },
+  "tolerance_pct": {},
+  "method": "pixel-count",
+  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
+}

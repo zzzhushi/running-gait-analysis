@@ -8,72 +8,39 @@ modelling errors — the generator and the detector share assumptions, so a dete
 finds "foot strike" half a step late looks perfectly correct against synthetic input. These
 files exist so at least one test is anchored to something the engine did not produce.
 
-## `male_side.*`
+## The clips
 
-| File | What it is |
-|---|---|
-| `male_side.mp4` | Treadmill, side view, runner facing image-left. 720x1280, 30 fps, 360 frames, 12.0 s — a re-encoded trim (t=10-22s) of a 40s source recording. |
-| `male_side.<extractor>.pose.json` | Landmarks, one file per extractor (`rtmpose`, `blazepose`). What the tests actually load. |
-| `male_side.groundtruth.json` | Measured cadence + provenance, and the physiological bands the tests assert. |
+| Clip | View | Cadence | fps | Activity |
+|---|---|---|---|---|
+| `female_high_cadence` | side-right | 207 spm | 120 | treadmill run, high cadence |
+| `female_side_view` | side-right | 190 spm | 120 | treadmill run |
+| `female_rear_view` | rear | 181 spm | 120 | treadmill run from behind |
+| `male_side` | side-left | 168.9 spm | 30 | treadmill run |
+| `female_bounding` | side-right | 129 spm | 120 | bounding drill |
+| `female_overstride` | side-right | 102.8 spm | 120 | slow run, long stride |
 
-Ground truth is **168.9 ± 0.5 spm**, measured from raw pixels by two independent methods
-that involve no pose model and no part of this engine — consistent with 168.6 ± 0.3 spm
-measured the same way on the un-trimmed 40s source. Regenerate it with:
+Each clip has a `<clip>.mp4`, one `<clip>.<extractor>.pose.json` per extractor, and a
+`<clip>.groundtruth.json`. All are 720x1280 H.264 — one format, so no test needs to know which
+capture path a clip came from.
 
-```
-python3 scripts/measure_cadence_groundtruth.py tests/data/male_side.mp4
-```
+The range matters more than the count. Gait-event detection doubled below about 120 spm while
+every synthetic test passed, and `female_overstride` at 102.8 is the only thing that caught it;
+`test_corpus_spans_the_cadence_range_that_breaks_detection` fails if that end is ever lost.
+`female_bounding` is deliberately not running — long flight and a low contact rate — and
+`female_rear_view` is the only non-side view.
 
-The tests load `male_side.pose.json`, not the video, so they need no ffmpeg, no rtmlib, and
-no model download — they run in CI in well under a second. The `.mp4` is committed so the
-ground truth stays reproducible and so extraction itself can be tested, not just the engine
-— see "Two layers, both real" below. If either file is absent the integration tests skip
-rather than fail.
-
-**Consent.** The person in `male_side.mp4` has given explicit consent to have this clip
-committed to this public repository under its MIT license, indefinitely and re-forkable.
-Record the same for any clip you add — see "Before adding another clip" below.
-
-## `female_overstride.*`
-
-| File | What it is |
-|---|---|
-| `female_overstride.mp4` | Treadmill, side view, runner facing image-right. 720x1280, **120 fps**, 1160 frames, 9.675 s. Re-encode of a 1080x1920 HEVC phone clip; not trimmed (the source is only 9.675 s). |
-| `female_overstride.<extractor>.pose.json` | Landmarks, one file per extractor (`rtmpose`, `blazepose`). What the tests load. |
-| `female_overstride.groundtruth.json` | Measured cadence, contact and flight, full provenance, and the root-cause analysis of what the engine gets wrong on it. |
-
-Ground truth is **102.8 ± 0.6 spm**, from four independent pixel signals (head-top row,
-silhouette centroid, leg-band motion energy, foot-band spread), each read by both a
-fine-grid DFT and a 4-harmonic autocorrelation ladder, plus two cross-checks of different
-physics. All eight estimates land in 102.28–103.91 spm. Contact time (**505 ± 25 ms**) and
-flight (**75 ± 15 ms**) are *measured*, not literature bands — that is what 120 fps buys.
-
-**This fixture was added because it failed.** `male_side.mp4` sits at 168.9 spm, where
-gait-event detection happens to work, so it could only show the engine had not regressed.
-This clip sits at 102.8 spm, where detection doubled: 126.87 spm, 34 strikes where ~17 are
-real, a 57.3% duty factor alongside 199 ms of flight, and a ground-tilt warning on a level
-clip. Cadence is now 102.96 spm (0.16% off) and the rest went with it.
-
-Two assertions are still `xfail(strict=True)` — contact time and duty factor — for a
-different reason: `LIFT_FRACTION` cannot fit both clips at once. This clip's measured 505 ms
-needs 0.30, which puts male_side above a 50% duty factor. See the note on
-`test_contact_time_is_physiological` and the sweep in `gaitlab/core/events.py`. The markers
-are the todo list: strict means the run fails the moment they start passing.
-
-The frame rate was never the cause. This clip carries real 120 fps container timestamps and
-the engine reads them correctly (`effective_fps` = 119.896); it failed identically with a
-perfect timebase.
-
-**Consent.** The runner in `female_overstride.mp4` is the repository maintainer, who gave
-explicit consent on 2026-09-15 to commit it here under the MIT license, indefinitely and
-re-forkable — the same terms recorded for `male_side.mp4`.
-
-Re-extract with:
+Two clips were shot in slow-motion mode and arrived as 30 fps containers holding four times the
+frames. They were normalised to honest 120 fps containers on ingest, because the extractors read
+the container rate and would otherwise produce metrics wrong by that factor:
 
 ```
-python3 extractor/extract_pose.py tests/data/female_overstride.mp4 --view side-right \
-    -o tests/data/female_overstride.pose.json
+ffmpeg -i slowmo.mov -an -vf "setpts=PTS/4,scale=720:1280" -r 120 \
+    -c:v libx264 -crf 23 -preset slow -pix_fmt yuv420p clip.mp4
 ```
+
+**Consent.** Every clip here is committed with the explicit consent of the person in it, under
+this repository's MIT license, indefinitely and re-forkable. Record the same for any clip you
+add — see "Before adding another clip".
 
 ## The ground-truth records
 

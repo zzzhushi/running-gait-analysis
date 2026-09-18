@@ -83,6 +83,19 @@ class Clip:
         base = override if override is not None else TOLERANCE_PCT[key]
         return float(base) * EXTRACTORS[self.extractor]
 
+    def xfail_reason(self, key: str):
+        """Why this metric is skipped for this extractor, or None.
+
+        A string skips every extractor; a mapping names the ones affected, since an
+        extractor can fail a metric another handles.
+        """
+        entry = self.record.get("xfail", {}).get(key)
+        if entry is None:
+            return None
+        if isinstance(entry, str):
+            return entry
+        return entry.get(self.extractor)
+
     def subject(self) -> Dict[str, Any]:
         subjects = json.loads((DATA / "subjects.json").read_text())
         return subjects[self.record["subject"]]

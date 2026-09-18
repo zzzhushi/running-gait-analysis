@@ -35,15 +35,30 @@ def case(request):
 
 def test_metrics_match_measured_truth(case):
     clip, actual = case
-    skipped = clip.record.get("xfail", {})
     checked = 0
     for key, expected in clip.metrics.items():
-        if key in skipped:
+        if clip.xfail_reason(key):
             continue
         assert key in actual, f"{clip.id}: engine reports no {key!r}"
         check(clip, key, expected, actual[key])
         checked += 1
     assert checked, f"{clip.id}: asserted nothing — every metric is xfailed?"
+
+
+def test_xfailed_metrics_still_fail(case):
+    """An xfailed metric must still be failing, or the record is stale.
+
+    Skipping a metric in the record removes it from test_metrics_match_measured_truth, so
+    without this a fix would leave the assertion permanently switched off. This is what
+    pytest's strict xfail does; data-driven cases need it spelled out.
+    """
+    clip, actual = case
+    for key, expected in clip.metrics.items():
+        reason = clip.xfail_reason(key)
+        if not reason:
+            continue
+        with pytest.raises(AssertionError):
+            check(clip, key, expected, actual[key])
 
 
 def test_composites_match_measured_truth(case):
