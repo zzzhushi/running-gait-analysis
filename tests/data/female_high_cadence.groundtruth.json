@@ -2,12 +2,9 @@
   "clip": "female_high_cadence.mp4",
   "view": "side-right",
   "subject": "zzzhushi",
-  "activity": "treadmill run at high cadence",
   "metrics": {
     "cadence_spm": 205.13,
     "duration_s": 11.88
   },
-  "tolerance_pct": {},
-  "method": "pixel-count",
-  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
+  "tolerance_pct": {}
 }

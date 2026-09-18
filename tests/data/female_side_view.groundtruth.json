@@ -2,12 +2,9 @@
   "clip": "female_side_view.mp4",
   "view": "side-right",
   "subject": "zzzhushi",
-  "activity": "treadmill run; source was a 4x slow-motion capture, normalised on ingest",
   "metrics": {
     "cadence_spm": 189.02,
     "duration_s": 10.92
   },
-  "tolerance_pct": {},
-  "method": "pixel-count",
-  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
+  "tolerance_pct": {}
 }

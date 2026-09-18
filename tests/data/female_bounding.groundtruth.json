@@ -2,12 +2,9 @@
   "clip": "female_bounding.mp4",
   "view": "side-right",
   "subject": "zzzhushi",
-  "activity": "bounding drill, long flight and a low contact rate by design; source was a 4x slow-motion capture, normalised on ingest",
   "metrics": {
     "cadence_spm": 128.57,
     "duration_s": 12.22
   },
-  "tolerance_pct": {},
-  "method": "pixel-count",
-  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
+  "tolerance_pct": {}
 }

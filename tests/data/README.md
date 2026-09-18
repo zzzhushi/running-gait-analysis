@@ -38,9 +38,13 @@ ffmpeg -i slowmo.mov -an -vf "setpts=PTS/4,scale=720:1280" -r 120 \
     -c:v libx264 -crf 23 -preset slow -pix_fmt yuv420p clip.mp4
 ```
 
-**Consent.** Every clip here is committed with the explicit consent of the person in it, under
-this repository's MIT license, indefinitely and re-forkable. Record the same for any clip you
-add — see "Before adding another clip".
+**Consent.** Every clip is committed under this repository's MIT license, indefinitely and
+re-forkable, with the explicit consent of the person in it: `male_side` from the person in the
+clip; the five `female_*` clips from the maintainer, given 2026-09-15. Record the same for any
+clip you add — see "Before adding another clip".
+
+**Method.** Every `cadence_spm` here is measured by pixel-count — see "How the cadence numbers
+were measured" below. No record needs to repeat that.
 
 ## The ground-truth records
 
@@ -51,12 +55,9 @@ One `<clip>.groundtruth.json` per clip, holding assertions and nothing else:
   "clip": "female_overstride.mp4",
   "view": "side-right",
   "subject": "zzzhushi",
-  "activity": "treadmill run, slow and bouncy with a long stride",
   "metrics": { "cadence_spm": 102.8, "duration_s": 9.675 },
   "tolerance_pct": {},
-  "xfail": { "some_metric": "why this clip's value for it is not asserted yet" },
-  "method": "pixel-count",
-  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
+  "xfail": { "some_metric": "why this clip's value for it is not asserted yet" }
 }
 ```
 

@@ -2,12 +2,9 @@
   "clip": "female_overstride.mp4",
   "view": "side-right",
   "subject": "zzzhushi",
-  "activity": "treadmill run, slow and bouncy with a long stride",
   "metrics": {
     "cadence_spm": 102.58,
     "duration_s": 9.68
   },
-  "tolerance_pct": {},
-  "method": "pixel-count",
-  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
+  "tolerance_pct": {}
 }

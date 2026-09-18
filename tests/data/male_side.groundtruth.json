@@ -2,12 +2,9 @@
   "clip": "male_side.mp4",
   "view": "side-left",
   "subject": "male_a",
-  "activity": "treadmill run, steady state",
   "metrics": {
     "cadence_spm": 168.27,
     "duration_s": 12.0
   },
-  "tolerance_pct": {},
-  "method": "pixel-count",
-  "consent": "explicit, from the person in the clip · MIT · indefinite · re-forkable"
+  "tolerance_pct": {}
 }
