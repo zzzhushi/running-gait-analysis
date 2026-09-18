@@ -1,197 +1,21 @@
 {
   "clip": "female_overstride.mp4",
-  "pose": "female_overstride.pose.json",
   "view": "side-right",
-  "description": "Treadmill run, side view, runner faces image-right so the camera sees her right side. Portrait 720x1280, 120 fps, 1160 frames, 9.675 s. Re-encode of a 1080x1920 HEVC phone clip (originally IMG_8325.mov, shot 2026-09-12). Slow, bouncy, long-stride gait at ~103 spm — deliberately at the low-cadence end, because that is where the engine's gait-event detection breaks. Dark grey-blue top against a plain light wall, black leggings, navy shoes with a bright cream midsole.",
-  "consent": "The runner (zzzhushi) is the person in this clip and has given explicit consent, on 2026-09-15, to commit it to this public repository under its MIT license, indefinitely and re-forkable — the same terms recorded for male_side.mp4.",
-  "why_this_clip_is_here": [
-    "It is the 120 fps clip tests/data/README.md asks for. A whole stance is ~60 frames here versus ~7 at 30 fps, so contact and toe-off are resolved rather than argued over.",
-    "It is the first fixture that FAILS. male_side.mp4 runs at 168.9 spm, where the detector happens to work; this clip runs at 102.8 spm, where it does not. A suite whose only real clip is one the code already passes cannot show that the code is wrong.",
-    "It reproduces six coupled defects from one input — see known_engine_deviations."
-  ],
-  "encode_provenance": {
-    "source": "IMG_8325.mov, 1920x1080 HEVC with a -90 rotation flag (decodes to 1080x1920 portrait), 27.9 Mbps, 36.6 MB",
-    "reencode": "ffmpeg -i IMG_8325.mov -an -vf scale=720:1280 -c:v libx264 -crf 23 -preset slow -pix_fmt yuv420p",
-    "result": "3.07 MB, 720x1280, 1160 frames, 9.675 s — inside the 1-3 MB guidance in tests/data/README.md, and 720x1280 matches male_side.mp4.",
-    "not_trimmed": "The source is only 9.675 s (~16 steps). Trimming would cost strides the per-metric medians need.",
-    "cadence_survives_the_reencode": "All four spectral methods below were run on the source AND on this re-encode; every one moved by less than 0.2 spm. The measured truth is a property of the committed file, not just of the original.",
-    "fixes_the_source_header": "The source container claimed 1210 frames at 115.28 fps against 1160 decoded at 119.917 — the second clip in a row with a wrong header. The re-encode's header agrees with its decode."
+  "subject": "zzzhushi",
+  "activity": "treadmill run, slow and bouncy with a long stride",
+
+  "metrics": {
+    "cadence_spm": 102.8,
+    "duration_s": 9.675
   },
-  "cadence_spm": {
-    "value": 102.8,
-    "uncertainty": 0.6,
-    "unit": "spm",
-    "how_measured": [
-      "From raw pixels only — no pose model and no part of the gaitlab engine — so this is independent of the code under test.",
-      "Four independent signals, each analysed by a fine-grid DFT and by autocorrelation over a 4-harmonic ladder. A temporal-median background is useless here (she is stationary on a treadmill, so the median becomes her body), so every signal below is built without one.",
-      "1. HEAD-TOP ROW. First row from the top with >=3 pixels darker than a per-pixel 90th-percentile brightness reference. Bounces once per step against a plain light wall. DFT 102.55, autocorrelation 102.63 spm. Strongest signal (r=0.68 at lag 1).",
-      "2. SILHOUETTE VERTICAL CENTROID, rows 120-460 of a 270x480 decode. Independent of head detection. DFT 102.97, autocorrelation 103.91 spm.",
-      "3. LEG-BAND MOTION ENERGY, rows 330-470. Mean absolute frame difference. DFT 103.06 spm.",
-      "4. FOOT-BAND HORIZONTAL SPREAD, rows 400-470. Widest as the feet split. DFT 102.28, autocorrelation 103.21 spm.",
-      "5. CROSS-CHECK, different physics: spacing of the flight phases found from the bright cream midsole on the dark belt (see contact_time) gives a step period of 0.5830 s -> 102.91 spm.",
-      "6. CROSS-CHECK, direct counting: 15 head apexes between t=0.796 s and t=8.929 s -> 103.28 spm.",
-      "Mean of the four DFT peaks on the committed file is 102.72 spm; the full spread across all methods is 102.28-103.91. Recorded as 102.8 +/- 0.6.",
-      "The head tracker was rendered back over four frames spread across the clip and the detected row sits on her crown in every one. That visual check is what caught a bad ground model on the first pass at this clip; it is not optional."
-    ],
-    "why_not_scripts_measure_cadence_groundtruth_py": "That script cannot measure this clip, for two independent reasons, and both are frame-rate assumptions that happen to hold at 30 fps. (1) Its search band is STEP_HZ = 2.0-3.9 Hz = 120-234 spm, which excludes a 103 spm runner entirely. (2) Its detrend window is a fixed 61 SAMPLES — 2.0 s at 30 fps, a sensible ~0.5 Hz highpass, but only 0.5 s at 120 fps, which highpasses at ~2 Hz and removes the very signal it is looking for. Run as-is it locks onto broadband noise near 3.8 Hz. Worth fixing when that script is next touched; it is not on the critical path for the cadence bug."
+
+  "tolerance_pct": {},
+
+  "xfail": {
+    "contact_time_ms": "ankle-amplitude contact proxy is uncalibrated across runners",
+    "duty_factor_pct": "same proxy as contact_time_ms"
   },
-  "contact_and_flight": {
-    "_comment": "Measured, not taken from literature — which is the whole point of a 120 fps clip. male_side.mp4's bands could only be literature ranges because at 30 fps a stance is ~7 frames.",
-    "contact_time_ms": 505,
-    "contact_time_uncertainty_ms": 25,
-    "flight_time_ms": 75,
-    "flight_time_uncertainty_ms": 15,
-    "duty_factor_pct": 44,
-    "duty_factor_uncertainty_pct": 2,
-    "how_measured": [
-      "In running one STEP is one single-support phase plus one flight phase, so contact = step - flight and duty = contact / (2 * step). Flight is directly observable and needs no per-foot tracking and no ground model.",
-      "Flight was found from the BRIGHT cream midsole against the DARK belt, restricted to rows 840-958 of a 540x960 decode (pure belt surface: row medians are ~146 at the deck edge and ~20 below it). Static bright pixels — the treadmill rail and deck stripes — were removed by a per-pixel 'bright in more than half of all frames' mask.",
-      "Polarity matters. A silhouette (dark-on-light) approach FAILS on this clip: her shadow falls on the belt, is dark, sits at belt level in every single frame, and is therefore indistinguishable from a planted foot. The midsole is the opposite polarity, so the shadow cannot mimic it.",
-      "Swept the blob-area threshold over 0.06-0.20 of maximum. Contact time barely moves (485, 516, 504, 510 ms) because contact and flight shift together; duty stays in 42.4-45.3%.",
-      "Independently consistent with an earlier by-hand pass over this clip that stepped through frames watching the shadow under the shoe: 525 ms contact, 44% duty, 72 ms flight."
-    ],
-    "interpretation": "A 44% duty factor is high — close to the 50% walk/run boundary — and that is correct for this clip, not an artefact. She is jogging at roughly 4.5 km/h. Any engine reporting duty ABOVE 50% here alongside a non-zero flight time is stating a contradiction."
-  },
-  "physiological_bands": {
-    "_comment": "Unlike male_side.groundtruth.json these are derived from THIS clip's own measurements plus margin, not from literature, because 120 fps makes them measurable. Bands are deliberately wider than the stated uncertainty so they test for the anchoring failure mode, not for calibration.",
-    "contact_time_ms": [
-      430,
-      580
-    ],
-    "duty_factor_pct": [
-      36,
-      50
-    ],
-    "flight_time_ms": [
-      40,
-      120
-    ]
-  },
-  "runner_anthropometrics": {
-    "_comment": "Entered by the runner in the app on 2026-09-13; replaces the anatomical estimates used in the first pass.",
-    "sex": "female",
-    "stature_cm": 158.0,
-    "leg_length_cm": 69.0,
-    "note": "An anatomical estimate of 0.49 x stature gives 77 cm. Her actual 69 cm is shorter, so every %leg figure is LARGER than a stature-derived estimate would suggest."
-  },
-  "secondary_measurements": {
-    "_comment": "Measured by hand from pixels, lower confidence than cadence and contact. Not asserted by the tests — recorded so they are not re-derived from scratch later.",
-    "overstride_pct_leg": {
-      "value": 30,
-      "uncertainty": 7,
-      "confidence": "low",
-      "how": "Read by eye at two touchdown frames from gridded crops; ankle 215 px and 190 px ahead of the estimated hip, leg 740 px. Hip position under clothing is the dominant error."
-    },
-    "shank_angle_at_touchdown_deg": 2,
-    "vertical_oscillation_pct_leg": {
-      "hip_proxy": 23.9,
-      "head": 19.0,
-      "confidence": "moderate"
-    },
-    "trunk_lean_forward_deg": {
-      "value": 4.4,
-      "iqr": [
-        -0.4,
-        6.1
-      ],
-      "n": 45,
-      "confidence": "low"
-    },
-    "speed_km_h": {
-      "value": 4.5,
-      "confidence": "low",
-      "note": "From belt speed over one clean stance. The treadmill console reading was not recorded — it should be, next time."
-    },
-    "the_interesting_part": "The shank is near vertical at touchdown (~2 deg) while hip-referenced overstride is high (~30 %leg). The reach comes from hip flexion — the thigh about 30 deg forward — not from the shin extending. Shank angle and hip-referenced overstride are NOT interchangeable, and on this clip they give opposite verdicts. The clip is named for this."
-  },
-  "capture_geometry": {
-    "camera_squareness": "Close to square. Sub-pixel gradient traces of five named scene edges across the full width give wall molding +2.47, deck top -1.14, belt far edge -0.78, deck lower edge +1.64, base/floor -1.18 degrees — mixed signs, all under 2.5 deg, no converging pencil of lines. Any ground-tilt warning on this clip is a symptom of something else.",
-    "camera_roll": "UNTESTED — no near-vertical edge in the scene. A door frame or a taped plumb line would settle it and make the angle measurements unconditional.",
-    "belt_line_from_planted_soles_deg": 1.5,
-    "timebase_is_real_time": {
-      "verdict": "confirmed NOT slow-motion-stretched",
-      "how": "Fitted a parabola to the head-top trajectory over +/-7 frames around each of 16 flight apexes; median vertical acceleration 0.583 px/frame^2. Solving 9.81 m/s^2 against the measured body scale implies a true frame rate of 123-131 fps depending on assumed stature, against the file's stated 119.917. A 2x or 4x time stretch would have implied 240 or 480 fps.",
-      "why_it_matters": "Every millisecond figure in this record depends on the timebase being real. This check is only possible because the clip is 120 fps — at 30 fps the flight arc has too few samples to fit."
-    }
-  },
-  "known_engine_deviations": {
-    "_comment": "Updated 2026-09-15 after the gait-event fix. Delete an entry when it is fixed.",
-    "FIXED_cadence": "126.87 -> 102.96 spm against a measured 102.8 (0.16%). male_side went 168.42 -> 169.60 against 168.9 (0.42%), still well inside its 1.5% band.",
-    "FIXED_strike_count": "34 -> 18 events over 9.675 s, against ~17 implied by the measured cadence.",
-    "FIXED_stride_time": "0.58 s -> 1.156/1.165 s against a true 1.167. It had been reporting the STEP period.",
-    "FIXED_duty_factor": "57.3% -> 43.3% against a measured 44%. No longer above the 50% walking boundary.",
-    "FIXED_ground_tilt_warning": "Gone. It was downstream of the strike bug exactly as predicted — the check fits a line through ankle positions at detected strikes.",
-    "OPEN_contact_time": "394 ms against a measured 505 ms. No longer an event-doubling problem; see lift_fraction_is_unfittable.",
-    "OPEN_flight_time": "213 ms against a measured 75 ms. Same cause — flight is derived as step time minus contact, so it inherits the contact error."
-  },
-  "browser_path_deviations": {
-    "_comment": "The runner ran the SOURCE clip through the static GitHub Pages build (in-browser MediaPipe + Pyodide) on 2026-09-13. Kept separate from known_engine_deviations because the browser path fails differently AND additionally. Not asserted by any test — there is no headless harness for the browser path yet.",
-    "reported": {
-      "cadence_spm": 191,
-      "fps": 30,
-      "duration_s": 9.5,
-      "ground_contact_ms": 325,
-      "duty_factor_pct": 53,
-      "flight_ms": 0,
-      "overstride_pct_leg": 23,
-      "vertical_oscillation_pct_leg": 18,
-      "trunk_lean_deg": -3,
-      "quality_warning": "The ground line looks tilted - keep the camera level"
-    },
-    "same_root_cause": "191 spm against 102.8, and duty 53% with 0 ms flight — the same doubling and the same self-contradiction the local engine shows, so the strike bug is in the shared Python engine, not in either front end.",
-    "additional_browser_only_problem": "It reports 30 fps and 9.5 s for a 119.917 fps, 9.675 s clip. web/js/pose.js has no decoder: a <video> element is a player, not a frame API, so the frame grid is learned by playing the clip once and recording requestVideoFrameCallback times — whose ceiling is the DISPLAY refresh rate. 285 samples at 1/30 s is self-consistent, so the frames are correctly TIMED but three quarters of them are never sampled, and the UI does not say so.",
-    "note_the_arithmetic_still_survives": "The browser records real per-frame mediaTime values and the engine reads time from those timestamps, not from a frame index. So undersampling costs resolution, not correctness, and fixing the reported fps would NOT fix cadence. The strike bug is frame-rate independent — this fixture proves it by failing identically with a correct 120 fps timebase."
-  },
-  "root_cause": {
-    "where": "gaitlab/core/events.py",
-    "peak_spacing_guard": {
-      "line": "min_dist = max(3, int(fps * 0.35))",
-      "problem": "An absolute-time guard against a defect that scales with the stride. The spurious swing-phase ankle-y peak sits at a roughly fixed FRACTION of the stride (~0.4), not a fixed number of seconds. At male_side's 168.9 spm the stride is 0.71 s and the bump is ~0.28 s out, so 0.35 s rejects it. At this clip's 102.8 spm the stride is 1.167 s and the bump is ~0.47 s out, so it survives. The guard is frame-rate independent and fails here at 120 fps exactly as it would at 30.",
-      "why_tuning_the_constant_is_not_the_fix": "To reject a 103 spm runner's bump needs a guard above ~0.5 s; to admit a 220 spm sprint stride needs one below 0.545 s. That is a knife edge, and it narrows the cadence range the engine can serve. The spacing guard has to be derived from the clip's own stride period."
-    },
-    "period_estimator": {
-      "line": "_robust_period()",
-      "problem": "It takes the median of the gaps and keeps those within 0.6x-1.6x of it. A median is not robust to a contaminant that is half the sample. On this clip the merged step gaps are 33 values whose median is 0.3583 s, so the trim window is [0.215, 0.573] — and the TRUE step period is 0.5837 s, which falls just outside it. The one correct gap in the list, 0.592 s, is discarded by the trim. The estimator does not merely fail to resist the contamination; it specifically excludes the right answer and returns a plausible-looking 126.87 spm, which is worse than an obviously broken number.",
-      "why_the_merged_gaps_are_bimodal": "Merging both feet is meant to give step intervals. But a phantom peak on one foot lands nearly coincident with the real midstance on the other, so the merged sequence alternates: 16 gaps of 25-142 ms interleaved with 16 gaps near 0.5 s. Sixteen of the 17 gaps the trim discards are those near-coincidences."
-    },
-    "why_no_existing_test_catches_it": "gaitlab/synthetic.py builds the ankle from a smooth hip-knee-shank chain, which has exactly one minimum per stride by construction. It cannot produce the swing-phase second minimum, so no synthetic test can see this class of bug however many cadences and frame rates it sweeps. The only other real clip, male_side.mp4, sits at 168.9 spm where the guard happens to work."
-  },
-  "measurement_pitfalls_found": [
-    "BACKGROUND SUBTRACTION IS UNUSABLE ON A TREADMILL. A temporal median becomes her body wherever she is stationary. Every method in this record avoids one.",
-    "HER SHADOW ON THE BELT IS DARK AND AT BELT LEVEL IN EVERY FRAME. Any dark-on-light silhouette test for 'is the foot down' locks on and reports permanent contact. The bright midsole is the opposite polarity and is immune.",
-    "THE WALL SEEN BETWEEN HER LEGS IS A LARGE BRIGHT BLOB. It outranks the shoes by area whenever a foot-finder searches for bright regions above the deck edge.",
-    "DO NOT FIT GROUND LEVEL FROM BLOB STATISTICS. A per-x p99 of blob bottoms sat well below the real sole and mislabelled stance as flight, which cascaded into the stance grouping and the first cadence estimate.",
-    "DO NOT BLAME THE CAPTURE BEFORE VERIFYING THE ANALYSIS. The first pass on this clip attributed its failures to camera yaw and subject drift. Both were wrong; the real cause was the ground model above. The runner was right to push back.",
-    "CONTAINER FRAME-RATE METADATA WAS WRONG ON BOTH PHONE CLIPS TRIED SO FAR. Trust decoded per-frame timestamps, not the header."
-  ],
-  "capture_fixes_for_next_time": [
-    "Include something with a true vertical edge so camera roll can be measured rather than assumed.",
-    "Record the treadmill's displayed speed. Every cm and km/h figure here is inferred.",
-    "Put something of known length in frame at the runner's depth, as an independent scale check.",
-    "Two seconds of empty belt before stepping on, for a true background plate.",
-    "A band or different sock on one leg. Both legs are the same black, so whenever they overlap they cannot be told apart.",
-    "Keep 120 fps. It is what made the timebase check and the measured contact time possible.",
-    "Camera position and framing on this clip were fine. No change needed."
-  ],
-  "method_summary": "Measured from decoded frames using ffmpeg, OpenCV primitives and numpy. No part of the gaitlab engine and no pose model was used for any ground-truth number. Every automated result was rendered back over the source frames before being trusted.",
-  "lift_fraction_is_unfittable": {
-    "_comment": "The headline result of adding a 120 fps clip, and it is a negative one. events.py has always described LIFT_FRACTION as 'bounded, not calibrated' and said a 120/240 fps clip would settle it. This is that clip, and what it settles is that no constant works.",
-    "sweep": {
-      "_columns": "LIFT_FRACTION | female_overstride contact ms / duty % | male_side contact ms / duty %",
-      "0.15": "394 / 34.1  |  241 / 34.5   male_side ok",
-      "0.20": "440 / 37.7  |  308 / 44.0   male_side ok",
-      "0.25": "469 / 40.4  |  367 / 52.4   male_side impossible",
-      "0.30": "505 / 43.3  exact match  |  388 / 55.4   male_side impossible"
-    },
-    "measured_truth_here": "contact 505 +/- 25 ms, duty 44%, flight 75 +/- 15 ms",
-    "decision": "Left at 0.15. 0.20 clears every band assertion on both clips, but only by landing inside bands rather than matching either measurement, and it would move male_side's duty factor ten points on a clip whose contact time was never measured. That is tuning to the test.",
-    "why_a_constant_cannot_work": "It thresholds a fraction of the ankle's peak-to-peak range over the whole clip, and most of that range is swing-phase lift, which has nothing to do with the ground. The ankle is also not the sole: it keeps moving through stance as the foot rolls, so the ankle-y plateau is systematically shorter than true foot-ground contact by an amount that depends on strike pattern and ankle motion.",
-    "proposed_replacement": "Define contact by motion rather than height: the foot is down while its horizontal velocity matches the ground's — minus belt speed on a treadmill, zero overground with a fixed camera. Both cases are the same statement, so writing it that way also makes overground support a parameter rather than a rewrite. Needs its own ground truth; the flight phases measured on this clip from the bright midsole are that.",
-    "prototyped_replacements_that_also_fail": {
-      "vertical_velocity_threshold": "Stance = ankle vertical speed below k x that stride's peak. k=0.35 gives female 513 ms / 44.2% (near-exact) and male_side 83 ms / 11.8% (far outside its band). Same failure shape as LIFT_FRACTION.",
-      "horizontal_velocity_matching": "Expected a tight stance cluster at belt speed against a broad forward swing spread. The heel x-velocity histogram is not cleanly bimodal on either clip, because the heel lifts during stance while the toe stays down. Would need a toe or whole-foot estimate, and probably a per-stride belt-speed fit.",
-      "conclusion": "The calibration is UNDER-DETERMINED rather than simply wrong. One clip has a measured contact time (this one) and the other has only a literature band, at 30 fps where a stance is ~7 frames and any method is quantization-limited. With one measured point, a threshold fitted here always lands male_side outside its band and there is no way to tell whether the model is wrong or male_side's true contact is longer than 0.15 implies.",
-      "what_would_settle_it": "A second 120 fps clip at a DIFFERENT cadence with contact measured from pixels the same way. Two constraints make the model testable instead of fittable. That is a capture task, not a coding task."
-    }
-  }
+
+  "method": "pixel-count",
+  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
 }

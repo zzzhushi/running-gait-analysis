@@ -75,6 +75,67 @@ python3 extractor/extract_pose.py tests/data/female_overstride.mp4 --view side-r
     -o tests/data/female_overstride.pose.json
 ```
 
+## The ground-truth records
+
+One `<clip>.groundtruth.json` per clip, holding assertions and nothing else:
+
+```json
+{
+  "clip": "female_overstride.mp4",
+  "view": "side-right",
+  "subject": "zzzhushi",
+  "activity": "treadmill run, slow and bouncy with a long stride",
+  "metrics": { "cadence_spm": 102.8, "duration_s": 9.675 },
+  "tolerance_pct": {},
+  "xfail": { "contact_time_ms": "ankle-amplitude proxy is uncalibrated across runners" },
+  "method": "pixel-count",
+  "consent": "2026-09-15 · maintainer · MIT · indefinite · re-forkable"
+}
+```
+
+A `metrics` entry is either a value, compared within tolerance, or a bound:
+
+| Entry | Asserts |
+|---|---|
+| `102.8` | within tolerance of 102.8 |
+| `{"max": 10}` | at most 10 |
+| `{"min": 20}` | at least 20 |
+
+Use a bound when the truth is "small" rather than a measured number. A percentage tolerance
+collapses to zero near zero, so it cannot express "no meaningful overstride".
+
+Tolerances default per metric in the test module, because how precisely a metric can be known
+is a property of the metric rather than of the clip. `tolerance_pct` overrides that for one
+clip, and an override is itself a claim worth justifying — overstride read by eye off gridded
+crops is good to about 25%, cadence to 2%.
+
+`composites` holds findings that fire or do not, as booleans, rather than numbers.
+
+`subject` indexes `subjects.json`, shared because the same anthropometrics set the pixel scale
+for the measurement and the personalized bands in the engine.
+
+What does **not** belong in these files: how the measurement was made (identical for every
+clip, so it is written once, below), what the engine currently gets wrong (that is what issues
+and the tests themselves are for), and capture notes. Those made an earlier version of one
+record 20,000 characters, most of it stale within a month.
+
+## How the cadence numbers were measured
+
+Every `cadence_spm` here comes from counting steps in raw pixels, with no pose model and no
+part of the engine involved, so it stays valid if the extractor is ever swapped:
+
+```
+python3 scripts/measure_cadence_groundtruth.py tests/data/<clip> --stature-m <height>
+```
+
+The head rises and falls once per step; apexes of that trace are counted and cadence is
+intervals over elapsed time. Frequency analysis only cross-checks, because it cannot separate
+a step rate from twice or half that rate. The script also verifies the timebase from free fall
+at each flight apex, which catches a clip shot in slow-motion mode, where the container reports
+a frame rate the clip was not captured at and every per-second figure is wrong by that factor.
+
+Values were confirmed against a by-hand count of every clip.
+
 ## Two layers, both real
 
 The video and the pose JSON test different things and both are committed on purpose:

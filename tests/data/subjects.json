@@ -1,0 +1,12 @@
+{
+  "_comment": "Anthropometrics referenced by clip records. Shared because the same values feed both the ground-truth script's pixel scale and the engine's RunnerProfile, so a re-measurement changes one place.",
+  "zzzhushi": {
+    "sex": "female",
+    "stature_cm": 158,
+    "leg_length_cm": 69
+  },
+  "male_a": {
+    "sex": "male",
+    "stature_cm": 178
+  }
+}
