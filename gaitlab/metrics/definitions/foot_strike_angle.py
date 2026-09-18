@@ -16,6 +16,17 @@ from ..keys import MetricKey
 from ..spec import MetricDef, register
 
 
+def _avg_xy(seq, f, name, half_window=1):
+    """Position averaged over frames [f-half_window, f+half_window], clamped to the
+    clip. LIFT_FRACTION's contact frame can land one frame either side of the true
+    contact depending on tracking noise; averaging over that window keeps a single
+    frame's quantization from flipping the heel/midfoot/forefoot classification.
+    """
+    lo, hi = max(0, f - half_window), min(seq.n - 1, f + half_window)
+    pts = [seq.xy(i, name) for i in range(lo, hi + 1)]
+    return (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
+
+
 def _compute(ctx, side):
     """Median sagittal foot-to-horizontal angle at initial contact.
 
@@ -27,8 +38,8 @@ def _compute(ctx, side):
     """
     vals = []
     for s in ctx.ev.strikes[side]:
-        heel = ctx.seq.xy(s, f"{side}_heel")
-        toe = ctx.seq.xy(s, f"{side}_big_toe")
+        heel = _avg_xy(ctx.seq, s, f"{side}_heel")
+        toe = _avg_xy(ctx.seq, s, f"{side}_big_toe")
         dx = (toe[0] - heel[0]) * ctx.facing
         dy = toe[1] - heel[1]
         vals.append(math.degrees(math.atan2(-dy, abs(dx) + 1e-6)))
