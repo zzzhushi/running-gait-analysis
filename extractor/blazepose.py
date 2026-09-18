@@ -67,6 +67,10 @@ class MediaPipeExtractor(PoseExtractor):
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             raise RuntimeError("could not open video: " + video_path)
+        # A phone clip's rotation is container metadata (a display matrix), not pixel
+        # data; without this, a portrait recording decodes in its coded landscape
+        # orientation and every image-vertical/horizontal metric is measured sideways.
+        cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
