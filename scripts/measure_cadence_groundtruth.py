@@ -1,26 +1,22 @@
 #!/usr/bin/env python3
-"""Measure a clip's true cadence from raw pixels — no pose model, no gaitlab engine.
+"""Measure an independent cadence reference from raw pixels.
 
-This exists so the numbers in tests/data/*.groundtruth.json can be re-derived by anyone,
-rather than being magic constants someone once eyeballed. Cadence regressions in this
-project have historically been "fixed" against intuition; an independent measurement is
-what makes a real-video test trustworthy.
+This lets anyone re-derive the values in `tests/data/*.groundtruth.json` without using a
+pose model or the gait-analysis engine.
 
-The answer comes from COUNTING steps, not from a frequency estimate. Frequency analysis
-cannot distinguish a step rate from twice or half that rate: a signal with energy at f and
-2f fits both readings equally well, and two frequency methods agreeing proves only that
-they chose the same reading. A count of discrete events has no harmonic to lock onto.
+Step counting is the primary estimate. Spectral signals can contain fundamental/harmonic
+ambiguity, so they are cross-checks rather than alternative sources of truth.
 
-Three stages, each able to invalidate the answer:
+Three stages:
 
   1. COUNT — the topmost row of the subject rises and falls once per step. Apexes of that
-     trace are counted; cadence is intervals over elapsed time. This is the measurement.
+     trace are counted; cadence is intervals over elapsed time.
   2. TIMEBASE — a clip shot in slow-motion mode reports a frame rate that is not the rate
      it was captured at, so every per-second figure derived from it is wrong by that
      factor. At a flight apex the body is in free fall, so its vertical acceleration in
      px/frame^2 against a known body scale gives the capture rate independently.
-  3. CROSS-CHECK — leg motion energy and the head trace are read spectrally. These can
-     only raise doubt; they never supply the answer.
+  3. CROSS-CHECK — leg motion energy and the head trace are read spectrally to detect
+     disagreement with the count.
 
     python3 scripts/measure_cadence_groundtruth.py tests/data/male_side.mp4
 
