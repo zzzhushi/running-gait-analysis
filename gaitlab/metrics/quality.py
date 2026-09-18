@@ -19,7 +19,7 @@ MIN_DROPOUT_S = 0.5
 
 
 def _dropout_spans(lost: List[bool], seq: PoseSequence, min_seconds: float = MIN_DROPOUT_S):
-    """Contiguous spans of `lost` at least `min_seconds` long, as (start_s, end_s)."""
+    """Contiguous spans of `lost` at least `min_seconds` long, as (start_frame, end_frame)."""
     spans = []
     n = len(lost)
     i = 0
@@ -29,7 +29,7 @@ def _dropout_spans(lost: List[bool], seq: PoseSequence, min_seconds: float = MIN
             while j < n and lost[j]:
                 j += 1
             if seq.elapsed(i, j - 1) >= min_seconds:
-                spans.append((seq.time_at(i), seq.time_at(j - 1)))
+                spans.append((i, j - 1))
             i = j
         else:
             i += 1
@@ -96,9 +96,17 @@ def assess(seq: PoseSequence, events) -> List[dict]:
     if seq.is_side():
         l_trust, r_trust = leg_trust(seq, "l"), leg_trust(seq, "r")
         both_lost = [not (lt or rt) for lt, rt in zip(l_trust, r_trust)]
-        for t0, t1 in _dropout_spans(both_lost, seq):
-            warn(f"Tracking lost both legs from {t0:.1f}s to {t1:.1f}s — treat metrics from "
-                 "that span as unreliable. Steady lighting and a fitted silhouette help.")
+        for f0, f1 in _dropout_spans(both_lost, seq):
+            t0, t1 = seq.time_at(f0), seq.time_at(f1)
+            # `frames` lets the timeline ribbon (web/js/overlay.js) hatch out the exact
+            # span the message describes, instead of just stating it in prose.
+            checks.append({
+                "level": "warn",
+                "message": f"Tracking lost both legs from {t0:.1f}s to {t1:.1f}s — treat "
+                           "metrics from that span as unreliable. Steady lighting and a "
+                           "fitted silhouette help.",
+                "frames": [f0, f1],
+            })
 
         slope = _ground_slope(seq, events, trust={"l": l_trust, "r": r_trust})
         # A 0.06 px/px slope is about 3.4 degrees from horizontal.
