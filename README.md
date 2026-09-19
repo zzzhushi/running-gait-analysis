@@ -120,7 +120,7 @@ your video
 | Pose (browser) | MediaPipe Tasks Vision, WebAssembly | none |
 | Pose (local) | RTMPose via `rtmlib` (Apache-2.0), CPU | `pip install -r requirements.txt` |
 | Analysis engine (`gaitlab/`) | pure Python, stdlib only | none |
-| Server (`server.py`) | stdlib `http.server` + `sqlite3` | none |
+| Local app (`gaitlab_local/`, wired by `server.py`) | stdlib `http.server` + `sqlite3` | none |
 | UI (`web/`) | vanilla JS ES modules + Canvas + SVG | none (no build step) |
 
 **The same Python engine runs both server-side and in the browser** — in the browser it runs
@@ -140,7 +140,8 @@ The pose source is **swappable**: anything that emits the normalized format
 5. Click **Extract & Analyze** — the server runs RTMPose and opens the report automatically
 
 The first run extracts the pose (30s–5min depending on length); repeat analyses of the same
-video reuse the cached pose file instantly. Check "Force re-extract" to regenerate it.
+video and camera view reuse the cached pose file instantly. Check "Force re-extract" to
+regenerate it.
 
 > **Requires RTMPose:** first-time extraction needs `pip install -r requirements.txt`
 > (only for the extractor — the server and engine run on bare Python).
@@ -201,8 +202,9 @@ make serve-static          # build and serve the static (browser) build locally
 
 ```
 gaitlab/            pure-Python analysis engine (schema, events, metrics, asymmetry, feedback)
+gaitlab_local/      local application: SQLite, pose cache, extractor process, HTTP adapter
 extractor/          RTMPose video → pose JSON (the one optional pip install)
-server.py           local stdlib server: serves the UI + JSON API, SQLite storage
+server.py           composition root for the local stdlib server
 web/                browser UI (vanilla JS + Canvas), no build step
 tests/              pytest suite for the engine
 docs/               PRD, technical requirements, evidence references, generated metric spec

@@ -1,20 +1,22 @@
 import * as api from "../api.js";
 import { el } from "../format.js";
-import { IS_STATIC } from "../config.js";
 import * as pose from "../pose.js";
 import * as engine from "../engine.js";
 
 export default async function upload(app) {
-  // Warm the Pyodide engine while the user picks a clip (static mode only).
-  if (IS_STATIC) engine.preload().catch(() => { /* surfaced on submit */ });
+  const isServer = api.runtimeName === "server";
+  if (!isServer) engine.preload().catch(() => { /* surfaced on submit */ });
 
   // ---------------------------------------------------------------- user section
   let users = [];
-  try { users = await api.listUsers(); } catch { /* server may not have users yet */ }
-  let activeUser = api.getActiveUser();
-  if (!activeUser || !users.find((u) => u.id === activeUser.id)) {
-    activeUser = users[0] || null;
-    if (activeUser) api.setActiveUser(activeUser);
+  let activeUser = null;
+  if (isServer) {
+    try { users = await api.listUsers(); } catch { /* server may not have users yet */ }
+    activeUser = api.getActiveUser();
+    if (!activeUser || !users.find((u) => u.id === activeUser.id)) {
+      activeUser = users[0] || null;
+      if (activeUser) api.setActiveUser(activeUser);
+    }
   }
 
   const userSel = el("select", { style: "flex:1" },
@@ -81,7 +83,7 @@ export default async function upload(app) {
   // Static: pick a local file (never uploaded). Server: choose a cached clip on disk.
   const fileInput    = el("input", { type: "file", accept: "video/*" });
   const videoSel     = el("select", {}, [el("option", { value: "" }, "— pick a video —")]);
-  const videoField   = IS_STATIC ? fileInput : videoSel;
+  const videoField   = isServer ? videoSel : fileInput;
   const viewSel      = el("select", {}, ["side-left", "side-right", "rear", "front"]
     .map((v) => el("option", { value: v }, v)));
   const speedInput   = el("input", { type: "number", placeholder: "optional, e.g. 12.5", step: "0.1", min: "0" });
@@ -113,7 +115,7 @@ export default async function upload(app) {
   function fmtMtime(iso) {
     return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   }
-  if (!IS_STATIC) {
+  if (isServer) {
     api.listVideos().then((videos) => {
       for (const v of videos) {
         const text = v.filename + "  ·  " + fmtMtime(v.mtime) + (v.cached ? "  · cached" : "");
@@ -125,7 +127,7 @@ export default async function upload(app) {
     });
   }
 
-  const hasVideo = () => (IS_STATIC ? fileInput.files.length > 0 : !!videoSel.value);
+  const hasVideo = () => (isServer ? !!videoSel.value : fileInput.files.length > 0);
   function updateBtn() {
     analyzeBtn.disabled = !hasVideo() || !viewSel.value || !labelInput.value.trim();
   }
@@ -158,7 +160,7 @@ export default async function upload(app) {
     logPre.textContent = "";
     const profile = collectProfile();
 
-    if (IS_STATIC) {
+    if (!isServer) {
       const url = URL.createObjectURL(fileInput.files[0]);
       const onProgress = (_frac, note) => { statusEl.textContent = note; };
       try {
@@ -181,7 +183,7 @@ export default async function upload(app) {
       return;
     }
 
-    // server mode: extract on the backend
+    // Server runtime: extract on the backend.
     statusEl.textContent = "Running pose extraction — this may take a minute or two…";
     try {
       const stem = videoSel.value;
@@ -210,7 +212,7 @@ export default async function upload(app) {
   // ---------------------------------------------------------------- layout
   const fields = [];
   // user picker — server mode only (static has no accounts)
-  if (!IS_STATIC) {
+  if (isServer) {
     fields.push(el("div", { class: "field", style: "grid-column:1/-1" }, [
       el("label", {}, "User"),
       el("div", { style: "display:flex;gap:8px;align-items:center" }, [userSel, newUserToggle]),
@@ -222,7 +224,7 @@ export default async function upload(app) {
     el("div", { class: "field" }, [el("label", {}, "Video"), videoField]),
     el("div", { class: "field" }, [el("label", {}, "View"), viewSel]),
   );
-  if (!IS_STATIC) {
+  if (isServer) {
     fields.push(el("div", { class: "field", style: "grid-column:1/-1" }, [
       el("label", { style: "display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer" }, [
         forceCheck,
@@ -238,7 +240,7 @@ export default async function upload(app) {
     el("div", { class: "field" }, [el("label", {}, "Leg length (cm) — optional, personalizes cadence & scale"), legInput]),
   );
 
-  if (!IS_STATIC) {
+  if (isServer) {
     app.append(el("div", { class: "crumb" }, [el("a", { "data-nav": "#/library" }, "← Library")]));
   }
   app.append(

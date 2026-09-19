@@ -6,19 +6,20 @@ import trends from "./screens/trends.js";
 import combine from "./screens/combine.js";
 import { el } from "./format.js";
 import * as api from "./api.js";
-import { IS_STATIC, BUILD_VERSION } from "./config.js";
+import { BUILD_VERSION } from "./config.js";
 import { openLicenses } from "./licenses.js";
 
-const HOME = IS_STATIC ? "#/upload" : "#/library";
+const isServer = api.runtimeName === "server";
+const HOME = isServer ? "#/library" : "#/upload";
 
 const ROUTES = [
-  [/^#\/library$/, library, []],
-  [/^#\/upload$/, upload, []],
-  [/^#\/trends$/, trends, []],
-  [/^#\/combine$/, combine, []],
-  [/^#\/report\/(\w+)$/, report, ["id"]],
-  [/^#\/analyze\/(\w+)$/, analyze, ["id"]],
-];
+  ["library", /^#\/library$/, library, []],
+  ["upload", /^#\/upload$/, upload, []],
+  ["trends", /^#\/trends$/, trends, []],
+  ["combine", /^#\/combine$/, combine, []],
+  ["report", /^#\/report\/(\w+)$/, report, ["id"]],
+  ["analyze", /^#\/analyze\/(\w+)$/, analyze, ["id"]],
+].filter(([name]) => isServer || (name !== "library" && name !== "trends" && name !== "combine"));
 
 let cleanup = null;
 
@@ -31,7 +32,7 @@ async function route() {
   if (cleanup) { try { cleanup(); } catch (e) { /* */ } cleanup = null; }
   app.innerHTML = "";
 
-  for (const [re, fn, names] of ROUTES) {
+  for (const [, re, fn, names] of ROUTES) {
     const m = path.match(re);
     if (!m) continue;
     const params = { ...query };
@@ -59,7 +60,7 @@ window.addEventListener("hashchange", route);
 // ---------------------------------------------------------------- user header
 async function initHeader() {
   const area = document.getElementById("user-area");
-  if (!area) return;
+  if (!area || !isServer) return;
 
   let users = [];
   try { users = await api.listUsers(); } catch { return; }
@@ -114,7 +115,11 @@ async function initHeader() {
   area.append(wrap);
 }
 
-document.body.classList.toggle("static", IS_STATIC);
+document.body.classList.toggle("static", !isServer);
+const brand = document.querySelector(".brand[data-nav]");
+if (brand) brand.setAttribute("data-nav", HOME);
+const note = document.getElementById("runtime-note");
+if (note && isServer) note.textContent = "Runs on this local server · run data stays on this machine";
 // Build stamp: log it and append to the footer so you can confirm a browser picked up a
 // fresh deploy (compare against the sha shown in the GitHub Actions run).
 console.log(`GaitLab build ${BUILD_VERSION}`);
