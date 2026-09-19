@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..ctx import med, step_times
+from ..ctx import median, step_times
 from ..keys import MetricKey
 from ..spec import MetricDef, register
 
@@ -13,7 +13,7 @@ def _compute(ctx, side):
     steps = step_times(ctx.ev, side, ctx.seq)
     if not steps:
         return None
-    return ctx.cal.speed_mps * med(steps)
+    return ctx.cal.speed_mps * median(steps)
 
 
 register(MetricDef(

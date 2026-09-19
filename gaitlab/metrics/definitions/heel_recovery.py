@@ -3,7 +3,7 @@ side view. Informational only."""
 
 from __future__ import annotations
 
-from ..ctx import med
+from ..ctx import median
 from ..keys import MetricKey
 from ..spec import MetricDef, register
 
@@ -16,7 +16,7 @@ def _compute(ctx, side):
         seg = [v for v in heel_y[strikes[i]:strikes[i + 1]] if v == v]
         if len(seg) > 1:
             vals.append(max(seg) - min(seg))
-    return (med(vals) / ctx.leg * 100.0) if vals else float("nan")
+    return (median(vals) / ctx.leg * 100.0) if vals else float("nan")
 
 
 register(MetricDef(

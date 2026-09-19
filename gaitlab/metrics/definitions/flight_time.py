@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..ctx import med
+from ..ctx import median
 from ..keys import MetricKey
 from ..spec import MetricDef, register
 
@@ -26,7 +26,7 @@ def _compute(ctx, side=None):
         if s > current_end:
             gaps.append(ctx.seq.elapsed(current_end, s) * 1000.0)
         current_end = max(current_end, to)
-    return med(gaps)
+    return median(gaps)
 
 
 register(MetricDef(

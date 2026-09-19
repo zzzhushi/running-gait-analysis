@@ -12,7 +12,7 @@ from typing import Dict, Optional
 
 from . import definitions  # noqa: F401  (import side effect: registers every metric)
 from . import spec as registry
-from .ctx import Ctx, med
+from .ctx import Ctx, median
 from ..core.events import GaitEvents, detect_events
 from ..core.schema import PoseSequence
 
@@ -33,7 +33,7 @@ def _aggregate(mode: str, l, r):
         return max(abs(v) for v in vals)
     if mode == "max":
         return max(vals)
-    return med(vals)  # "median" (default)
+    return median(vals)  # the fallback when no mode string above matches
 
 
 def compute(seq: PoseSequence, events: Optional[GaitEvents] = None,

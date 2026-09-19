@@ -9,7 +9,7 @@ formulas themselves live in each metric's own module under definitions/.
 from __future__ import annotations
 
 import math
-from statistics import median
+from statistics import median as _median
 from typing import Dict, List, Optional
 
 from ..core import geometry as geo
@@ -18,9 +18,10 @@ from ..core.profile import Calibration, RunnerProfile
 from ..core.schema import PoseSequence
 
 
-def med(xs: List[float]) -> float:
+def median(xs: List[float]) -> float:
+    """Median after dropping non-numeric/NaN values; NaN if none remain."""
     xs = [x for x in xs if isinstance(x, (int, float)) and x == x]
-    return median(xs) if xs else float("nan")
+    return _median(xs) if xs else float("nan")
 
 
 def per_stride_max(series: List[float], strikes: List[int]) -> float:
@@ -35,7 +36,7 @@ def per_stride_max(series: List[float], strikes: List[int]) -> float:
         seg = [v for v in series if v == v]
         if seg:
             peaks.append(max(seg))
-    return med(peaks) if peaks else geo.peak_to_peak(series)
+    return median(peaks) if peaks else geo.peak_to_peak(series)
 
 
 def step_times(ev: GaitEvents, side: str, seq: PoseSequence) -> List[float]:
@@ -65,7 +66,7 @@ def _leg_length(seq: PoseSequence) -> float:
             d = geo.distance(hip, knee) + geo.distance(knee, ankle)
             if d > 0:
                 lens.append(d)
-    return med(lens) or 1.0
+    return median(lens) or 1.0
 
 
 def _body_px_height(seq: PoseSequence) -> float:
@@ -77,7 +78,7 @@ def _body_px_height(seq: PoseSequence) -> float:
                 if seq.pt(f, n)[2] > 0.2]
         if tops and bots:
             hs.append(max(bots) - min(tops))
-    return med(hs)
+    return median(hs)
 
 
 def _calibration(seq: PoseSequence, calibration, leg_px: float) -> Calibration:
@@ -148,7 +149,7 @@ class Ctx:
             strides = self.ev.strikes["l"]
             vals = [max(hip_y[strides[i]:strides[i + 1]]) - min(hip_y[strides[i]:strides[i + 1]])
                     for i in range(len(strides) - 1) if hip_y[strides[i]:strides[i + 1]]]
-            return med(vals) if vals else geo.peak_to_peak(hip_y)
+            return median(vals) if vals else geo.peak_to_peak(hip_y)
         return self._memo("vo_px", calc)
 
     def head_y_series(self) -> Optional[List[float]]:
@@ -192,7 +193,7 @@ class Ctx:
                         if depth > CROSS_MARGIN:
                             cross_strikes += 1
             crossover = cross_strikes >= MIN_CROSS_STRIKES
-            return (med(seps) if seps else float("nan")), crossover
+            return (median(seps) if seps else float("nan")), crossover
         return self._memo("step_width_crossover", calc)
 
     def head_x_series(self) -> Optional[List[float]]:

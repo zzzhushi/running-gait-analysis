@@ -8,7 +8,7 @@ since the question is whether the head moves independently of the hips.
 from __future__ import annotations
 
 from ...core import geometry as geo
-from ..ctx import med
+from ..ctx import median
 from ..keys import MetricKey
 from ..spec import MetricDef, register
 
@@ -20,7 +20,7 @@ def _compute(ctx, side=None):
     strikes = ctx.ev.strikes["l"]
     vals = [max(head_y[strikes[i]:strikes[i + 1]]) - min(head_y[strikes[i]:strikes[i + 1]])
             for i in range(len(strikes) - 1) if head_y[strikes[i]:strikes[i + 1]]]
-    head_px = med(vals) if vals else geo.peak_to_peak(head_y)
+    head_px = median(vals) if vals else geo.peak_to_peak(head_y)
     return head_px / ctx.leg * 100.0
 
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from ..ctx import med
+from ..ctx import median
 from ..keys import MetricKey
 from ..spec import NOISE_FLOOR_DEG, MetricDef, register
 
@@ -20,7 +20,7 @@ def _compute(ctx, side):
     tilt = ctx.pelvic_tilt_series()
     mids = ctx.ev.midstance(side)
     drops = [abs(tilt[m]) for m in mids] if mids else [abs(t) for t in tilt]
-    return med(drops)
+    return median(drops)
 
 
 def _trigger(defn, value, values, targets):

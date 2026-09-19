@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 
-from ..ctx import med
+from ..ctx import median
 from ..keys import MetricKey
 from ..spec import MetricDef, register
 
@@ -43,7 +43,7 @@ def _compute(ctx, side):
         dx = (toe[0] - heel[0]) * ctx.facing
         dy = toe[1] - heel[1]
         vals.append(math.degrees(math.atan2(-dy, abs(dx) + 1e-6)))
-    return med(vals)
+    return median(vals)
 
 
 register(MetricDef(

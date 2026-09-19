@@ -6,13 +6,13 @@ Custom trigger: a fixed 110° cutoff, deliberately coarser than the scoring band
 from __future__ import annotations
 
 from ...core import geometry as geo
-from ..ctx import med
+from ..ctx import median
 from ..keys import MetricKey
 from ..spec import MetricDef, register
 
 
 def _compute(ctx, side):
-    return med([geo.angle_3pt(ctx.seq.xy(f, f"{side}_shoulder"), ctx.seq.xy(f, f"{side}_elbow"),
+    return median([geo.angle_3pt(ctx.seq.xy(f, f"{side}_shoulder"), ctx.seq.xy(f, f"{side}_elbow"),
                                ctx.seq.xy(f, f"{side}_wrist"))
                 for f in range(ctx.n)])
 

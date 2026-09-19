@@ -6,13 +6,13 @@ Custom trigger, same shape as cadence: the low side (too upright) flags on any
 
 from __future__ import annotations
 
-from ..ctx import med
+from ..ctx import median
 from ..keys import MetricKey
 from ..spec import MetricDef, direction_of, register
 
 
 def _compute(ctx, side=None):
-    return med(ctx.trunk_lean_series())
+    return median(ctx.trunk_lean_series())
 
 
 def _trigger(defn, value, values, targets):

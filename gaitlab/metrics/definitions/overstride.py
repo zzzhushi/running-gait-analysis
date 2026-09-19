@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..ctx import med
+from ..ctx import median
 from ..keys import MetricKey
 from ..spec import MetricDef, register
 
@@ -13,7 +13,7 @@ def _compute(ctx, side):
         ankle = ctx.seq.xy(s, f"{side}_ankle")
         hip = ctx.seq.xy(s, f"{side}_hip")
         vals.append(((ankle[0] - hip[0]) * ctx.facing) / ctx.leg * 100.0)
-    return med(vals)
+    return median(vals)
 
 
 def _trigger(defn, value, values, targets):

@@ -5,19 +5,19 @@ they live in one file rather than two.
 
 from __future__ import annotations
 
-from ..ctx import med
+from ..ctx import median
 from ..keys import MetricKey
 from ..spec import MetricDef, register
 
 
 def _midstance(ctx, side):
     kflex = ctx.knee_flexion_series(side)
-    return med([kflex[m] for m in ctx.ev.midstance(side)])
+    return median([kflex[m] for m in ctx.ev.midstance(side)])
 
 
 def _contact(ctx, side):
     kflex = ctx.knee_flexion_series(side)
-    return med([kflex[s] for s in ctx.ev.strikes[side]])
+    return median([kflex[s] for s in ctx.ev.strikes[side]])
 
 
 register(MetricDef(
