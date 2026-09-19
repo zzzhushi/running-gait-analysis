@@ -63,7 +63,7 @@ register(MetricDef(
     per_side_compute=True,
     aggregate="worst_high",
     keypoints=("l_hip", "r_hip"),
-    foi="max_pelvic_drop",
+    anchor_frame="max_pelvic_drop",
     card_per_side_key="pelvic_drop",
     trigger_fn=_trigger,
     value_confidence_fn=_value_confidence,

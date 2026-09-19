@@ -90,7 +90,7 @@ class MetricDef:
     aggregate: str = "median"                # combiner for the two per-side raw values into one headline value
     is_boolean: bool = False                 # a flag metric (e.g. crossover): value is True/False, not scored
     keypoints: Tuple[str, ...] = ()          # contributing landmarks, for confidence propagation
-    foi: Optional[str] = None                # frames_of_interest key this metric anchors on the overlay
+    anchor_frame: Optional[str] = None       # frames_of_interest key this metric points the overlay at
     card_per_side_key: Optional[str] = None  # if set, the card also shows L/R using this per_side dict key
     # "always": shown whenever its view is active. "conditional": shown only once its
     # value is computed (calibration- or head-keypoint-gated). "hidden": never gets its
@@ -216,7 +216,7 @@ class Composite:
     cue: str
     drill: str
     supersedes: Tuple[str, ...]
-    foi: Optional[str] = None  # frames_of_interest key this composite anchors on the overlay
+    anchor_frame: Optional[str] = None  # frames_of_interest key this composite points the overlay at
 
     def fires(self, values: Dict, targets: Dict) -> bool:
         return all(c.holds(values, targets) for c in self.all_of)

@@ -36,7 +36,7 @@ register(MetricDef(
     per_side_compute=True,
     aggregate="worst_low",
     keypoints=("l_hip", "l_knee", "l_ankle", "r_hip", "r_knee", "r_ankle"),
-    foi="l_midstance",
+    anchor_frame="l_midstance",
     card_per_side_key="knee_flexion_midstance",
     trigger_fn=lambda defn, value, values, targets: (
         ("any", "med") if targets.get(defn.key, defn).status(value) == "bad" else None

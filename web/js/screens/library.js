@@ -76,8 +76,9 @@ export default async function library(app) {
     const canvas = grid.children[i].querySelector("canvas");
     try {
       const rend = new SkeletonRenderer(canvas, detail.pose, { hasVideo: false });
-      const foi = detail.frames_of_interest || {};
-      const f = foi.l_strike ?? foi.max_pelvic_drop ?? Math.floor(detail.pose.frames.length / 2);
+      const framesOfInterest = detail.frames_of_interest || {};
+      const f = framesOfInterest.l_strike ?? framesOfInterest.max_pelvic_drop
+        ?? Math.floor(detail.pose.frames.length / 2);
       rend.render(f, { skeleton: true, angles: false, refs: false, trails: false });
     } catch (e) { /* ignore */ }
   }

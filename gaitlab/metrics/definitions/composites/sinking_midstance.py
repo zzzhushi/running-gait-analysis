@@ -27,5 +27,5 @@ register_composite(Composite(
     cue="Run tall; don't sink into the stance leg.",
     drill="Glute bridges and anti-extension core work (dead bugs, planks).",
     supersedes=("knee_flexion_midstance", "trunk_lean"),
-    foi="l_midstance",
+    anchor_frame="l_midstance",
 ))

@@ -47,7 +47,7 @@ register(MetricDef(
     per_side_compute=True,
     aggregate="worst_low",
     keypoints=("l_hip", "l_knee", "r_hip", "r_knee"),
-    foi="l_toeoff",
+    anchor_frame="l_toeoff",
     card_per_side_key="hip_extension",
     trigger_fn=_trigger,
     finding_text={

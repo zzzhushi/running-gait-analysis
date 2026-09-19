@@ -37,7 +37,8 @@ def _format_finding_text(defn, direction: str, value, values: Dict) -> dict:
     }
 
 
-def _single_metric_findings(values: Dict, view: str, targets: Dict, foi: Dict) -> List[dict]:
+def _single_metric_findings(values: Dict, view: str, targets: Dict,
+                             frames_of_interest: Dict) -> List[dict]:
     view_str = "side" if view in ("side-left", "side-right") else "rear"
     items: List[dict] = []
     for defn in registry.all_metrics().values():
@@ -54,13 +55,14 @@ def _single_metric_findings(values: Dict, view: str, targets: Dict, foi: Dict) -
         text = _format_finding_text(defn, direction, value, values)
         if not text:
             continue
-        frame = foi.get(defn.foi) if defn.foi else None
+        frame = frames_of_interest.get(defn.anchor_frame) if defn.anchor_frame else None
         items.append(_make_finding(severity, text["title"], text["detail"], text["cue"], text["drill"],
                                     defn.key.value, frame))
     return items
 
 
-def _composite_findings(values: Dict, view: str, targets: Dict, foi: Dict) -> List[Tuple[dict, set]]:
+def _composite_findings(values: Dict, view: str, targets: Dict,
+                         frames_of_interest: Dict) -> List[Tuple[dict, set]]:
     view_str = "side" if view in ("side-left", "side-right") else "rear"
     out: List[Tuple[dict, set]] = []
     for comp in registry.all_composites():
@@ -68,19 +70,19 @@ def _composite_findings(values: Dict, view: str, targets: Dict, foi: Dict) -> Li
             continue
         if comp.fires(values, targets):
             finding = comp.finding(values)
-            if comp.foi:
-                finding["frame"] = foi.get(comp.foi)
+            if comp.anchor_frame:
+                finding["frame"] = frames_of_interest.get(comp.anchor_frame)
             out.append((finding, set(comp.supersedes)))
     return out
 
 
 def build(values: Dict, per_side: Dict, asym: List[dict], view: str,
-          foi: Dict, targets: Dict = None) -> Tuple[List[dict], float, str]:
+          frames_of_interest: Dict, targets: Dict = None) -> Tuple[List[dict], float, str]:
     targets = targets or METRIC_DEFS
-    items = _single_metric_findings(values, view, targets, foi)
+    items = _single_metric_findings(values, view, targets, frames_of_interest)
 
     # composites outrank (supersede) the single-metric findings of the metrics they name
-    for finding, superseded in _composite_findings(values, view, targets, foi):
+    for finding, superseded in _composite_findings(values, view, targets, frames_of_interest):
         items[:] = [i for i in items if i.get("metric") not in superseded]
         items.append(finding)
 

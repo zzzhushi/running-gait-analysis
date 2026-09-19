@@ -54,7 +54,7 @@ register(MetricDef(
     per_side_compute=True,
     aggregate="worst_high_abs",
     keypoints=("l_heel", "l_ankle", "r_heel", "r_ankle"),
-    foi="max_pelvic_drop",
+    anchor_frame="max_pelvic_drop",
     card_per_side_key="pronation",
     value_confidence_fn=lambda value: "low",
     finding_text={

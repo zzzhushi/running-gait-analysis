@@ -142,11 +142,11 @@ def test_frames_of_interest_anchor_a_middle_stride_not_the_first(synth):
         toeoffs={"l": [20, 60, 100, 140], "r": [40, 80, 120]},
         midstances={"l": [15, 55, 95, 135], "r": [35, 75, 115]},
     )
-    foi = compute(seq, events=ev)["frames_of_interest"]
-    assert foi["l_strike"] == 90       # midstances[len//2] == midstances[2] == 95 -> same k
-    assert foi["l_midstance"] == 95
-    assert foi["l_toeoff"] == 100
-    assert foi["r_strike"] == 70       # strikes["r"][len//2]
+    frames_of_interest = compute(seq, events=ev)["frames_of_interest"]
+    assert frames_of_interest["l_strike"] == 90  # midstances[len//2] == midstances[2] == 95 -> same k
+    assert frames_of_interest["l_midstance"] == 95
+    assert frames_of_interest["l_toeoff"] == 100
+    assert frames_of_interest["r_strike"] == 70  # strikes["r"][len//2]
 
 
 def test_contact_time_excludes_a_final_stance_the_clip_never_saw_lift_off_from(synth):

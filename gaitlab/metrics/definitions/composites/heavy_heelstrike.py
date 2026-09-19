@@ -27,5 +27,5 @@ register_composite(Composite(
     cue="Fixing the overstride (land under your hips) usually softens the heel-strike on its own.",
     drill="High-cadence strides focusing on landing beneath you.",
     supersedes=("foot_strike_angle",),
-    foi="l_strike",
+    anchor_frame="l_strike",
 ))

@@ -42,7 +42,7 @@ register(MetricDef(
     per_side_compute=True,
     aggregate="worst_high",
     keypoints=("l_hip", "l_ankle", "r_hip", "r_ankle"),
-    foi="l_strike",
+    anchor_frame="l_strike",
     card_per_side_key="overstride",
     trigger_fn=_trigger,
     finding_text={
