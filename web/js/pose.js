@@ -104,7 +104,11 @@ export function seekTo(video, t) {
 
 // Collect presentation times without running inference in the callback, then process those
 // frames without real-time pressure. Returns null when rVFC is unavailable.
-export function collectFrameTimes(video) {
+//
+// `signal` lets a caller cancel collection (see withTimeout below): aborting stops the
+// rVFC re-registration loop and pauses the video, so a timed-out collector cannot keep
+// driving playback out from under the extraction loop that takes over the same element.
+export function collectFrameTimes(video, { signal } = {}) {
   if (typeof video.requestVideoFrameCallback !== "function") return Promise.resolve(null);
   return new Promise((resolve) => {
     const times = [];
@@ -113,9 +117,15 @@ export function collectFrameTimes(video) {
     const finish = () => {
       if (done) return;
       done = true;
+      video.removeEventListener("ended", finish);
+      if (signal) signal.removeEventListener("abort", finish);
       video.pause();
       resolve(times.length ? times.slice() : null);
     };
+    if (signal) {
+      if (signal.aborted) { finish(); return; }
+      signal.addEventListener("abort", finish, { once: true });
+    }
     const onFrame = (_now, meta) => {
       if (done) return;
       times.push(meta.mediaTime);
@@ -144,10 +154,28 @@ export function collectFrameTimes(video) {
   });
 }
 
-// Race a promise against a timeout so a stalled extraction (e.g. a tab that never
-// comes back to the foreground) falls back instead of hanging indefinitely.
-function withTimeout(promise, ms) {
-  return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);
+// Race a cancellable collection against a timeout so a stalled extraction (e.g. a tab
+// that never comes back to the foreground) falls back instead of hanging indefinitely.
+// `collect` receives an AbortSignal and must stop driving the video once it fires --
+// otherwise the losing side keeps playing the same <video> element the fallback path
+// is about to take over for inference.
+function withTimeout(collect, ms) {
+  const controller = new AbortController();
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      controller.abort();
+      resolve(null);
+    }, ms);
+    collect(controller.signal).then((v) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(v);
+    });
+  });
 }
 
 // Fraction of frames the browser itself reports dropping during collection, when it
@@ -208,7 +236,9 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
   // At EXTRACTION_PLAYBACK_RATE, collection itself takes ~1/rate real time; add slack
   // on top for the tab to regain focus once if it gets backgrounded mid-collection.
   const collectTimeoutMs = Math.max(15000, (duration * 1000) / EXTRACTION_PLAYBACK_RATE + 20000);
-  let frameTimes = await withTimeout(collectFrameTimes(video), collectTimeoutMs);
+  let frameTimes = await withTimeout(
+    (signal) => collectFrameTimes(video, { signal }), collectTimeoutMs
+  );
   const droppedRatio = droppedFrameRatio(video);
   let timestampSource = "measured";
   if (!frameTimes || frameTimes.length < 4) {
