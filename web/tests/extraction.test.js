@@ -11,8 +11,10 @@ function fakeVideo(overrides = {}) {
     playbackRate: 1,
     ended: false,
     addEventListener: (name, cb) => { listeners[name] = cb; },
+    removeEventListener: (name) => { delete listeners[name]; },
     _listeners: listeners,
     play: () => Promise.resolve(),
+    pause: vi.fn(),
     requestVideoFrameCallback: () => {},
     ...overrides,
   };
@@ -50,5 +52,26 @@ describe("collectFrameTimes", () => {
   it("resolves null when the browser has no requestVideoFrameCallback", async () => {
     const video = fakeVideo({ requestVideoFrameCallback: undefined });
     await expect(collectFrameTimes(video)).resolves.toBeNull();
+  });
+
+  it("stops driving the video once its signal is aborted", async () => {
+    let onFrame;
+    const rvfc = vi.fn((cb) => { onFrame = cb; });
+    const video = fakeVideo({ requestVideoFrameCallback: rvfc });
+    const controller = new AbortController();
+
+    const result = collectFrameTimes(video, { signal: controller.signal });
+    onFrame(0, { mediaTime: 0 }); // one real frame arrives, re-registers itself
+    const registeredBeforeAbort = rvfc.mock.calls.length;
+
+    controller.abort();
+    await result;
+
+    // The extraction loop is about to seek this same element; it must be paused, not
+    // still mid-playback from an abandoned collection.
+    expect(video.pause).toHaveBeenCalled();
+    // A stray in-flight callback firing after abort must not restart the loop.
+    onFrame(1, { mediaTime: 1 / 30 });
+    expect(rvfc.mock.calls.length).toBe(registeredBeforeAbort);
   });
 });
