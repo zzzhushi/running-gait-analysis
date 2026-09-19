@@ -57,12 +57,14 @@ Runs are saved to a local SQLite file, so history, trends, and before/after comp
 | **Camera height** | Level with mid-hip | Level with mid-hip |
 | **Distance** | 3–5 m from treadmill | 3–5 m from treadmill |
 | **Frame rate** | 60 fps minimum; 120/240 fps for sharper contact timing | 60 fps is fine (no timing metrics) |
-| **Format** | `.mov` or `.mp4`; iPhone slow-mo works | same |
+| **Format** | `.mov` or `.mp4`; cadence needs real-speed playback | same |
 
 **General:**
 - One runner filling most of the frame, contrasting background, steady camera (tripod).
 - Keep the camera level — especially for rear view, where a tilted camera directly biases pelvic-drop readings.
 - Avoid handheld rail gripping while filming side view — the wrist becomes stationary and the engine sees zero arm swing.
+- High-frame-rate footage sharpens contact timing, but a slow-motion export must be retimed to
+  real-speed playback before interpreting cadence.
 
 <!-- TODO(#23): camera-placement diagram (hand-drawn SVG, no blocker). -->
 
@@ -92,7 +94,9 @@ ratio, and stride length**. Each finding comes with a plain-language explanation
 one-line cue, and a corrective drill.
 
 See [`docs/spec/metrics_table.md`](docs/spec/metrics_table.md) for every metric with its
-target bands and confidence, or [`docs/PRD.md`](docs/PRD.md) for the full catalog.
+target bands and confidence, [`docs/athlete-guide/`](docs/athlete-guide/) for athlete-facing
+explanations and reusable documentation templates, or [`docs/PRD.md`](docs/PRD.md) for the
+full catalog.
 
 **Personalized to you:** add your sex, leg length, height, and pace and the norms adapt —
 e.g. a shorter runner gets a higher cadence target instead of the tall-runner-biased
