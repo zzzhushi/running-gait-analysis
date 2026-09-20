@@ -371,7 +371,15 @@ async function demuxVideoTrack(videoUrl) {
         // VideoDecoder needs configured and what a decoded VideoFrame is shaped as.
         // It is the coded (pre-rotation) size, not necessarily the display size --
         // rotation is handled separately by the caller via `rotation`.
-        const rotation = rotationFromMatrix(track.matrix) || { angle: 0, swapped: false };
+        const rotation = rotationFromMatrix(track.matrix);
+        if (!rotation) {
+          // A transform this codebase does not recognise (shear, perspective, a flip)
+          // must not be coerced to identity: that would silently score pixels in the
+          // wrong orientation, which is the exact failure this whole path exists to
+          // prevent. No frame has been decoded yet, so this is safe to reject outright.
+          reject(new Error("Unsupported video orientation (non-axis-aligned display transform)"));
+          return;
+        }
         resolve({
           codec: track.codec,
           codedWidth: track.video.width,
@@ -388,14 +396,13 @@ async function demuxVideoTrack(videoUrl) {
   });
 }
 
-// Thrown by extractViaWebCodecs. `partial` distinguishes two failure shapes the caller
-// must not treat alike: false means nothing was fed to the landmarker yet (unsupported
-// container/codec, no track, etc.) and the playback path is a safe, independent retry;
-// true means some frames were already decoded and scored before the failure, so the
-// landmarker's cached VIDEO-mode state and _mpEpoch reflect a run that never finished --
-// falling back silently would either collide timestamps with that partial run or, if
-// the collision guard papers over it, splice two different extraction mechanisms'
-// output together without any signal that happened.
+// Thrown by extractViaWebCodecs. Never caught to retry via the playback path (see
+// extract()) -- `partial` is diagnostic, not a branch point: false means nothing was
+// fed to the landmarker yet (unsupported container/codec, no track, an unrecognised
+// display transform); true means some frames were already decoded and scored before
+// the failure, so the landmarker's cached VIDEO-mode state and _mpEpoch reflect a run
+// that never finished. Either way the caller sees a clear failure rather than a result
+// stitched from two different extraction mechanisms with no signal that happened.
 class ExtractionError extends Error {
   constructor(message, { partial }) {
     super(message);
@@ -527,26 +534,20 @@ function webCodecsAvailable() {
 }
 
 // Extract a pose dict from a video object URL. Prefers WebCodecs, which decodes every
-// frame the container declares regardless of engine; falls back to
-// requestVideoFrameCallback-driven playback where WebCodecs is unavailable, or if the
-// container turns out to be something the demuxer cannot handle before any frame was
-// decoded (audio-only track, fragmented mp4 shape it does not support, unlisted codec).
+// frame the container declares regardless of engine. The playback path
+// (requestVideoFrameCallback-driven, see extractViaPlayback) is used only when
+// WebCodecs itself is unsupported by the browser -- never as a recovery from a
+// WebCodecs failure on a browser that does support it.
 //
-// A failure *after* some frames were already scored is not retried: the cached VIDEO-
-// mode landmarker and its timestamp clock reflect a run that never finished, and the
-// playback path is exactly the mechanism #67 exists to route around, so silently
-// re-running it on a file that already broke the primary path once is not a safe
-// recovery -- it is thrown so the caller can surface that extraction failed instead of
-// returning a result nothing has verified is complete.
+// That asymmetry is deliberate: playback silently drops roughly half the frames of a
+// high-frame-rate clip on WebKit (see #67), which is precisely the failure this path
+// exists to remove. A file the WebCodecs path cannot handle -- an unsupported codec, a
+// container shape the demuxer cannot parse, a display orientation this codebase does
+// not recognise -- is not evidence that the *playback* path would have handled it
+// correctly either, and retrying through a mechanism already known to be unreliable
+// would risk reintroducing the original bug with no signal that happened. Such a file
+// surfaces as a clear extraction failure instead.
 export async function extract(videoUrl, view, onProgress = () => {}) {
-  if (webCodecsAvailable()) {
-    try {
-      return await extractViaWebCodecs(videoUrl, view, onProgress);
-    } catch (e) {
-      if (e instanceof ExtractionError && e.partial) throw e;
-      console.warn("pose.js: WebCodecs extraction failed before any frame was decoded, "
-        + "falling back to playback:", e);
-    }
-  }
-  return extractViaPlayback(videoUrl, view, onProgress);
+  if (!webCodecsAvailable()) return extractViaPlayback(videoUrl, view, onProgress);
+  return extractViaWebCodecs(videoUrl, view, onProgress);
 }
