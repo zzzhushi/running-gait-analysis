@@ -74,3 +74,8 @@ jobs:
         run: xvfb-run -a pytest tests/browser -s
         env:
           GAITLAB_BROWSER: ${{ matrix.engine }}
+          # test_repeated_extractions_agree -- the only check for #67's original
+          # symptom, run-to-run cadence instability -- skips at the default of 1. Two
+          # runs on the WebKit leg, where the regression occurred, is enough to catch a
+          # return to it without doubling every engine's CI time for no added signal.
+          GAITLAB_BROWSER_RUNS: ${{ matrix.engine == 'webkit' && '2' || '1' }}
