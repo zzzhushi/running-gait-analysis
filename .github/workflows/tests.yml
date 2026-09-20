@@ -39,15 +39,13 @@ jobs:
       - run: npm install
       - run: npm test  # pretest builds web/py/gaitlab.zip; runs vitest + parity
 
-  # Regression guard for #67: web/js/pose.js's primary extraction path (WebCodecs) is
-  # reachable only from a real browser, and the failure it replaced -- WebKit silently
-  # discarding roughly half the frames of a high-frame-rate clip -- is invisible to the
-  # `test` job above, which never installs a browser and lets tests/browser/ skip via
+  # web/js/pose.js's primary extraction path is reachable only from a real browser, and
+  # the `test` job above never installs one -- tests/browser/ skips silently there via
   # pytest.importorskip. Real Chrome + Playwright's WebKit, real decode, real MediaPipe
   # inference. Headed (not --headless), matching local runs, since frame presentation is
-  # literally what these tests measure; xvfb-run supplies the display a CI runner lacks.
-  # Safari itself needs safaridriver and is macOS-only, so it stays a manual, documented
-  # local check (see tests/browser/drivers.py) rather than a CI job.
+  # what these tests measure; xvfb-run supplies the display a CI runner lacks. Safari
+  # needs safaridriver and a macOS runner, so it stays a manual, documented local check
+  # (see tests/browser/drivers.py) rather than a CI job.
   test-browser:
     runs-on: ubuntu-latest
     strategy:
@@ -74,8 +72,7 @@ jobs:
         run: xvfb-run -a pytest tests/browser -s
         env:
           GAITLAB_BROWSER: ${{ matrix.engine }}
-          # test_repeated_extractions_agree -- the only check for #67's original
-          # symptom, run-to-run cadence instability -- skips at the default of 1. Two
-          # runs on the WebKit leg, where the regression occurred, is enough to catch a
-          # return to it without doubling every engine's CI time for no added signal.
+          # test_repeated_extractions_agree skips at the default of 1. Two runs on the
+          # WebKit leg is enough to catch a run-to-run cadence regression there without
+          # doubling every engine's CI time for no added signal on Chrome.
           GAITLAB_BROWSER_RUNS: ${{ matrix.engine == 'webkit' && '2' || '1' }}

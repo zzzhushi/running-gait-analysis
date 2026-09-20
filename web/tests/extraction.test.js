@@ -79,9 +79,9 @@ describe("collectFrameTimes", () => {
   });
 });
 
-// ISO/IEC 14496-12 tkhd matrices in 16.16 fixed point (a,b,u,c,d,v,x,y,w). The four
-// values a phone encoder actually emits for axis-aligned display rotation; see #62 for
-// why a <video> element's automatic handling of this cannot be assumed for WebCodecs.
+// ISO/IEC 14496-12 tkhd matrices in 16.16 fixed point (a,b,u,c,d,v,x,y,w): the four
+// values a phone encoder actually emits for axis-aligned display rotation. A <video>
+// element applies this automatically; WebCodecs decode does not.
 const FP = 65536;
 const W = 0x40000000;
 const IDENTITY = [FP, 0, 0, 0, FP, 0, 0, 0, W];

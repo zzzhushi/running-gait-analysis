@@ -57,20 +57,16 @@ export function toCanonical(lm, w, h) {
 const ZERO_FRAME = () => KEYPOINTS.map(() => [0.0, 0.0, 0.0]);
 const round3 = (p) => p.map((v) => Math.round(v * 1000) / 1000);
 
-// ISO/IEC 14496-12's tkhd matrix carries a phone's display rotation (portrait vs. the
-// coded landscape sensor orientation, or vice versa) separately from the coded pixels.
-// A <video> element applies it for free when decoding for playback; VideoDecoder does
-// not apply it at all -- it hands back coded-orientation frames regardless of what the
-// container says to do with them, so decoding demuxed samples directly (the whole point
-// of the WebCodecs path, see extractViaWebCodecs) would otherwise silently reintroduce
-// the sideways-pose failure #62 fixed for the <video> path.
+// ISO/IEC 14496-12's tkhd matrix carries a phone's display rotation separately from the
+// coded pixels. A <video> element applies it for free during playback; VideoDecoder does
+// not apply it at all, so a decoder-based path must read and apply it explicitly or hand
+// back sideways-oriented frames.
 //
 // Values are 16.16 fixed-point (row a,b,c,d at indices 0,1,3,4; ISO 14496-12 §8.4.2.2),
 // the same convention CanvasRenderingContext2D.setTransform uses, so the matrix maps
 // directly onto a canvas transform once translated into the positive quadrant. Only the
-// four axis-aligned rotations phones actually emit are handled; anything else (shear,
-// perspective, an unrecognised flip) is reported as unsupported rather than guessed at,
-// matching this codebase's stance elsewhere on uncertain geometry.
+// four axis-aligned rotations phones actually emit are handled; an unrecognised
+// transform (shear, perspective, a flip) returns null rather than a guess.
 export function rotationFromMatrix(matrix) {
   const FIXED = 65536; // 16.16 fixed-point unit
   const round = (v) => Math.round(v / FIXED);
@@ -412,11 +408,10 @@ class ExtractionError extends Error {
 
 // Extract a pose dict via WebCodecs: demux the container's samples directly and decode
 // them with VideoDecoder, bypassing <video> element playback and
-// requestVideoFrameCallback entirely. That presentation pipeline is what silently drops
-// roughly half the frames of a high-frame-rate clip on WebKit regardless of playback
-// rate — see the investigation on #67 — while seeking within it remains frame-accurate.
-// Decoding demuxed samples sidesteps presentation altogether, so it has no equivalent
-// failure mode: every sample the container declares is decoded and used.
+// requestVideoFrameCallback entirely. On WebKit that presentation pipeline can silently
+// drop a large fraction of a high-frame-rate clip's frames regardless of playback rate,
+// while seeking within the same video remains frame-accurate; decoding demuxed samples
+// sidesteps presentation altogether, so every sample the container declares is decoded.
 async function extractViaWebCodecs(videoUrl, view, onProgress) {
   onProgress(0, "Loading pose model…");
   const [landmarker, track] = await Promise.all([getLandmarker(), demuxVideoTrack(videoUrl)]);
@@ -534,19 +529,11 @@ function webCodecsAvailable() {
 }
 
 // Extract a pose dict from a video object URL. Prefers WebCodecs, which decodes every
-// frame the container declares regardless of engine. The playback path
-// (requestVideoFrameCallback-driven, see extractViaPlayback) is used only when
-// WebCodecs itself is unsupported by the browser -- never as a recovery from a
-// WebCodecs failure on a browser that does support it.
-//
-// That asymmetry is deliberate: playback silently drops roughly half the frames of a
-// high-frame-rate clip on WebKit (see #67), which is precisely the failure this path
-// exists to remove. A file the WebCodecs path cannot handle -- an unsupported codec, a
-// container shape the demuxer cannot parse, a display orientation this codebase does
-// not recognise -- is not evidence that the *playback* path would have handled it
-// correctly either, and retrying through a mechanism already known to be unreliable
-// would risk reintroducing the original bug with no signal that happened. Such a file
-// surfaces as a clear extraction failure instead.
+// frame the container declares regardless of engine. The playback path is used only
+// when WebCodecs itself is unsupported by the browser, never as a recovery from a
+// WebCodecs failure on a browser that does support it: a file the primary path cannot
+// handle is not evidence the unreliable fallback would have handled it correctly, so
+// such a file surfaces as a clear extraction failure instead of a silent retry.
 export async function extract(videoUrl, view, onProgress = () => {}) {
   if (!webCodecsAvailable()) return extractViaPlayback(videoUrl, view, onProgress);
   return extractViaWebCodecs(videoUrl, view, onProgress);

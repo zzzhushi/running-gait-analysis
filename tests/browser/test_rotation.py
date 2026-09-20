@@ -3,8 +3,7 @@
 VideoDecoder decodes coded (pre-rotation) pixels only; it does not apply a container's
 display-rotation matrix the way <video> playback does for free. web/js/pose.js has to
 read and apply that transform itself (rotationFromMatrix / canvasTransformFor), or a
-portrait phone clip decodes sideways -- reintroducing #62 for exactly the footage that
-bug was originally about, this time through the new extraction path.
+portrait phone clip decodes sideways.
 
 rotated_male_side.mp4 is a lossless remux of the already-consented tests/data/male_side.mp4
 (-c copy, no re-encode -- identical pixels) with a 90-degree display-rotation tag added via
@@ -14,12 +13,11 @@ same person, same license, only the container's rotation metadata differs.
 Dimensions and detection rate alone do not prove the rotation direction is correct: two
 transforms 180 degrees apart both swap width/height, and BlazePose can often still find a
 person in a merely-mirrored frame, so a test that only checked those two properties would
-pass under either the right transform or its mirror image. (Confirmed by mutation testing
-canvasTransformFor's 90/270 cases against each other -- both keep this file's detection
-rate near 0% undetected.) `test_rotation_direction_matches_the_declared_transform` below
-is the check that actually distinguishes them, using the one piece of independent ground
-truth available without a pixel-rendering harness: the coded-space reference extraction
-already committed for this footage.
+pass under either the right transform or its mirror image.
+`test_rotation_direction_matches_the_declared_transform` below is the check that actually
+distinguishes them, using the one piece of independent ground truth available without a
+pixel-rendering harness: the coded-space reference extraction already committed for this
+footage.
 
 male_side.mp4's tkhd carries no rotation (rotationFromMatrix returns the identity case),
 so tests/data/male_side.pose.blazepose.json's landmarks are in the *coded* frame. This
@@ -29,8 +27,8 @@ becomes horizontal motion in +x after correction). That sign is specific to this
 transform: the alternative 90-degree case produces display_x = codedHeight - coded_y,
 the opposite sign. Comparing the reference's coded mid_hip.y trajectory against this
 extraction's display mid_hip.x trajectory, frame for frame -- both are the identical
-underlying footage, so they must correlate -- catches exactly the case-90/case-270
-mutation dimensions and detection rate cannot.
+underlying footage, so they must correlate -- distinguishes the two 180-degree-apart
+transforms that dimensions and detection rate cannot.
 """
 
 from __future__ import annotations
@@ -48,8 +46,7 @@ REFERENCE = "male_side.pose.blazepose.json"
 
 # Same footage, same license, only the tkhd display matrix differs: a genuine mirror
 # flip (determinant -1: a=-1, b=0, c=0, d=1), via `ffmpeg -display_hflip:v:0 -i ... -c
-# copy` -- one of the "shear, perspective, an unrecognised flip" cases
-# rotationFromMatrix's own comment names but nothing exercised until this test.
+# copy`. None of rotationFromMatrix's four recognised cases.
 MIRRORED_CLIP = "mirrored_male_side.mp4"
 
 # The source file's coded (pre-rotation) dimensions.
@@ -63,8 +60,8 @@ MAX_UNDETECTED_FRACTION = 0.05
 
 # This file's declared transform predicts a strong *positive* correlation between coded
 # mid_hip.y (reference) and display mid_hip.x (this extraction) -- see module docstring.
-# The threshold is well below what real running motion produces (checked empirically to
-# be > 0.9) but far above what an unrelated or sign-flipped mapping would produce.
+# The threshold sits well below what real running motion produces but far above what an
+# unrelated or sign-flipped mapping would produce.
 MIN_DIRECTIONAL_CORRELATION = 0.5
 
 _EXTRACT = """
@@ -143,11 +140,10 @@ def test_rotation_direction_matches_the_declared_transform(page, site):
 
 
 def test_unsupported_transform_rejects_before_inference(page, site):
-    """rotationFromMatrix() returning null is not enough on its own -- a prior version
-    of this codebase computed that value and then discarded it with a `|| identity`
-    fallback at the one call site, silently scoring a mirrored frame as if it were
-    upright. This exercises the caller, not just the helper: extract() itself must
-    reject a file it cannot orient, before any frame reaches the pose model.
+    """rotationFromMatrix() returning null is not enough on its own to prevent scoring
+    a mirrored frame as if it were upright -- the caller must act on that null, not just
+    compute it. This exercises extract() itself: it must reject a file it cannot orient,
+    before any frame reaches the pose model.
     """
     url = f"{site}/tests/browser/{MIRRORED_CLIP}"
     with pytest.raises(Exception, match="[Oo]rientation"):

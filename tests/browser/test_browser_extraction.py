@@ -5,10 +5,10 @@ Local-only. The static site decodes video and runs MediaPipe inside the browser
 pose fixtures, and those fixtures come from the Python extractor.
 
 `web/js/pose.js` demuxes and decodes with WebCodecs when available, which is what these
-tests exist to hold in place: a `<video>`/`requestVideoFrameCallback` playback path
-silently drops roughly half the frames of a high-frame-rate clip on WebKit, at any
-playback rate (see #67) — decoding demuxed samples directly does not depend on the
-compositor and is exact on every engine tested.
+tests exist to hold in place: a `<video>`/`requestVideoFrameCallback` playback path can
+silently drop a large fraction of a high-frame-rate clip's frames on WebKit, at any
+playback rate, where decoding demuxed samples directly does not depend on the compositor
+and is exact on every engine tested.
 
 Run with:  pytest tests/browser -s
 Run against a specific engine:  GAITLAB_BROWSER=webkit pytest tests/browser -s
@@ -32,12 +32,10 @@ CLIP = "female_high_cadence"
 # The engine suite's cadence tolerance, with its BlazePose allowance applied.
 CADENCE_TOLERANCE_PCT = 4.0
 
-# Repeat-run cadence spread with a complete frame grid (i.e. after the acquisition defect
-# in #67 is fixed): measured at 5.3-6.3 spm across 3-5 WebKit runs, on both GPU and CPU
-# MediaPipe delegates -- ruling out GPU float nondeterminism as the cause and pointing to
-# the WASM/threaded inference pipeline itself. Not further reduced; 8.0 keeps margin over
-# the observed range without masking a regression back toward the sparse-grid failure
-# mode, which produced spreads of 30-50 spm on this same clip.
+# Calibrated to measured run-to-run inference jitter on a complete frame grid, which
+# persists across MediaPipe delegates and is not something this suite tries to eliminate.
+# A regression back to a sparse or irregular grid produces spreads far past this
+# threshold, so it stays a reliable signal without chasing ordinary inference variance.
 CADENCE_STABILITY_TOLERANCE_SPM = 8.0
 
 # A frame the browser never presents is a frame MediaPipe never sees. The reference
