@@ -19,12 +19,27 @@ const arg = arguments[0];
 """
 
 
+# page.set_default_timeout() does not bound evaluate(): that setting only applies to
+# actions like goto/click/waitFor*, and an evaluate() call runs to completion (or hangs)
+# regardless of it. The only way to bound one is to make the awaited JS promise itself
+# settle in time, via a race against a JS-side setTimeout.
+_TIMEOUT_WRAPPER = """
+(arg) => Promise.race([
+  (%s)(arg),
+  new Promise((_, reject) => setTimeout(
+    () => reject(new Error('evaluate() exceeded %ss')), %d)),
+])
+"""
+
+
 class _Playwright:
-    def __init__(self, page):
+    def __init__(self, page, timeout_s: int):
         self._page = page
+        self._timeout_s = timeout_s
 
     def evaluate(self, js: str, arg):
-        return self._page.evaluate(js, arg)
+        wrapped = _TIMEOUT_WRAPPER % (js, self._timeout_s, self._timeout_s * 1000)
+        return self._page.evaluate(wrapped, arg)
 
 
 class _Selenium:
@@ -38,8 +53,22 @@ class _Selenium:
         return out["ok"]
 
 
+# A full extraction of the clips this suite uses takes well under two minutes on real
+# hardware. This bounds every individual browser call so a hang -- GPU init, a network
+# fetch, anything -- fails with a diagnosable timeout instead of consuming an entire CI
+# job's time budget silently.
+DEFAULT_TIMEOUT_S = 300
+
+# GitHub's hosted runners have no real GPU; software WebGL needs to be requested
+# explicitly or MediaPipe's GPU delegate can hang initializing a context that never
+# becomes available, rather than failing. Harmless where real GPU/ANGLE exists.
+_SOFTWARE_WEBGL_ARGS = [
+    "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
+]
+
+
 @contextmanager
-def open_browser(engine: str, url: str, script_timeout_s: int = 1800):
+def open_browser(engine: str, url: str, script_timeout_s: int = DEFAULT_TIMEOUT_S):
     """Yield a driver exposing evaluate(js, arg), with `url` loaded."""
     if engine == "safari":
         from selenium import webdriver
@@ -55,19 +84,28 @@ def open_browser(engine: str, url: str, script_timeout_s: int = 1800):
 
     from playwright.sync_api import sync_playwright
 
+    # Printed with flush, not logged: a hang here has no other signal, and pytest -s
+    # still buffers stdout enough in some CI log viewers that an unflushed print can be
+    # lost along with the process that never got further than this line.
+    def _progress(msg: str) -> None:
+        print(f"[drivers] {msg}", flush=True)
+
     with sync_playwright() as pw:
+        _progress(f"launching {engine}")
         if engine == "webkit":
             browser = pw.webkit.launch(headless=False)
         else:
             browser = pw.chromium.launch(
                 channel="chrome", headless=False,
-                args=["--autoplay-policy=no-user-gesture-required"],
+                args=["--autoplay-policy=no-user-gesture-required", *_SOFTWARE_WEBGL_ARGS],
             )
         try:
+            _progress("browser launched, opening page")
             page = browser.new_page()
-            page.set_default_timeout(0)
+            page.set_default_timeout(script_timeout_s * 1000)
             page.goto(url)
             page.bring_to_front()
-            yield _Playwright(page)
+            _progress(f"page ready at {url}")
+            yield _Playwright(page, script_timeout_s)
         finally:
             browser.close()

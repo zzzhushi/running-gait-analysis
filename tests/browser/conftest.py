@@ -78,4 +78,5 @@ def page(site):
         )
     with open_browser(engine, f"{site}/web/tests/") as driver:
         driver.evaluate(_KEEPALIVE, None)
+        print("[conftest] page fixture ready", flush=True)
         yield driver
