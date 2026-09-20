@@ -1,7 +1,7 @@
 // Attribution shown for browser-delivered dependencies. Versions come from config.js;
 // license and source links are declared with each component below.
 
-import { PYODIDE_VERSION, TASKS_VISION_VERSION } from "./config.js";
+import { PYODIDE_VERSION, TASKS_VISION_VERSION, MP4BOX_VERSION } from "./config.js";
 import { el } from "./format.js";
 
 export const THIRD_PARTY = [
@@ -28,6 +28,14 @@ export const THIRD_PARTY = [
     role: "The pose model itself — © Google. Downloaded once, then runs locally.",
     url: "https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker",
     licenseUrl: "https://storage.googleapis.com/mediapipe-assets/Model%20Card%20BlazePose%20GHUM%203D.pdf",
+  },
+  {
+    name: "MP4Box.js",
+    version: MP4BOX_VERSION,
+    license: "BSD-3-Clause",
+    role: "Reads your video's frame data before pose detection runs on it.",
+    url: "https://github.com/gpac/mp4box.js",
+    licenseUrl: "https://github.com/gpac/mp4box.js/blob/master/LICENSE",
   },
 ];
 

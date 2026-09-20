@@ -214,7 +214,7 @@ docs/               PRD, technical requirements, evidence references, generated 
 
 GaitLab is released under the [MIT License](LICENSE) — © 2026 zzzhushi.
 
-The browser build loads three third-party components at runtime, credited in-app under
+The browser build loads four third-party components at runtime, credited in-app under
 **About & licenses** in the footer:
 
 | Component | License |
@@ -222,6 +222,7 @@ The browser build loads three third-party components at runtime, credited in-app
 | [Pyodide](https://github.com/pyodide/pyodide) — runs the Python engine in the browser | MPL-2.0 |
 | [MediaPipe Tasks Vision](https://github.com/google-ai-edge/mediapipe) — landmark detection | Apache-2.0 |
 | [BlazePose GHUM pose landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker) — the pose model, © Google | Apache-2.0 |
+| [MP4Box.js](https://github.com/gpac/mp4box.js) — reads frame data before pose detection | BSD-3-Clause |
 
 The local extractor additionally uses [rtmlib / RTMPose](https://github.com/Tau-J/rtmlib)
 (Apache-2.0), which is never shipped to the browser.
