@@ -42,10 +42,12 @@ CADENCE_STABILITY_TOLERANCE_SPM = 8.0
 # extraction of the same file supplies the count the browser is measured against.
 FRAME_SHORTFALL_TOLERANCE_PCT = 5.0
 
+# The CPU delegate avoids depending on a working GPU/WebGL stack, which CI runners
+# and headless browsers do not reliably provide.
 _EXTRACT = """
 async ([url, view]) => {
   const { extract } = await import('/web/js/pose.js');
-  return await extract(url, view, () => {});
+  return await extract(url, view, () => {}, "CPU");
 }
 """
 

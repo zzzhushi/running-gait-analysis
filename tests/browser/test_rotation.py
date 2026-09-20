@@ -64,10 +64,12 @@ MAX_UNDETECTED_FRACTION = 0.05
 # unrelated or sign-flipped mapping would produce.
 MIN_DIRECTIONAL_CORRELATION = 0.5
 
+# The CPU delegate avoids depending on a working GPU/WebGL stack, which CI runners
+# and headless browsers do not reliably provide.
 _EXTRACT = """
 async ([url, view]) => {
   const { extract } = await import('/web/js/pose.js');
-  return await extract(url, view, () => {});
+  return await extract(url, view, () => {}, "CPU");
 }
 """
 

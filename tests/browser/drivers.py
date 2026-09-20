@@ -59,14 +59,6 @@ class _Selenium:
 # job's time budget silently.
 DEFAULT_TIMEOUT_S = 300
 
-# GitHub's hosted runners have no real GPU; software WebGL needs to be requested
-# explicitly or MediaPipe's GPU delegate can hang initializing a context that never
-# becomes available, rather than failing. Harmless where real GPU/ANGLE exists.
-_SOFTWARE_WEBGL_ARGS = [
-    "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
-]
-
-
 @contextmanager
 def open_browser(engine: str, url: str, script_timeout_s: int = DEFAULT_TIMEOUT_S):
     """Yield a driver exposing evaluate(js, arg), with `url` loaded."""
@@ -97,7 +89,7 @@ def open_browser(engine: str, url: str, script_timeout_s: int = DEFAULT_TIMEOUT_
         else:
             browser = pw.chromium.launch(
                 channel="chrome", headless=False,
-                args=["--autoplay-policy=no-user-gesture-required", *_SOFTWARE_WEBGL_ARGS],
+                args=["--autoplay-policy=no-user-gesture-required"],
             )
         try:
             _progress("browser launched, opening page")

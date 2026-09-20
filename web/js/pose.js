@@ -99,13 +99,13 @@ let _landmarkerPromise = null;
 // MediaPipe uses timestamp deltas for smoothing and requires them to increase across the
 // cached landmarker's lifetime. Offset real media time for each extraction run.
 let _mpEpoch = 0;
-async function getLandmarker() {
+async function getLandmarker(delegate = "GPU") {
   if (_landmarkerPromise) return _landmarkerPromise;
   _landmarkerPromise = (async () => {
     const { FilesetResolver, PoseLandmarker } = await import(`${TASKS_VISION_URL}`);
     const fileset = await FilesetResolver.forVisionTasks(`${TASKS_VISION_URL}/wasm`);
     return PoseLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: POSE_MODEL_URL, delegate: "GPU" },
+      baseOptions: { modelAssetPath: POSE_MODEL_URL, delegate },
       runningMode: "VIDEO",
       numPoses: 1,
     });
@@ -265,9 +265,9 @@ export function fpsFromTimestamps(ts) {
 // Preserve that grid as the pose timestamps; browsers without rVFC use a fixed 30 fps
 // grid. This is the fallback used where WebCodecs is unavailable; see extractViaWebCodecs
 // for the primary path and why this one is not used when a demuxer is available.
-async function extractViaPlayback(videoUrl, view, onProgress) {
+async function extractViaPlayback(videoUrl, view, onProgress, delegate) {
   onProgress(0, "Loading pose model…");
-  const [landmarker, video] = await Promise.all([getLandmarker(), loadVideo(videoUrl)]);
+  const [landmarker, video] = await Promise.all([getLandmarker(delegate), loadVideo(videoUrl)]);
   const width = video.videoWidth;
   const height = video.videoHeight;
   const duration = video.duration || 0;
@@ -412,9 +412,9 @@ class ExtractionError extends Error {
 // drop a large fraction of a high-frame-rate clip's frames regardless of playback rate,
 // while seeking within the same video remains frame-accurate; decoding demuxed samples
 // sidesteps presentation altogether, so every sample the container declares is decoded.
-async function extractViaWebCodecs(videoUrl, view, onProgress) {
+async function extractViaWebCodecs(videoUrl, view, onProgress, delegate) {
   onProgress(0, "Loading pose model…");
-  const [landmarker, track] = await Promise.all([getLandmarker(), demuxVideoTrack(videoUrl)]);
+  const [landmarker, track] = await Promise.all([getLandmarker(delegate), demuxVideoTrack(videoUrl)]);
   const { codedWidth, codedHeight, rotation, timescale, samples, description } = track;
   // The canonical pose is always in display orientation -- toCanonical()'s (w, h) scale
   // and the mapping every downstream metric assumes must match what a person watching
@@ -534,7 +534,7 @@ function webCodecsAvailable() {
 // WebCodecs failure on a browser that does support it: a file the primary path cannot
 // handle is not evidence the unreliable fallback would have handled it correctly, so
 // such a file surfaces as a clear extraction failure instead of a silent retry.
-export async function extract(videoUrl, view, onProgress = () => {}) {
-  if (!webCodecsAvailable()) return extractViaPlayback(videoUrl, view, onProgress);
-  return extractViaWebCodecs(videoUrl, view, onProgress);
+export async function extract(videoUrl, view, onProgress = () => {}, delegate = "GPU") {
+  if (!webCodecsAvailable()) return extractViaPlayback(videoUrl, view, onProgress, delegate);
+  return extractViaWebCodecs(videoUrl, view, onProgress, delegate);
 }
