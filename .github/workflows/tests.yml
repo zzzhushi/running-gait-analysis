@@ -38,3 +38,39 @@ jobs:
           node-version: "20"
       - run: npm install
       - run: npm test  # pretest builds web/py/gaitlab.zip; runs vitest + parity
+
+  # Regression guard for #67: web/js/pose.js's primary extraction path (WebCodecs) is
+  # reachable only from a real browser, and the failure it replaced -- WebKit silently
+  # discarding roughly half the frames of a high-frame-rate clip -- is invisible to the
+  # `test` job above, which never installs a browser and lets tests/browser/ skip via
+  # pytest.importorskip. Real Chrome + Playwright's WebKit, real decode, real MediaPipe
+  # inference. Headed (not --headless), matching local runs, since frame presentation is
+  # literally what these tests measure; xvfb-run supplies the display a CI runner lacks.
+  # Safari itself needs safaridriver and is macOS-only, so it stays a manual, documented
+  # local check (see tests/browser/drivers.py) rather than a CI job.
+  test-browser:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chrome, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: pip install playwright
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ matrix.engine }}-${{ hashFiles('requirements-dev.txt') }}
+      - run: playwright install --with-deps ${{ matrix.engine }}
+      # xvfb-run is not guaranteed present on the runner image; installed explicitly
+      # rather than assumed, since tests run headed to match local runs.
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: Run browser extraction tests
+        run: xvfb-run -a pytest tests/browser -s
+        env:
+          GAITLAB_BROWSER: ${{ matrix.engine }}
