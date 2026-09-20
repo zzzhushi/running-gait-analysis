@@ -1,7 +1,7 @@
 // In-browser BlazePose extraction mapped to the canonical PoseSequence schema.
 // Keep BLAZEPOSE and toCanonical() aligned with extractor/blazepose.py.
 
-import { TASKS_VISION_URL, POSE_MODEL_URL } from "./config.js";
+import { TASKS_VISION_URL, POSE_MODEL_URL, MP4BOX_URL } from "./config.js";
 
 // Canonical keypoint order — MUST match gaitlab/core/schema.py KEYPOINTS exactly.
 export const KEYPOINTS = [
@@ -222,10 +222,12 @@ export function fpsFromTimestamps(ts) {
   return med > 0 ? 1 / med : 30;
 }
 
-// Extract a pose dict from a video object URL. First collect the presentation-time grid,
-// then seek and run inference without real-time pressure. Preserve that grid as the pose
-// timestamps; browsers without rVFC use a fixed 30 fps grid.
-export async function extract(videoUrl, view, onProgress = () => {}) {
+// Extract a pose dict via requestVideoFrameCallback-driven playback. First collect the
+// presentation-time grid, then seek and run inference without real-time pressure.
+// Preserve that grid as the pose timestamps; browsers without rVFC use a fixed 30 fps
+// grid. This is the fallback used where WebCodecs is unavailable; see extractViaWebCodecs
+// for the primary path and why this one is not used when a demuxer is available.
+async function extractViaPlayback(videoUrl, view, onProgress) {
   onProgress(0, "Loading pose model…");
   const [landmarker, video] = await Promise.all([getLandmarker(), loadVideo(videoUrl)]);
   const width = video.videoWidth;
@@ -286,4 +288,165 @@ export async function extract(videoUrl, view, onProgress = () => {}) {
     timestamp_source: timestampSource,
     dropped_frame_ratio: droppedRatio,
   };
+}
+
+// Demux the video's track with mp4box.js: raw samples plus the codec's avcC/hvcC
+// description, which VideoDecoder.configure() requires and a <video> element does not
+// expose. Resolves once every sample the container promised has been delivered, since
+// this build's onFlush callback is not reliably invoked after flush().
+async function demuxVideoTrack(videoUrl) {
+  const mod = await import(MP4BOX_URL);
+  const MP4Box = mod.default || mod;
+  const buf = await (await fetch(videoUrl)).arrayBuffer();
+  buf.fileStart = 0;
+
+  return new Promise((resolve, reject) => {
+    const file = MP4Box.createFile();
+    const collected = [];
+    let track = null;
+    let description = null;
+    file.onError = (e) => reject(new Error(`mp4 demux failed: ${e}`));
+    file.onReady = (info) => {
+      track = info.videoTracks[0];
+      if (!track) { reject(new Error("No video track in file")); return; }
+      const trak = file.getTrackById(track.id);
+      for (const entry of trak.mdia.minf.stbl.stsd.entries) {
+        const box = entry.avcC || entry.hvcC;
+        if (box) {
+          const stream = new MP4Box.DataStream(undefined, 0, MP4Box.DataStream.BIG_ENDIAN);
+          box.write(stream);
+          description = new Uint8Array(stream.buffer, 8); // skip the box header
+        }
+      }
+      if (!description) { reject(new Error("No avcC/hvcC description in track")); return; }
+      file.setExtractionOptions(track.id, null, { nbSamples: track.nb_samples });
+      file.start();
+    };
+    file.onSamples = (id, user, arr) => {
+      for (const s of arr) collected.push(s);
+      if (collected.length >= track.nb_samples) {
+        resolve({
+          codec: track.codec,
+          width: track.video.width,
+          height: track.video.height,
+          timescale: track.timescale,
+          samples: collected,
+          description,
+        });
+      }
+    };
+    file.appendBuffer(buf);
+    file.flush();
+  });
+}
+
+// Extract a pose dict via WebCodecs: demux the container's samples directly and decode
+// them with VideoDecoder, bypassing <video> element playback and
+// requestVideoFrameCallback entirely. That presentation pipeline is what silently drops
+// roughly half the frames of a high-frame-rate clip on WebKit regardless of playback
+// rate — see the investigation on #67 — while seeking within it remains frame-accurate.
+// Decoding demuxed samples sidesteps presentation altogether, so it has no equivalent
+// failure mode: every sample the container declares is decoded and used.
+async function extractViaWebCodecs(videoUrl, view, onProgress) {
+  onProgress(0, "Loading pose model…");
+  const [landmarker, track] = await Promise.all([getLandmarker(), demuxVideoTrack(videoUrl)]);
+  const { width, height, timescale, samples, description } = track;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+
+  const frames = [];
+  const timestamps = [];
+  const epoch = _mpEpoch;
+  let lastMs = -1;
+  let lastTs = -Infinity;
+  let outOfOrder = 0;
+  const total = samples.length;
+  let processed = 0;
+
+  onProgress(0, "Decoding frames…");
+  await new Promise((resolve, reject) => {
+    const decoder = new VideoDecoder({
+      output: (frame) => {
+        const tSec = frame.timestamp / 1e6;
+        // The spec does not guarantee decode order matches presentation order for every
+        // codec; camera-shot H.264 with sparse B-frames does in practice (verified
+        // against this corpus), but a reordered frame would silently corrupt event
+        // timing, so it is counted and surfaced rather than assumed away.
+        if (tSec < lastTs) outOfOrder++;
+        lastTs = tSec;
+
+        ctx.drawImage(frame, 0, 0, width, height);
+        frame.close();
+
+        let ms = epoch + Math.round(tSec * 1000);
+        if (ms <= lastMs) ms = lastMs + 1;
+        lastMs = ms;
+        const res = landmarker.detectForVideo(canvas, ms);
+        const lm = res.landmarks && res.landmarks[0];
+        frames.push(lm ? toCanonical(lm, width, height).map(round3) : ZERO_FRAME());
+        timestamps.push(Math.round(tSec * 10000) / 10000);
+        processed++;
+        onProgress(processed / total, `Extracting pose… ${frames.length} frames`);
+      },
+      error: (e) => reject(e instanceof Error ? e : new Error(String(e))),
+    });
+    decoder.configure({ codec: track.codec, codedWidth: width, codedHeight: height, description });
+    for (const s of samples) {
+      decoder.decode(new EncodedVideoChunk({
+        type: s.is_sync ? "key" : "delta",
+        timestamp: Math.round((s.cts * 1e6) / timescale),
+        duration: Math.round((s.duration * 1e6) / timescale),
+        data: s.data,
+      }));
+    }
+    decoder.flush().then(() => { decoder.close(); resolve(); }, reject);
+  });
+
+  if (outOfOrder) {
+    console.warn(`pose.js: ${outOfOrder} decoded frame(s) arrived out of presentation order`);
+  }
+  _mpEpoch = Math.max(_mpEpoch, lastMs + 1000);
+
+  onProgress(1, `Extracted ${frames.length} frames`);
+  return {
+    schema: "gaitlab.pose/v1",
+    source: "mediapipe-blazepose",
+    view,
+    fps: fpsFromTimestamps(timestamps),
+    width,
+    height,
+    keypoint_names: KEYPOINTS.slice(),
+    frames,
+    timestamps,
+    timestamp_source: "decoded",
+    dropped_frame_ratio: 0,
+    // Measured from the decoded grid itself, so completeness can be checked against a
+    // number this extraction was not derived from.
+    source_interval: timestamps.length > 1
+      ? (timestamps[timestamps.length - 1] - timestamps[0]) / (timestamps.length - 1)
+      : null,
+  };
+}
+
+function webCodecsAvailable() {
+  return typeof VideoDecoder !== "undefined" && typeof EncodedVideoChunk !== "undefined";
+}
+
+// Extract a pose dict from a video object URL. Prefers WebCodecs, which decodes every
+// frame the container declares regardless of engine; falls back to
+// requestVideoFrameCallback-driven playback where WebCodecs is unavailable, or if the
+// container turns out to be something the demuxer cannot handle (audio-only track,
+// fragmented mp4 shape it does not support, unlisted codec).
+export async function extract(videoUrl, view, onProgress = () => {}) {
+  if (webCodecsAvailable()) {
+    try {
+      return await extractViaWebCodecs(videoUrl, view, onProgress);
+    } catch (e) {
+      console.warn("pose.js: WebCodecs extraction failed, falling back to playback:", e);
+    }
+  }
+  return extractViaPlayback(videoUrl, view, onProgress);
 }

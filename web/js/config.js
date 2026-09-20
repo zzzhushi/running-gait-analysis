@@ -22,6 +22,12 @@ export const PYODIDE_INDEX_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VE
 export const TASKS_VISION_VERSION = "0.10.14";
 export const TASKS_VISION_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}`;
 
+// MP4 demuxer for WebCodecs-based frame extraction (web/js/pose.js): decode requires
+// access to individual samples and the codec's avcC/hvcC description, which a <video>
+// element does not expose.
+export const MP4BOX_VERSION = "0.5.2";
+export const MP4BOX_URL = `https://cdn.jsdelivr.net/npm/mp4box@${MP4BOX_VERSION}/+esm`;
+
 // Heavy pose model — sharpest foot/pronation landmarks. Google's pinned storage URL
 // by default; vendoring the .task under web/models/ is a drop-in swap.
 export const POSE_MODEL_URL =
