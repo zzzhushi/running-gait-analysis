@@ -142,6 +142,10 @@ Real frame timestamps are used when available, including across irregular or dro
 frames. The event search is designed for roughly 60–240 spm. Cadence uses stable midstance
 timing rather than the noisier exact first-contact frame.
 
+Current implementation:
+[`gaitlab/metrics/definitions/cadence.py`](https://github.com/zzzhushi/running-gait-analysis/blob/main/gaitlab/metrics/definitions/cadence.py),
+[`gaitlab/core/events.py`](https://github.com/zzzhushi/running-gait-analysis/blob/main/gaitlab/core/events.py).
+
 ### Confidence, by layer
 
 | Layer | Current assessment |
@@ -159,15 +163,16 @@ captures.
 
 ### Current product validation
 
-Cadence regression tests cover six real clips from two people, established at engine
-revision `aa3f7d7` and unchanged since: side and rear views and a bounding drill. Reference
-values span **102.58–205.13 spm**, with clips lasting **9.68–14.26 seconds**. Each clip is
-evaluated with RTMPose and BlazePose pose fixtures.
+Cadence regression tests cover six real clips from two people — side and rear views and a
+bounding drill; see
+[`tests/data/README.md`](https://github.com/zzzhushi/running-gait-analysis/blob/main/tests/data/README.md)
+for the corpus. Reference values span **102.58–205.13 spm**, with clips lasting
+**9.68–14.26 seconds**. Each clip is evaluated with RTMPose and BlazePose pose fixtures.
 
 The reference tool counts discrete vertical body events from raw video pixels and checks the
 video timebase and other periodic signals; it does not use GaitLab's pose-derived cadence.
-Results on these six selected development clips, against the cadence implementation at
-`ada24ff`, are:
+Results on these six selected development clips, against the current cadence implementation
+linked above, are:
 
 | Pose source | Mean absolute error | Mean absolute percentage error | Largest absolute error |
 |---|---:|---:|---:|
@@ -179,13 +184,11 @@ are regression allowances chosen for the tests, **not** demonstrated error bound
 athletes. All 12 clip/extractor fixture pairs produced results, but the corpus consists of
 selected usable clips and therefore cannot establish a real-world failure rate.
 
+These specific error numbers are a snapshot re-measured against `main` as of this page's
+last edit, not a live figure — a later change to event detection could shift them again
+without this page noticing.
+
 This corpus was used during development, is not a participant-held-out evaluation, and is
 far too small to establish general accuracy. A publishable validation should add more
 athletes and capture conditions, predeclare acceptance limits, report absolute error, bias,
 limits of agreement and rejection rate, and measure repeatability at matched speeds.
-
-### Document metadata
-
-**Last content review:** 2026-09-19
-**Implementation reviewed against:** `gaitlab/metrics/definitions/cadence.py` and
-`gaitlab/core/events.py` at `ada24ff`

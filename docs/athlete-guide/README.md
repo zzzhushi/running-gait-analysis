@@ -41,7 +41,7 @@ details:
 | Fair-comparison protocol | Defines what must be matched across sessions | Yes |
 | Product validation record | States corpus, reference method, results, failure rate, and gaps | Yes |
 | Research summary and sources | Distinguishes external evidence from this product's accuracy | Yes |
-| Version and last review | Makes changed formulas, bands, and wording traceable | Yes |
+| Implementation link | Points at the source file(s) on `main`, not a pinned revision | Yes |
 
 ## Page structure: main body vs. appendix
 
@@ -54,10 +54,9 @@ trust summary (e.g. "this number is well-measured, but the reference band is a h
 Translate lab terminology as it's introduced rather than assuming the reader knows it.
 
 **Appendix** (a `## Appendix` section at the end): the measurement mechanism ("How GaitLab
-estimates it" / "When the pattern is shown"), the full confidence-by-layer table, the
-detailed product-validation record, and the owner/review-date footer. Link to it from the
-body wherever the plain-language trust summary needs to back up a claim, rather than
-inlining the table.
+estimates it" / "When the pattern is shown"), the full confidence-by-layer table, and the
+detailed product-validation record. Link to it from the body wherever the plain-language
+trust summary needs to back up a claim, rather than inlining the table.
 
 This keeps a page answerable by a non-technical athlete in one read, while keeping the
 rigor available to a reviewer, coach, or clinician one click down. See
@@ -110,3 +109,9 @@ and personalization inputs currently live in each metric definition. Until this 
 generated from a shared content schema, review those fields against the implementation in
 the same change. Narrative evidence, limitations, and athlete guidance should remain
 human-reviewed rather than generated from a threshold table.
+
+Link implementation references at `main` (`.../blob/main/gaitlab/...`), not a pinned commit
+hash — a hash is a claim about what was true when it was written and silently goes stale the
+next time that file changes. A number pulled from running the code (like a validation MAE)
+is unavoidably a snapshot; say so in the surrounding sentence instead of pretending a link
+keeps it current.

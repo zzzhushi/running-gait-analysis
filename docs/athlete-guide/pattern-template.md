@@ -89,6 +89,10 @@ Additional eligibility:
 - [Whether personalized component bands are used]
 - [Minimum component confidence required for the pattern to be eligible]
 
+Current implementation: link the composite definition at `main` — e.g.
+`[pattern_id.py](https://github.com/<org>/<repo>/blob/main/gaitlab/metrics/definitions/composites/pattern_id.py)`
+— not a pinned commit hash, which goes stale the moment the file changes again.
+
 ### Confidence, by layer
 
 | Layer | Current assessment |
@@ -110,11 +114,5 @@ Additional eligibility:
 - **Gaps:** [populations, severities, views, confounders]
 
 Passing validation for each component metric does not validate the composite rule. Validate
-the exact trigger and athlete-facing claim separately.
-
-### Document metadata
-
-**Owner:** [name/team]
-**Last content review:** [YYYY-MM-DD]
-**Next review trigger:** [rule / component / evidence / validation change]
-**Implementation reviewed against:** [composite definition files and revision]
+the exact trigger and athlete-facing claim separately. State plainly that these are a
+point-in-time measurement, not a figure kept live by this page.

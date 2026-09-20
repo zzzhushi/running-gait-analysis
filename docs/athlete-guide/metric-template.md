@@ -104,6 +104,10 @@ more than the summary above.]
 - **Missing-data behavior:** [when unavailable; whether one side can substitute]
 - **Displayed precision:** [rounding; do not imply more precision than validation supports]
 
+Current implementation: link the source file(s) at `main` — e.g.
+`[metric_name.py](https://github.com/<org>/<repo>/blob/main/gaitlab/metrics/definitions/metric_name.py)`
+— not a pinned commit hash, which goes stale the moment the file changes again.
+
 ### Confidence, by layer
 
 | Layer | Current assessment |
@@ -134,11 +138,5 @@ more than the summary above.]
 - **Known validation gaps:** [held-out subjects, subgroups, edge cases]
 
 Do not describe a test tolerance as measured accuracy. Link the protocol, annotations, and
-reproduction command when available.
-
-### Document metadata
-
-**Owner:** [name/team]
-**Last content review:** [YYYY-MM-DD]
-**Next review trigger:** [implementation change / new validation / scheduled date]
-**Implementation reviewed against:** [files and revision]
+reproduction command when available. State plainly that these are a point-in-time
+measurement, not a figure kept live by this page.
