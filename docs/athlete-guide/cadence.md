@@ -159,19 +159,20 @@ captures.
 
 ### Current product validation
 
-As of engine revision `aa3f7d7`, cadence regression tests cover six real clips from two
-people, including side and rear views and a bounding drill. Reference values span
-**102.58–205.13 spm**, with clips lasting **9.68–14.26 seconds**. Each clip is evaluated with
-RTMPose and BlazePose pose fixtures.
+Cadence regression tests cover six real clips from two people, established at engine
+revision `aa3f7d7` and unchanged since: side and rear views and a bounding drill. Reference
+values span **102.58–205.13 spm**, with clips lasting **9.68–14.26 seconds**. Each clip is
+evaluated with RTMPose and BlazePose pose fixtures.
 
 The reference tool counts discrete vertical body events from raw video pixels and checks the
 video timebase and other periodic signals; it does not use GaitLab's pose-derived cadence.
-Results on these six selected development clips are:
+Results on these six selected development clips, against the cadence implementation at
+`ada24ff`, are:
 
 | Pose source | Mean absolute error | Mean absolute percentage error | Largest absolute error |
 |---|---:|---:|---:|
 | RTMPose | 0.76 spm | 0.50% | 1.33 spm |
-| BlazePose | 1.95 spm | 1.27% | 3.16 spm |
+| BlazePose | 1.77 spm | 1.10% | 3.16 spm |
 
 The automated suite allows 2% relative difference for RTMPose and 4% for BlazePose. Those
 are regression allowances chosen for the tests, **not** demonstrated error bounds for
@@ -185,6 +186,6 @@ limits of agreement and rejection rate, and measure repeatability at matched spe
 
 ### Document metadata
 
-**Last content review:** 2026-09-18
+**Last content review:** 2026-09-19
 **Implementation reviewed against:** `gaitlab/metrics/definitions/cadence.py` and
-`gaitlab/core/events.py` at `4b96d2b`
+`gaitlab/core/events.py` at `ada24ff`
