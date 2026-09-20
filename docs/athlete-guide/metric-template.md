@@ -12,12 +12,12 @@ measured, and the unit. Define left/right or sign conventions here if relevant.]
 | Reference/decision band | [Values, population, and whether norm / research reference / product heuristic] |
 | Coaching eligibility | [When it can produce a finding; when it is display-only] |
 | Personalization inputs | [Speed, height, leg length, sex, age, none] |
-| Product-validation status | [Not evaluated / software checked / internally checked / held-out validated / independently replicated] |
+| How well-tested is this | [One plain sentence — see the [appendix](#appendix) for the full validation record] |
 
 ## How to read your result
 
-[Explain good/expected, low, high, unavailable, and borderline states. Include a legitimate
-“no change” outcome. Do not make a diagnosis from a threshold.]
+[Explain good/expected, low, high, unavailable, and borderline states in plain language.
+Include a legitimate "no change" outcome. Do not make a diagnosis from a threshold.]
 
 ### Context that changes this value
 
@@ -28,13 +28,14 @@ measured, and the unit. Define left/right or sign conventions here if relevant.]
 - **Fatigue/training task:** [effect or unknown]
 - **Other:** [metric-specific context]
 
-[Explain exactly how GaitLab personalizes or normalizes the result. Label unsourced constants
-and exact equations as product heuristics.]
+[Explain in plain language how GaitLab personalizes or normalizes the result. Label
+unsourced constants and exact equations as product heuristics, not proven formulas.]
 
 ## Why it may matter
 
-[Summarize the strongest supported biomechanical relationship first. Then say what has not
-been shown: injury prediction, diagnosis, economy, performance, or causation as applicable.]
+[Summarize the strongest supported biomechanical relationship first, in plain language —
+avoid unexplained lab terminology. Then say what has not been shown: injury prediction,
+diagnosis, economy, performance, or causation as applicable.]
 
 ## If you want to experiment
 
@@ -48,15 +49,6 @@ been shown: injury prediction, diagnosis, economy, performance, or causation as 
 
 [State when no change is the better option and when a clinician or coach is more appropriate.]
 
-## How GaitLab estimates it
-
-- **Inputs/landmarks:** [keypoints, scale/calibration, timestamps]
-- **Stride phase:** [initial contact / midstance / toe-off / whole stride]
-- **Coordinate convention:** [image plane, ground-relative, body-relative, sign]
-- **Aggregation:** [per frame -> per stride -> per side -> headline value]
-- **Missing-data behavior:** [when unavailable; whether one side can substitute]
-- **Displayed precision:** [rounding; do not imply more precision than validation supports]
-
 ## Capture a usable clip
 
 - **View and camera placement:** [instructions]
@@ -66,7 +58,53 @@ been shown: injury prediction, diagnosis, economy, performance, or causation as 
 - **Common failure modes:** [occlusion, camera tilt/pan, loose clothing, mirror, slow motion]
 - **Retake instruction:** [specific action the athlete can take]
 
-## Confidence and limitations
+## How much can you trust this number
+
+[One or two plain-language paragraphs: how accurate has this measurement been in practice,
+and separately, how confident are we in the reference band and any suggested action built
+on top of it? State the weakest relevant layer rather than an averaged badge. Point to the
+[appendix](#appendix) for the full confidence-by-layer table and known limitations.]
+
+## Fair comparisons over time
+
+[List the fields that must match: athlete, speed, view, incline, surface, shoes, fatigue,
+capture setup, model/engine version. State the smallest detectable change only if measured.]
+
+## Related observations and patterns
+
+[For each related metric or pattern, say what GaitLab actually does with the combination —
+whether it produces a joint finding, or whether it is only useful to compare by eye — not
+just that a relationship might exist. If no combined finding exists yet, say so plainly
+rather than implying one is coming.]
+
+- **[Related metric/pattern]:** [what it adds; avoid causal shorthand]
+- **[Related metric/pattern]:** [what it adds]
+
+## Research used for interpretation
+
+- [Primary study or systematic review: population, method, result relevant to this page](URL)
+- [Reference values: eligible population and measurement method](URL)
+- [Intervention evidence, if an action is suggested](URL)
+
+[One sentence stating that external research does not validate GaitLab's implementation.]
+
+---
+
+## Appendix
+
+[Measurement mechanism and validation detail for reviewers, coaches, or clinicians who want
+more than the summary above.]
+
+### How GaitLab estimates it
+
+- **Inputs/landmarks:** [keypoints, scale/calibration, timestamps]
+- **Stride phase:** [initial contact / midstance / toe-off / whole stride]
+- **Coordinate convention:** [image plane, ground-relative, body-relative, sign]
+- **Aggregation:** [per frame -> per stride -> per side -> headline value]
+- **Missing-data behavior:** [when unavailable; whether one side can substitute]
+- **Displayed precision:** [rounding; do not imply more precision than validation supports]
+
+### Confidence, by layer
 
 | Layer | Current assessment |
 |---|---|
@@ -82,14 +120,14 @@ been shown: injury prediction, diagnosis, economy, performance, or causation as 
 - [Expected confounders]
 - [What GaitLab cannot conclude]
 
-## Current product validation
+### Current product validation
 
-- **Status:** [controlled label]
+- **Status:** [Not evaluated / software checked / internally checked / held-out validated / independently replicated]
 - **Engine/model version:** [revision and pose model]
 - **Corpus:** [athletes, clips, valid/attempted captures, demographic/context coverage]
 - **Reference method:** [manual count, synchronized 2-D/3-D, force plate, wearable, etc.]
 - **Range tested:** [values, speeds, views, FPS, devices]
-- **Predeclared acceptance limit:** [or “none; exploratory”]
+- **Predeclared acceptance limit:** [or "none; exploratory"]
 - **Results:** [MAE, bias, limits of agreement, percentiles, classification metrics]
 - **Repeatability:** [within-session and between-session, matched conditions]
 - **Failure/rejection rate:** [including unusable clips]
@@ -98,23 +136,7 @@ been shown: injury prediction, diagnosis, economy, performance, or causation as 
 Do not describe a test tolerance as measured accuracy. Link the protocol, annotations, and
 reproduction command when available.
 
-## Fair comparisons over time
-
-[List the fields that must match: athlete, speed, view, incline, surface, shoes, fatigue,
-capture setup, model/engine version. State the smallest detectable change only if measured.]
-
-## Related observations and patterns
-
-- **[Related metric/pattern]:** [what it adds; avoid causal shorthand]
-- **[Related metric/pattern]:** [what it adds]
-
-## Research used for interpretation
-
-- [Primary study or systematic review: population, method, result relevant to this page](URL)
-- [Reference values: eligible population and measurement method](URL)
-- [Intervention evidence, if an action is suggested](URL)
-
-[One sentence stating that external research does not validate GaitLab's implementation.]
+### Document metadata
 
 **Owner:** [name/team]
 **Last content review:** [YYYY-MM-DD]

@@ -43,6 +43,26 @@ details:
 | Research summary and sources | Distinguishes external evidence from this product's accuracy | Yes |
 | Version and last review | Makes changed formulas, bands, and wording traceable | Yes |
 
+## Page structure: main body vs. appendix
+
+Keep the body athlete-facing; push measurement mechanism and validation detail to an
+appendix.
+
+**Main body:** everything in "What every page should answer" above — result
+interpretation, why it may matter, experiments, capture guidance, and a short plain-language
+trust summary (e.g. "this number is well-measured, but the reference band is a heuristic").
+Translate lab terminology as it's introduced rather than assuming the reader knows it.
+
+**Appendix** (a `## Appendix` section at the end): the measurement mechanism ("How GaitLab
+estimates it" / "When the pattern is shown"), the full confidence-by-layer table, the
+detailed product-validation record, and the owner/review-date footer. Link to it from the
+body wherever the plain-language trust summary needs to back up a claim, rather than
+inlining the table.
+
+This keeps a page answerable by a non-technical athlete in one read, while keeping the
+rigor available to a reviewer, coach, or clinician one click down. See
+[Cadence](cadence.md) for a worked example.
+
 ## Confidence is not one field
 
 Do not collapse confidence into a single “high / moderate / low” badge. A metric can be

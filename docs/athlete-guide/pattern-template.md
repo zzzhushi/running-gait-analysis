@@ -9,33 +9,17 @@
 |---|---|
 | Supported view | [Side / rear / front] |
 | Component observations | [Metric A + metric B + ...] |
-| Trigger | [Exact boolean rule in readable language] |
-| Minimum component confidence | [Eligibility rule] |
-| Priority/severity | [What the product label means; not medical severity] |
 | Supersedes | [Individual findings hidden when this clearer pattern is shown] |
-| Product-validation status | [Controlled label] |
+| How well-tested is this | [One plain sentence — see the [appendix](#appendix) for the full validation record] |
 
 ## What GaitLab observed
 
 [Explain each component result and why the combination is more useful than either result
-alone. Include values and units in the rendered version.]
+alone, in plain language. Include values and units in the rendered version.]
 
 This pattern means: [narrow movement statement].
 This pattern does **not** mean: [diagnosis, injury prediction, pain source, weakness/tightness,
 or other unsupported inference].
-
-## When the pattern is shown
-
-| Component | Required condition | Why it is included | What can invalidate it |
-|---|---|---|---|
-| [Metric A] | [threshold/direction] | [role] | [capture/confounder] |
-| [Metric B] | [threshold/direction] | [role] | [capture/confounder] |
-
-Additional eligibility:
-
-- [Required view, valid-stride count, tracking confidence, speed/context]
-- [Suppression rule for contradictory or missing evidence]
-- [Whether personalized component bands are used]
 
 ## Other explanations to consider
 
@@ -62,9 +46,50 @@ GaitLab's 2-D proxy.]
 
 [State when no change, a retake, or professional review is the correct next step.]
 
-## Confidence and limitations
+## How much can you trust this pattern
 
-Report the weakest relevant layer; do not average confidence badges from the components.
+[One or two plain-language paragraphs. Report the weakest relevant layer rather than an
+averaged confidence badge — a pattern is only as trustworthy as its least-validated
+component or the least-validated part of the combination rule itself. Point to the
+[appendix](#appendix) for the full confidence-by-layer table and the pattern's own
+validation record.]
+
+## Related observations
+
+[For each related metric or pattern, say what GaitLab actually does with it — whether it
+produces a joint finding, or is only useful to compare by eye. If no combined finding
+exists yet, say so plainly rather than implying one is coming.]
+
+- **[Metric/pattern]:** [relationship]
+- **[Metric/pattern]:** [relationship]
+
+## Research used for interpretation
+
+- [Evidence for component or combination](URL)
+- [Intervention evidence, if action is shown](URL)
+
+---
+
+## Appendix
+
+[Trigger rule and validation detail for reviewers, coaches, or clinicians who want more
+than the summary above.]
+
+### When the pattern is shown
+
+| Component | Required condition | Why it is included | What can invalidate it |
+|---|---|---|---|
+| [Metric A] | [threshold/direction] | [role] | [capture/confounder] |
+| [Metric B] | [threshold/direction] | [role] | [capture/confounder] |
+
+Additional eligibility:
+
+- [Required view, valid-stride count, tracking confidence, speed/context]
+- [Suppression rule for contradictory or missing evidence]
+- [Whether personalized component bands are used]
+- [Minimum component confidence required for the pattern to be eligible]
+
+### Confidence, by layer
 
 | Layer | Current assessment |
 |---|---|
@@ -74,7 +99,7 @@ Report the weakest relevant layer; do not average confidence badges from the com
 | Interpretation confidence | [Does evidence support the claimed meaning?] |
 | Action confidence | [Does an intervention change the intended outcome?] |
 
-## Current product validation
+### Current product validation
 
 - **Rule version:** [identifier/revision]
 - **Corpus:** [athletes/clips/cases and controls]
@@ -87,15 +112,7 @@ Report the weakest relevant layer; do not average confidence badges from the com
 Passing validation for each component metric does not validate the composite rule. Validate
 the exact trigger and athlete-facing claim separately.
 
-## Related observations
-
-- **[Metric/pattern]:** [relationship]
-- **[Metric/pattern]:** [relationship]
-
-## Research used for interpretation
-
-- [Evidence for component or combination](URL)
-- [Intervention evidence, if action is shown](URL)
+### Document metadata
 
 **Owner:** [name/team]
 **Last content review:** [YYYY-MM-DD]
