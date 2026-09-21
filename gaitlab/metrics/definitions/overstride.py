@@ -21,11 +21,10 @@ from ..spec import MetricDef, register
 
 
 def _compute(ctx, side):
-    vals = []
-    for s in ctx.ev.strikes[side]:
-        ankle = ctx.seq.xy(s, f"{side}_ankle")
-        hip = ctx.seq.xy(s, f"{side}_hip")
-        vals.append(((ankle[0] - hip[0]) * ctx.facing) / ctx.leg * 100.0)
+    # Sampled from the reach curve (gaitlab/core/reach.py), not recomputed here, so the
+    # per-strike value is provably the same quantity the curve exposes for debugging.
+    curve = ctx.reach_curve(side)
+    vals = [curve[s].ankle_reach_pct for s in ctx.ev.strikes[side] if s < len(curve)]
     return median(vals)
 
 

@@ -11,10 +11,10 @@ from dataclasses import replace
 
 import pytest
 
-from gaitlab.core.events import GaitEvents
+from gaitlab.core.events import GaitEvents, detect_events
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 from gaitlab.metrics.compute import compute
-from gaitlab.metrics.ctx import Ctx, _leg_length, knee_flexion_at
+from gaitlab.metrics.ctx import Ctx, _leg_length, knee_flexion_at, median
 from gaitlab.metrics.defs import METRIC_DEFS
 from gaitlab.metrics.keys import MetricKey
 
@@ -77,6 +77,19 @@ def test_overstride_worst_side_is_max(synth):
     m = compute(synth("side-left", fps=60, duration=6, cadence=170, asymmetry=0.3, seed=6))
     ps = m["per_side"]
     assert m["values"]["overstride"] == pytest.approx(max(ps["l"]["overstride"], ps["r"]["overstride"]))
+
+
+def test_overstride_is_a_sample_of_the_reach_curve_not_a_second_formula(synth):
+    """The per-strike value must come from gaitlab/core/reach.py, not a parallel
+    computation -- otherwise the reach curve is not evidence about what the metric
+    actually reports (docs/metrics/overstride.md)."""
+    seq = synth("side-left", fps=60, duration=6, cadence=170, seed=8)
+    ev = detect_events(seq)
+    ctx = Ctx(seq, ev, None)
+    for side in ("l", "r"):
+        curve = ctx.reach_curve(side)
+        expected = [curve[s].ankle_reach_pct for s in ev.strikes[side]]
+        assert METRIC_DEFS[MetricKey.OVERSTRIDE].compute(ctx, side) == median(expected)
 
 
 def test_uncalibrated_contact_metrics_are_descriptive_only():

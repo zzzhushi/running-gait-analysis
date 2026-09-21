@@ -13,8 +13,10 @@ from statistics import median as _median
 from typing import Dict, List, Optional
 
 from ..core import geometry as geo
+from ..core import reach as reach_mod
 from ..core.events import GaitEvents
 from ..core.profile import Calibration, RunnerProfile
+from ..core.reach import ReachSample
 from ..core.schema import PoseSequence
 
 
@@ -200,3 +202,12 @@ class Ctx:
         if not self.seq.has("head"):
             return None
         return self._memo("head_x", lambda: geo.moving_average(self.seq.series_x("head"), 5))
+
+    def reach_curve(self, side: str) -> List[ReachSample]:
+        """Hip-relative foot position, one sample per frame; see gaitlab/core/reach.py.
+
+        `self.leg` is the current denominator (thigh+shank, whole-clip median) -- an open
+        decision, not a validated one; see docs/metrics/overstride.md.
+        """
+        return self._memo(f"reach_curve_{side}",
+                           lambda: reach_mod.reach_curve(self.seq, side, self.leg, self.facing))
