@@ -7,7 +7,7 @@
 
 | | Contract | Code today |
 |---|---|---|
-| Denominator | hip height above the belt line | `ctx.leg`, thigh + shank ([#71](https://github.com/zzzhushi/running-gait-analysis/issues/71)) |
+| Denominator | **undecided** — candidates and decision criterion below | `ctx.leg`, thigh + shank; unchanged until [#82](https://github.com/zzzhushi/running-gait-analysis/issues/82) settles it |
 | Cross-side aggregation | reported separately | `worst_high`, the worse side |
 | Scoring | informational | `scored=True`, `confidence="high"` ([#77](https://github.com/zzzhushi/running-gait-analysis/issues/77)) |
 | Uncertainty | reported with every value | not reported ([#76](https://github.com/zzzhushi/running-gait-analysis/issues/76), [#78](https://github.com/zzzhushi/running-gait-analysis/issues/78)) |
@@ -28,7 +28,7 @@ substitutions stand between the two, none of them yet validated:
 |---|---|---|
 | Proximal point | greater-trochanter marker | pose `hip` keypoint |
 | Distal point | lateral-malleolus marker | pose `ankle` keypoint |
-| Denominator | **standing** trochanter-to-floor length, tape-measured | hip height above an estimated belt line, per clip |
+| Denominator | **standing** trochanter-to-floor length, tape-measured | thigh + shank, projected and per-frame; candidates under evaluation |
 | Contact | force-plate onset (vertical GRF > 20 N) | heuristic ankle-y boundary, `LIFT_FRACTION` |
 
 Calling the output `d_OH` would overstate what it is. It is a video proxy for that construct.
@@ -39,7 +39,7 @@ At each initial contact, in the sagittal plane:
 
 ```
 reach       = (ankle_x − hip_x) · facing          pixels, positive = ahead of the hip
-value       = reach / (floor_y − hip_y) · 100     percent of hip height above the ground
+value       = reach / denominator · 100           percent; denominator undecided, see below
 inclination = atan2(reach, ankle_y − hip_y)       degrees from vertical
 ```
 
@@ -48,37 +48,48 @@ inclination = atan2(reach, ankle_y − hip_y)       degrees from vertical
 | Proximal | pose `l_hip` / `r_hip` | **Keypoint proxy.** Offset from the greater trochanter unmeasured. |
 | Distal | pose `l_ankle` / `r_ankle` | **Keypoint proxy.** Offset from the lateral malleolus unmeasured. |
 | Event | initial contact | Defined in the event contract. Overstride samples it; it does not define it. |
-| Denominator | `floor_y − hip_y` at contact | **Provisional.** See below. |
-| Floor | median foot-point `y` across detected midstances | **Provisional.** Depends on the uncalibrated midstance detector — a recorded dependency, not an independent measurement. |
+| Denominator | **undecided** | Candidates and decision criterion below. Currently `ctx.leg`. |
+| Floor | median foot-point `y` across detected midstances | Only if a belt-line denominator is chosen. Depends on the uncalibrated midstance detector — a recorded dependency, not an independent measurement. |
 
 ### Coordinate frame and sign
 
 Image coordinates: origin **top-left**, `+x` right, `+y` **down**. A point physically higher off
-the ground has a *smaller* `y`. The denominator is written `floor_y − hip_y` and is positive
-because the floor is below the hip.
+the ground has a *smaller* `y`. Any vertical denominator is written so that it is positive —
+`floor_y − hip_y`, not the reverse.
 
 `facing` is `+1` when the runner moves toward `+x`, `−1` toward `−x`, so `value` is positive when
 the foot is ahead of the hip in the direction of travel, in either side view.
 
-### Why hip height, not limb length
+### The denominator is an open decision
 
-Thigh+shank is anatomically constant, so its variation across a clip is measurement error:
+**This contract does not select one.** An earlier draft chose hip height on the basis of lower
+variation across the committed fixtures. That reasoning does not hold: low variation is
+repeatability, and the question is which quantity the numerator should be divided by.
 
-| Denominator | Own CoV | Published construct |
+What is measured so far. Thigh+shank is anatomically constant, so its variation across a clip is
+measurement error:
+
+| Candidate | Own CoV | Relation to the published construct |
 |---|---|---|
-| thigh + shank | 5.1 – 6.6 % | none |
-| hip → floor | 1.2 – 2.1 % | closest analogue to Lieberman's normalization |
-| none (inclination) | — | none for hip→ankle |
+| thigh + shank (`ctx.leg`, current) | 5.1 – 6.6 % | neither the published normalization nor anything else published |
+| hip → estimated belt line | 1.2 – 2.1 % | closest analogue, but dynamic and per-clip rather than standing |
+| none (report inclination) | — | no published hip→ankle association |
 
-A projected limb foreshortens as the leg swings through depth; the belt line does not move.
+A projected limb foreshortens as the leg swings through depth; the belt line does not move. That
+explains the variance difference and says nothing about which is correct.
 
-**This demonstrates repeatability, not accuracy.** A dynamic, per-clip hip-to-floor distance is
-not the standing anthropometric length Lieberman measured, and posture, camera tilt, projection,
-pose localization and floor estimation all affect it. It stays `Provisional` until measured
-against a reference.
+Against hip→belt-line specifically: Lieberman measured a **standing** anthropometric length with
+a tape. A per-frame projected distance is affected by posture, camera tilt, projection, pose
+localization and floor estimation, and the floor estimate currently depends on the uncalibrated
+midstance detector.
 
-**Scope note.** `ctx.leg` remains the denominator for every other `%leg` metric. Changing it
-globally is a separate migration and is not in scope here.
+**What would settle it.** Stage 2 ([#82](https://github.com/zzzhushi/running-gait-analysis/issues/82))
+evaluates each candidate against hand-placed landmark references and a measured subject. The
+decision criterion is agreement with a reference length, not variance across fixtures. Until
+then the metric keeps `ctx.leg` and the value stays `Provisional`.
+
+**Scope note.** `ctx.leg` is the denominator for every other `%leg` metric. Changing it globally
+is a separate migration and is not in scope here.
 
 ## Evidence
 
@@ -96,8 +107,8 @@ Scoring requires the first three. Coaching requires all four. Overstride current
 
 | Constant | Value | Level |
 |---|---|---|
-| Formula | `reach / hip height` | `Referenced` construct, `Provisional` implementation |
-| Floor estimator | median foot `y` at midstance | `Provisional` |
+| Formula | `reach / denominator` | `Referenced` construct, `Provisional` implementation |
+| Denominator choice | undecided | open; criterion in #82 |
 | `good` upper bound | 8 %leg | `Heuristic` |
 | `warn` upper bound | 15 %leg | `Heuristic` |
 | Aggregation | median per side | `Heuristic` |
@@ -125,8 +136,24 @@ Measured on the committed fixtures. Listed largest first.
    footage, up to 6.5 on `male_side`.
 4. **Landmark proxies.** Neither pose `hip` nor pose `ankle` has been shown to coincide with the
    marker it stands in for. Systematic, unmeasured, and common to every variant of this metric.
-5. **Floor estimate assumes a fixed camera and a level belt**, and inherits the midstance
-   detector's error.
+5. **A belt-line denominator, if chosen, assumes a fixed camera and a level belt**, and
+   inherits the midstance detector's error.
+
+### The reference itself has a floor
+
+Damsted et al. 2015 report 95% limits of agreement of **5 to 12 frames** for identifying the
+initial-contact video frame, with footstrike-pattern kappa 0.83–0.88 intra-rater but 0.50–0.63
+inter-rater. On `female_overstride` at 120 fps that disagreement alone is worth:
+
+| LoA width | ms | resulting spread |
+|---|---|---|
+| 5 frames | 42 | 9.1 % |
+| 12 frames | 100 | 17.3 % |
+
+Both exceed the 8-wide good band. **Visual annotation cannot validate this metric to band
+precision**, at any frame rate — a higher rate samples more finely without making contact
+unambiguous to a human. Labels must therefore be intervals rather than frames, and no threshold
+claim can rest on visual annotation alone.
 
 ## Verification channel
 
