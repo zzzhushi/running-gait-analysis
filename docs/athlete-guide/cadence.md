@@ -8,7 +8,7 @@ GaitLab reports it in **steps per minute (spm)**.
 | | |
 |---|---|
 | Works from | Side or rear-view video |
-| Typical efficient range | 170–185 spm |
+| GaitLab reference range | 170–185 spm |
 | GaitLab only flags cadence outside | 160–195 spm |
 | Coaching notes appear for | Side-view clips only (rear view shows the number but won't suggest a change) |
 | Personalized using | Your leg length or height, plus treadmill speed if you entered it |
@@ -22,13 +22,13 @@ already run near their own efficient rate.
 
 Read your cadence together with your speed and the rest of your side-view report.
 
-- **Inside the typical range:** GaitLab won't suggest changing anything.
+- **Inside the reference range:** GaitLab won't suggest changing anything.
 - **Below the range:** the app may suggest trying a small cadence experiment. First check
   whether the clip also shows a longer, reaching step — that's often the more useful thing
   to work on.
 - **Above the range:** a high number isn't automatically a problem. GaitLab only flags high
   cadence once you're past 195 spm (or your personalized version of it), not for every value
-  above the typical range.
+  above the reference range.
 - **Missing or doesn't look right:** retake the clip rather than trusting the number.
 
 Your personal range shifts a bit based on your height/leg length and treadmill speed —
@@ -91,7 +91,7 @@ Cadence is GaitLab's best-measured timing metric — in our own comparisons agai
 running video, it's typically been accurate to within a step or two per minute, though it
 can be off by a few more in some cases (full numbers in the [appendix](#appendix)).
 
-What's less certain is everything built on top of the raw number: the "typical range" is a
+What's less certain is everything built on top of the raw number: the "reference range" is a
 coaching heuristic, the personalized shift is directionally supported but not a validated
 formula, and GaitLab hasn't yet been tested broadly enough to know how it performs across
 different runners, cameras, or conditions. Treat the cadence value itself as reliable; treat
