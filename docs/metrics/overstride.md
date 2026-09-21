@@ -277,8 +277,15 @@ cannot be diagnosed.
 | not a side view | no value |
 | frame rate below the supported floor | summary downgraded |
 | per-step spread above tolerance | aggregate marked unreliable; steps retained |
+| value implausible in sign or magnitude | step flagged; never reported as a good result |
 
 A single-contact clip must still return a traceable per-step measurement.
+
+The sign case is not hypothetical. The good band is open below (`good=(None, 8)`), so a foot
+landing far *behind* the hip scores 100. Every real fixture measures between +11.6 and +29.3;
+the synthetic demo runs measure −24 and −17 and are reported as good. A value whose sign is
+physically implausible indicates a facing or landmark error, not excellent form, and the band
+alone cannot distinguish the two.
 
 ## Interpretation
 
