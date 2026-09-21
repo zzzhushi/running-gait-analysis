@@ -33,6 +33,74 @@ substitutions stand between the two, none of them yet validated:
 
 Calling the output `d_OH` would overstate what it is. It is a video proxy for that construct.
 
+## What the code computes today
+
+Documented so the contract cannot be read as a description of current behaviour, and so a change
+can be shown to be a change.
+
+```text
+decoded frames + timestamps
+        |
+        v
+pose hip / knee / ankle coordinates + confidence
+        |                                  |
+        |                                  v
+        |                         ankle-y event detector (LIFT_FRACTION)
+        |                                  |
+        v                                  v
+facing direction + projected leg      detected strike frame
+        |                                  |
+        +----------------+-----------------+
+                         v
+          per-strike signed normalized reach
+                         |
+                         v
+               per-side median values
+                         |
+                         v
+        maximum side -> bands -> score / coaching
+```
+
+A correct subtraction still produces a wrong result if the wrong source frame, landmark, facing
+direction, contact time or denominator entered it.
+
+```text
+reach_px(s)       = (ankle_x(s) - hip_x(s)) * facing
+projected_leg_px  = median over ALL frames and BOTH sides of
+                      distance(hip, knee) + distance(knee, ankle)
+step_value(s)     = reach_px(s) / projected_leg_px * 100
+side_value        = median(step_value(s) for that side)
+headline          = max(left side_value, right side_value)
+```
+
+| Contract term | Current implementation | Evidence status |
+|---|---|---|
+| Proximal point | pose `l_hip` / `r_hip` | proxy; offset from an anatomical marker unmeasured |
+| Distal point | pose `l_ankle` / `r_ankle` | proxy; offset from lateral malleolus unmeasured |
+| Event | `ev.strikes[side]` | heuristic ankle-y boundary; never compared with a labelled contact |
+| Denominator | median projected thigh + shank, px | software-defined; anatomical and projection validity unmeasured |
+| Direction | `PoseSequence.facing_sign()` | one sign per clip, inferred from the left foot only |
+| Per-step unit | displayed `%leg` | misleading: it is percent of **projected pose-leg length** |
+| Within-side aggregation | median | product heuristic; no sample-size or spread rule |
+| Cross-side aggregation | `worst_high` (max of side medians) | product heuristic; discards which distribution produced the headline |
+| Bands | good ≤ 8, warn ≤ 15 | source not identified |
+| Confidence / scoring | `high`, scored | contradicted by integration status `UNVALIDATED` |
+
+Source: [`overstride.py`](../../gaitlab/metrics/definitions/overstride.py),
+[`ctx.py`](../../gaitlab/metrics/ctx.py), [`events.py`](../../gaitlab/core/events.py),
+[`clipcase.py`](../../tests/integration/clipcase.py).
+
+### Denominator behaviour worth recording
+
+`_leg_length` pools both anatomical sides and every frame into a single median, uses 2-D
+projected segment distances that change with out-of-plane motion even though anatomical segment
+length is constant, does not gate contributing hip/knee/ankle points on confidence, and ends in
+`median(lens) or 1.0` — which never substitutes `1.0`, because `NaN` is truthy (#50).
+
+None of this makes the denominator unusable. It establishes that `%leg` is not yet comparable
+with a published anthropometric normalization, and that the unit should be named **percent of
+projected pose-leg length** until it is.
+
 ## Definition
 
 At each initial contact, in the sagittal plane:
@@ -112,6 +180,24 @@ Scoring requires the first three. Coaching requires all four. Overstride current
 | `good` upper bound | 8 %leg | `Heuristic` |
 | `warn` upper bound | 15 %leg | `Heuristic` |
 | Aggregation | median per side | `Heuristic` |
+
+## Open decisions
+
+Each is a separate choice; "overstride" is not a complete definition until all are specified.
+Options are recorded rather than argued so a later decision has a baseline.
+
+| Decision | Options | Status |
+|---|---|---|
+| Proximal point | same-side pose hip / mid-hip / manually marked trochanter | same-side pose hip is the implementation candidate; mid-hip would hide side-specific tracking error |
+| Distal point | ankle / heel / heel-toe midpoint / toe | ankle is the candidate; heel and toe change meaning between strike patterns, so they are debug comparisons |
+| Contact event | ankle-y boundary / human-labelled video / force plate or pressure insole | labelled video is the first reference (#74); a criterion signal is the only route to accuracy |
+| Denominator | projected thigh+shank / hip-to-belt-line / external standing length / none (inclination) | **open** — see above |
+| Sign and coordinates | — | settled; convention recorded above |
+| Aggregation | median per side; minimum contacts and spread tolerance | statistic settled; the thresholds must come from validation data, not be written here first |
+
+**Selection principle.** None of these may be chosen using the output of the detector being
+evaluated. Picking a distal point because it makes the current strike frames look better would
+launder a detector bias into the definition.
 
 ## Aggregation
 
@@ -204,19 +290,32 @@ and injury." Until that changes, the feature answers only *what reach was measur
 
 Tracked in [#77](https://github.com/zzzhushi/running-gait-analysis/issues/77).
 
-## What would change this contract
+## When this becomes a final contract
 
-- Reference annotations for contact ([#74](https://github.com/zzzhushi/running-gait-analysis/issues/74)) → a measured timing disagreement, on a development clip and a held-out clip.
-- Hand-placed landmark references → the keypoint-proxy offsets become measured.
-- A criterion signal (force plate, pressure insole, marker-based capture) → the first true accuracy claim. Visual annotation gives *agreement*, not accuracy.
-- Evidence for a threshold → overstride could score.
+| Field | Required evidence |
+|---|---|
+| Proximal and distal points | named points plus measured offsets against independent references (#82) |
+| Contact | operational definition, reference method, uncertainty interval, and measured detector error (#74, #75) |
+| Denominator and unit | chosen option with agreement evidence, not fixture variance (#82) |
+| Per-step output | machine-readable trace back to frame, time and points (#71, #73) |
+| Aggregation | minimum observations, statistic, spread tolerance, refusal behaviour — from data |
+| Supported capture | view, frame rate, camera constraints, and rejection behaviour (#76, #81) |
+| Interpretation | informational unless a population-appropriate threshold is supported |
+| Actionability | no coaching claim without intervention evidence |
+
+A criterion signal — force plate, pressure insole, or marker-based capture — is the only route
+to an accuracy claim. Everything reachable from the committed fixtures is *agreement*.
+
+**The overall score needs its own contract.** Nothing here establishes a general rule for when a
+metric becomes eligible to affect a score; that is a product-level decision with its own evidence
+requirements.
 
 ## References
 
 | Source | Contributes |
 |---|---|
-| [Lieberman et al. 2015, *J Exp Biol* 218:3406](https://journals.biologists.com/jeb/article/218/21/3406/14416/Effects-of-stride-frequency-and-foot-position-at) | Defines `d_OH`: foot-to-hip AP distance at contact ÷ standing trochanter-to-floor length, contact from force-plate onset. Associates it with braking impulse (β=0.89, P=0.0005). The knee-referenced `d_OK` loses significance once `d_OH` is controlled. |
-| [Baker et al. 2024, *Sci Rep* 14:6347](https://pmc.ncbi.nlm.nih.gov/articles/PMC10942980/) | Same construct (trochanter → lateral malleolus ÷ leg length). Models thigh, shank and foot segment angles separately; marginal R² 55.7–86.4 %, conditional 94.7–99.4 %. States there is no consensus on excessive overstriding, and that reviews lack consensus on braking force and injury. Shares an author with Lieberman 2015, so the two are not independent. |
+| [Lieberman et al. 2015, *J Exp Biol* 218:3406](https://journals.biologists.com/jeb/article/218/21/3406/14416/Effects-of-stride-frequency-and-foot-position-at) | 14 experienced runners at 3.0 m/s, 500 Hz motion capture, 1000 Hz force plates; markers at greater trochanters, malleoli, calcaneus, metatarsal heads. Defines `d_OH`: foot-to-hip AP distance at contact ÷ standing trochanter-to-floor length, contact from force-plate onset. Associates it with braking impulse (β=0.89, P=0.0005). The knee-referenced `d_OK` loses significance once `d_OH` is controlled. |
+| [Baker et al. 2024, *Sci Rep* 14:6347](https://pmc.ncbi.nlm.nih.gov/articles/PMC10942980/) | Ten recreational runners. Same construct (trochanter → lateral malleolus ÷ leg length). Models thigh, shank and foot segment angles separately; marginal R² 55.7–86.4 %, conditional 94.7–99.4 %. States there is no consensus on excessive overstriding, and that reviews lack consensus on braking force and injury. Shares an author with Lieberman 2015, so the two are not independent. |
 | [Damsted et al. 2015](https://pubmed.ncbi.nlm.nih.gov/25920964/) | Reliability of video-based identification of footstrike pattern and of the video time frame at initial contact. Establishes that visual initial-contact frame selection carries nontrivial rater disagreement. *Specific limits-of-agreement figures not independently verified here.* |
 | [Normative 2D running kinematics, adolescent runners](https://pmc.ncbi.nlm.nih.gov/articles/PMC11299315/) | Tibia inclination at contact 8.5° ± 3.2°, n=53, 120 fps. A different segment; listed to prevent conflation. |
 | [Crowell & Davis 2011](https://pubmed.ncbi.nlm.nih.gov/20889020/) | Shank-angle retraining. Frequently cited for overstride but measures a **different variable**; see `d_OK` above. |
