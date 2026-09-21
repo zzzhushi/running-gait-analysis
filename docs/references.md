@@ -109,7 +109,7 @@ Index  Name            Used?  Notes
 | What | URL | Notes |
 |---|---|---|
 | Lieberman et al. 2015 — stride frequency & foot position at landing | https://journals.biologists.com/jeb/article/218/21/3406/14416/Effects-of-stride-frequency-and-foot-position-at | **Defines the construct `overstride` computes**: `d_OH`, foot-to-hip distance at contact ÷ leg length. Predicts braking impulse (β=0.89) |
-| Baker et al. 2024 — predicting overstriding with IMUs | https://www.nature.com/articles/s41598-024-56888-4 | Same construct (trochanter → lateral malleolus at contact ÷ leg length); segment angles explain 95–98% of its variance |
+| Baker et al. 2024 — predicting overstriding with IMUs | https://www.nature.com/articles/s41598-024-56888-4 | Same construct (trochanter → lateral malleolus at contact ÷ leg length). Models thigh, shank and foot segment angles separately; marginal R² 55.7–61.8% (IMU) and 83.0–86.4% (motion capture). The 94.7–99.4% figures are conditional R², including participant random effects |
 | Lieberman et al. 2010 — foot strike and impact (Nature) | https://www.nature.com/articles/nature08723 | Heel-strike with overstride = higher collision force |
 | Altman & Davis 2012 — foot strike classification | https://pubmed.ncbi.nlm.nih.gov/22075193/ | Defines foot-strike angle relative to the ground in the sagittal plane |
 | Crowell & Davis 2011 — shank angle retraining | https://pubmed.ncbi.nlm.nih.gov/20889020/ | **Shank angle, not the hip-referenced distance** — a different variable. Lieberman 2015's knee-referenced `d_OK` loses significance once `d_OH` is controlled, so this does not support the `overstride` bands |

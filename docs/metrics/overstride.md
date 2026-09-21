@@ -1,16 +1,17 @@
 # Overstride
 
-> Measurement contract. Tracked by [#70](https://github.com/zzzhushi/running-gait-analysis/issues/70);
-> the epic is [#69](https://github.com/zzzhushi/running-gait-analysis/issues/69).
+Engineering measurement contract: what this metric measures, how, and on what evidence. The
+athlete-facing explanation of the same metric belongs in `docs/athlete-guide/`; this document is
+its upstream source for the measurement and confidence sections.
 
 **This document specifies the target, not current behaviour.** Where the two differ today:
 
 | | Contract | Code today |
 |---|---|---|
-| Denominator | **undecided** — candidates and decision criterion below | `ctx.leg`, thigh + shank; unchanged until [#82](https://github.com/zzzhushi/running-gait-analysis/issues/82) settles it |
+| Denominator | **undecided** — candidates and decision criterion below | `ctx.leg`, thigh + shank; unchanged until landmark validation settles it |
 | Cross-side aggregation | reported separately | `worst_high`, the worse side |
-| Scoring | informational | `scored=True`, `confidence="high"` ([#77](https://github.com/zzzhushi/running-gait-analysis/issues/77)) |
-| Uncertainty | reported with every value | not reported ([#76](https://github.com/zzzhushi/running-gait-analysis/issues/76), [#78](https://github.com/zzzhushi/running-gait-analysis/issues/78)) |
+| Scoring | informational | `scored=True`, `confidence="high"` |
+| Uncertainty | reported with every value | not reported |
 
 ## The question this answers
 
@@ -95,7 +96,7 @@ Source: [`overstride.py`](../../gaitlab/metrics/definitions/overstride.py),
 `_leg_length` pools both anatomical sides and every frame into a single median, uses 2-D
 projected segment distances that change with out-of-plane motion even though anatomical segment
 length is constant, does not gate contributing hip/knee/ankle points on confidence, and ends in
-`median(lens) or 1.0` — which never substitutes `1.0`, because `NaN` is truthy (#50).
+`median(lens) or 1.0` — which never substitutes `1.0`, because `NaN` is truthy.
 
 None of this makes the denominator unusable. It establishes that `%leg` is not yet comparable
 with a published anthropometric normalization, and that the unit should be named **percent of
@@ -151,7 +152,7 @@ a tape. A per-frame projected distance is affected by posture, camera tilt, proj
 localization and floor estimation, and the floor estimate currently depends on the uncalibrated
 midstance detector.
 
-**What would settle it.** Stage 2 ([#82](https://github.com/zzzhushi/running-gait-analysis/issues/82))
+**What would settle it.** Landmark validation
 evaluates each candidate against hand-placed landmark references and a measured subject. The
 decision criterion is agreement with a reference length, not variance across fixtures. Until
 then the metric keeps `ctx.leg` and the value stays `Provisional`.
@@ -176,7 +177,7 @@ Scoring requires the first three. Coaching requires all four. Overstride current
 | Constant | Value | Level |
 |---|---|---|
 | Formula | `reach / denominator` | `Referenced` construct, `Provisional` implementation |
-| Denominator choice | undecided | open; criterion in #82 |
+| Denominator choice | undecided | criterion recorded under Open decisions |
 | `good` upper bound | 8 %leg | `Heuristic` |
 | `warn` upper bound | 15 %leg | `Heuristic` |
 | Aggregation | median per side | `Heuristic` |
@@ -190,7 +191,7 @@ Options are recorded rather than argued so a later decision has a baseline.
 |---|---|---|
 | Proximal point | same-side pose hip / mid-hip / manually marked trochanter | same-side pose hip is the implementation candidate; mid-hip would hide side-specific tracking error |
 | Distal point | ankle / heel / heel-toe midpoint / toe | ankle is the candidate; heel and toe change meaning between strike patterns, so they are debug comparisons |
-| Contact event | ankle-y boundary / human-labelled video / force plate or pressure insole | labelled video is the first reference (#74); a criterion signal is the only route to accuracy |
+| Contact event | ankle-y boundary / human-labelled video / force plate or pressure insole | labelled video is the first reference; a criterion signal is the only route to accuracy |
 | Denominator | projected thigh+shank / hip-to-belt-line / external standing length / none (inclination) | **open** — see above |
 | Sign and coordinates | — | settled; convention recorded above |
 | Aggregation | median per side; minimum contacts and spread tolerance | statistic settled; the thresholds must come from validation data, not be written here first |
@@ -213,8 +214,7 @@ changes which limb it reports between clips of the same runner.
 Measured on the committed fixtures. Listed largest first.
 
 1. **Contact-frame timing dominates.** On `female_overstride` (120 fps), shifting the sampled
-   frame ±100 ms moves the value from 38.8 to 8.9 %. Decomposed in
-   [#75](https://github.com/zzzhushi/running-gait-analysis/issues/75).
+   frame ±100 ms moves the value from 38.8 to 8.9 %.
 2. **Per-step spread exceeds the good band.** One clip, one extractor: L spread 13.5, R spread
    15.7, against a band 8 wide. This mixes real gait variability with measurement error; the two
    must be reported as different quantities.
@@ -275,7 +275,7 @@ cannot be diagnosed.
 | fewer than 4 contacts on a side | no side summary; per-step values remain |
 | hip or ankle confidence below threshold at contact | that step marked invalid with a reason; step retained |
 | not a side view | no value |
-| frame rate below the supported floor | summary downgraded ([#76](https://github.com/zzzhushi/running-gait-analysis/issues/76)) |
+| frame rate below the supported floor | summary downgraded |
 | per-step spread above tolerance | aggregate marked unreliable; steps retained |
 
 A single-contact clip must still return a traceable per-step measurement.
@@ -288,18 +288,18 @@ Baker et al. 2024: "there is currently no consensus on what qualifies as excessi
 and "recent systematic reviews show a lack of consensus on the relationship between braking force
 and injury." Until that changes, the feature answers only *what reach was measured*.
 
-Tracked in [#77](https://github.com/zzzhushi/running-gait-analysis/issues/77).
+Removing the unevidenced scoring and coaching is tracked separately from this contract.
 
 ## When this becomes a final contract
 
 | Field | Required evidence |
 |---|---|
-| Proximal and distal points | named points plus measured offsets against independent references (#82) |
-| Contact | operational definition, reference method, uncertainty interval, and measured detector error (#74, #75) |
-| Denominator and unit | chosen option with agreement evidence, not fixture variance (#82) |
-| Per-step output | machine-readable trace back to frame, time and points (#71, #73) |
+| Proximal and distal points | named points plus measured offsets against independent references |
+| Contact | operational definition, reference method, uncertainty interval, and measured detector error |
+| Denominator and unit | chosen option with agreement evidence, not fixture variance |
+| Per-step output | machine-readable trace back to frame, time and points |
 | Aggregation | minimum observations, statistic, spread tolerance, refusal behaviour — from data |
-| Supported capture | view, frame rate, camera constraints, and rejection behaviour (#76, #81) |
+| Supported capture | view, frame rate, camera constraints, and rejection behaviour |
 | Interpretation | informational unless a population-appropriate threshold is supported |
 | Actionability | no coaching claim without intervention evidence |
 
