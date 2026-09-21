@@ -242,7 +242,7 @@ Direct answers to "confirm we track these and what the gaps are":
 | Metric | Tracked now? | Where / gap |
 |---|---|---|
 | **Ankle dorsiflexion** | **No** | Keypoints exist (knee, ankle, big_toe) so it is *computable* — angle of `knee→ankle` vs `ankle→toe` — but no metric computes it. **Gap:** add `ankle_dorsiflexion` at mid-stance + a plantarflexion-at-toe-off read; Moderate confidence (foot keypoints noisy, fps-bound). |
-| **Contact point relative to COM (overstride)** | **Yes** | `overstride` (`metrics._compute_side`). **Difference vs spec:** we reference the **hip** (`ankle_x − hip_x`), not a modelled COM projection. Equivalent intent; a true COM proxy (55–57% height) is *proposed* only. |
+| **Contact point relative to COM (overstride)** | **Yes** | `overstride`. Referenced to the **hip**, which is the published operationalization — Lieberman et al. 2015 defines `d_OH` as the foot-to-hip distance at contact normalized to leg length, and finds it predicts braking impulse; the knee-referenced variant loses significance once `d_OH` is controlled. A modelled COM projection is not required and is not proposed. Contract: [`docs/metrics/overstride.md`](metrics/overstride.md). |
 | **Trunk angle** | **Yes** | `trunk_lean`, good 5–12°. High confidence. |
 | **Pelvic tilt** | **Split** | *Lateral* pelvic tilt = **pelvic drop** (`pelvic_drop`, rear) — **tracked**. *Anterior/sagittal* pelvic tilt — **not tracked**, and hard; see §8. |
 | **Arm swing across midline** | **Yes** | `arm_crossover` (rear, boolean). Side amplitude via `arm_swing`. |

@@ -1,4 +1,17 @@
-"""Overstride — how far ahead of the hip the foot lands at contact, side view."""
+"""Overstride — horizontal ankle-to-hip offset at initial contact, side view.
+
+Positive means the foot lands ahead of the hip in the direction of travel; `ctx.facing`
+supplies that direction so either side view reads the same sign. Divided by a projected
+pose-leg length and reported as a percentage, then aggregated per side as a median across that
+side's contacts. The unit is percent of that projected length, not of an anthropometric one.
+
+Modeled after Lieberman et al. 2015's d_OH (J Exp Biol 218:3406), which associates this
+distance with braking impulse. Not a reproduction of it: the landmarks are pose keypoint
+proxies for the markers that work used, the denominator is projected rather than a standing
+anthropometric length, and contact is a heuristic boundary rather than force-plate onset. The
+good/warn bands come from neither source and carry no evidence. See
+docs/metrics/overstride.md for the status of each constant.
+"""
 
 from __future__ import annotations
 
@@ -30,6 +43,8 @@ register(MetricDef(
     key=MetricKey.OVERSTRIDE,
     label="Overstride",
     unit="%leg",
+    # Heuristic bands: no published percent-of-leg-length cutoff for overstride was found.
+    # TODO: add comment citing a threshold source, or stop scoring this metric.
     good=(None, 8),
     warn=(None, 15),
     note="Foot should land close to under your hips. Landing far ahead (>~8% of leg length) brakes you.",
