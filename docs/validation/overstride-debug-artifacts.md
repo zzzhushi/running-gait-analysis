@@ -29,6 +29,13 @@ The record contains:
   hand-placed landmarks as separate layers; and
 - refusal/validity reasons instead of unexplained missing numbers.
 
+Bundles exported by the CLI also record SHA-256 identities for the input video and pose file.
+When a saved record is rendered again, the CLI refuses any video whose bytes do not match the
+recorded video digest; a same-sized but different clip cannot receive a falsely traceable
+overlay. This establishes re-render provenance, not that a manually supplied pose file was
+originally extracted from that video. That stronger claim requires extractor-level video
+provenance and remains listed under `does_not_validate`.
+
 `measurement.production_report.value` is the unrounded result of the registered formula and
 aggregator. The report card rounds to three decimals when it serializes, so a record showing
 `24.81505325125974` and a card showing `24.815` are the same measurement, not a disagreement.

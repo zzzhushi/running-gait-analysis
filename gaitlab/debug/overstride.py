@@ -28,6 +28,7 @@ SCHEMA = "gaitlab.overstride-debug/v1"
 DOES_NOT_VALIDATE = [
     "correct pose-landmark localization",
     "correct initial-contact timing",
+    "that a manually supplied pose file was extracted from the supplied video",
     "anatomical or clinical meaning of the overstride value",
 ]
 

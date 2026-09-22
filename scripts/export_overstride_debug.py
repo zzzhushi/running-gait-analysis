@@ -19,6 +19,7 @@ record; they never call the metric formula.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -59,6 +60,35 @@ def _load_json(path: Path):
 def _write_json(path: Path, value) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n")
+
+
+def _media_identity(path: Path) -> dict[str, object]:
+    """A portable identity for an input artifact, without recording its full local path."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return {
+        "filename": path.name,
+        "bytes": path.stat().st_size,
+        "sha256": digest.hexdigest(),
+    }
+
+
+def _require_record_video(bundle: dict, video: Path) -> None:
+    """Refuse a re-render whose pixels are not the media named by the record."""
+    expected = bundle.get("source", {}).get("video")
+    if not isinstance(expected, dict) or not isinstance(expected.get("sha256"), str):
+        raise SystemExit(
+            "record has no source-video digest; cannot safely re-render it. "
+            "Create a new debug record from its pose input first."
+        )
+    actual = _media_identity(video)
+    if actual["sha256"] != expected["sha256"]:
+        raise SystemExit(
+            "video bytes do not match this debug record's source video; "
+            "refusing a falsely traceable overlay"
+        )
 
 
 def _contact_sheet_rows(bundle, detected_rows):
@@ -121,9 +151,13 @@ def main(argv=None) -> int:
             source_id=args.video.name,
             annotations=annotations,
         )
+        bundle["source"]["video"] = _media_identity(args.video)
+        bundle["source"]["pose_input"] = _media_identity(args.pose)
         _write_json(record_path, bundle)  # authoritative artifact is always first
     else:
         bundle = _load_json(args.record)
+        if not args.record_only:
+            _require_record_video(bundle, args.video)
         _write_json(record_path, bundle)
 
     if args.record_only:

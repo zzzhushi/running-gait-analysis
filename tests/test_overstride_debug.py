@@ -8,13 +8,16 @@ from __future__ import annotations
 
 import csv
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 from PIL import Image, PngImagePlugin
 
 from gaitlab.core.events import GaitEvents
+from gaitlab.core.schema import PoseSequence
 from gaitlab.debug.overstride import build_overstride_debug_record, record_by_id
+from scripts import export_overstride_debug
 from scripts.overstride_render import (
     SourceFrames,
     find_row,
@@ -274,6 +277,10 @@ def test_committed_sequence_locks_decode_index_and_orientation():
     source.preload([6, 2])
     decoded = source(6)
 
+    # _background() gives each source frame a distinct base color away from its grid and text.
+    # This is the actual frame-index assertion; the four corner markers below are identical in
+    # every frame and specifically establish orientation.
+    assert decoded.getpixel((100, 100)) == (49, 50, 60)
     assert decoded.getpixel((5, 5)) == (220, 38, 38)       # top-left red
     assert decoded.getpixel((635, 5)) == (34, 197, 94)     # top-right green
     assert decoded.getpixel((5, 715)) == (234, 179, 8)     # bottom-left yellow
@@ -284,3 +291,86 @@ def test_committed_sequence_locks_decode_index_and_orientation():
     assert plan["decoded_index"] == 6
     assert rendered.getpixel((5, 5)) == (220, 38, 38)
     assert rendered.getpixel((635, 5)) == (34, 197, 94)
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="renderer video decoding requires ffmpeg")
+def test_rotation_tagged_video_aligns_ffmpeg_pixels_and_display_space_pose():
+    """The renderer must use the same display rotation as the pose extractor.
+
+    The browser fixture is a lossless 90-degree display-matrix remux of male_side.mp4. The
+    source pose belongs to its unrotated 720x1280 pixels, so the expected display transform is
+    x'=y, y'=719-x. This tests the renderer's ffmpeg path, not WebCodecs or Pillow GIF decode.
+    """
+    root = Path(__file__).resolve().parents[1]
+    original = json.loads((root / "tests" / "data" / "male_side.pose.blazepose.json").read_text())
+    coded_width, coded_height = original["width"], original["height"]
+    display = dict(original)
+    display["width"], display["height"] = coded_height, coded_width
+    display["source"] = "display-rotated browser fixture"
+    display["frames"] = [
+        [
+            [point[1], coded_width - 1 - point[0], point[2]] if point[2] > 0 else list(point)
+            for point in frame
+        ]
+        for frame in original["frames"]
+    ]
+    sequence = PoseSequence.from_pose_dict(display).validate()
+    frame_index = 10
+    bundle = build_overstride_debug_record(
+        sequence, GaitEvents(), source_id="rotated_male_side.mp4"
+    )
+
+    rotated = SourceFrames(root / "tests" / "browser" / "rotated_male_side.mp4", (1280, 720))
+    unrotated = SourceFrames(root / "tests" / "data" / "male_side.mp4", (720, 1280))
+    rotated.preload([frame_index])
+    decoded = rotated(frame_index)
+
+    # An ordinary, non-overlay pixel establishes the actual ffmpeg display transform.
+    assert decoded.getpixel((200, 619)) == unrotated(frame_index).getpixel((100, 200))
+    row = find_row(bundle, "l", frame_index)
+    rendered, plan = render_annotated_frame(bundle, row, decoded, show_detector=False)
+    nose = row["pose_landmarks"]["nose"]
+    assert plan["decoded_index"] == frame_index
+    assert rendered.getpixel((round(nose["x"]), round(nose["y"]))) == (220, 229, 239)
+
+
+def test_saved_record_refuses_a_same_sized_different_source_video(tmp_path):
+    """A filename or dimensions cannot establish that render pixels match the saved record."""
+    case = load_authored_reach_fixture()
+    pose = tmp_path / "pose.json"
+    pose.write_text(json.dumps({
+        "fps": case.sequence.fps,
+        "width": case.sequence.width,
+        "height": case.sequence.height,
+        "view": case.sequence.view,
+        "frames": case.sequence.frames,
+        "keypoint_names": case.sequence.keypoint_names,
+        "timestamps": case.sequence.timestamps,
+        "source": "authored provenance test",
+    }))
+    source_a = tmp_path / "source-a.gif"
+    source_b = tmp_path / "source-b.gif"
+    a_frames = [Image.new("RGB", (640, 720), "#123456") for _ in range(case.sequence.n)]
+    b_frames = [Image.new("RGB", (640, 720), "#654321") for _ in range(case.sequence.n)]
+    a_frames[0].save(source_a, save_all=True, append_images=a_frames[1:], duration=17, loop=0)
+    b_frames[0].save(source_b, save_all=True, append_images=b_frames[1:], duration=17, loop=0)
+
+    initial = tmp_path / "initial"
+    assert export_overstride_debug.main([
+        "--pose", str(pose), "--video", str(source_a), "--output", str(initial), "--record-only",
+    ]) == 0
+    record = initial / "debug-record.json"
+    saved = json.loads(record.read_text())
+    assert saved["source"]["video"]["sha256"]
+    assert saved["source"]["pose_input"]["sha256"]
+
+    replay = tmp_path / "replay"
+    assert export_overstride_debug.main([
+        "--record", str(record), "--video", str(source_a), "--output", str(replay),
+    ]) == 0
+    assert (replay / "manifest.json").is_file()
+
+    with pytest.raises(SystemExit, match="video bytes do not match"):
+        export_overstride_debug.main([
+            "--record", str(record), "--video", str(source_b), "--output", str(tmp_path / "wrong"),
+        ])
