@@ -12,6 +12,8 @@ import pytest
 
 from gaitlab.core.reach import Denominator, reach_curve
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
+from gaitlab.metrics.ctx import leg_denominator
+from tests.pose_transforms import mirror_image, retime, scale, swap_sides, translate
 
 LEG100 = Denominator.injected(100.0)
 
@@ -122,8 +124,6 @@ def test_a_bad_denominator_invalidates_percentages_but_not_pixels(bad_px, reason
 
 def test_the_curve_carries_the_denominator_and_its_provenance(synth):
     """A suspicious percentage must be traceable to the observations behind its denominator."""
-    from gaitlab.metrics.ctx import leg_denominator
-
     seq = synth("side-left", fps=60, duration=4, cadence=170, seed=1)
     denominator = leg_denominator(seq)
     s = reach_curve(seq, "l", denominator, facing=1)[0]
@@ -150,8 +150,6 @@ def test_the_curve_carries_the_denominator_and_its_provenance(synth):
 
 def test_a_structurally_missing_knee_cannot_become_denominator_geometry():
     """An untracked point is the schema's (0,0,0) sentinel, not an image measurement."""
-    from gaitlab.metrics.ctx import leg_denominator
-
     seq = pose_from_points("side-left", [{
         "l_hip": (300, 500),
         "l_ankle": (320, 600),
@@ -169,8 +167,6 @@ def test_a_structurally_missing_knee_cannot_become_denominator_geometry():
 
 
 def test_denominator_uses_complete_observations_and_excludes_incomplete_ones():
-    from gaitlab.metrics.ctx import leg_denominator
-
     seq = pose_from_points("side-left", [
         {"l_hip": (300, 500), "l_ankle": (320, 600)},  # knee absent
         {"l_hip": (300, 500), "l_knee": (300, 550), "l_ankle": (300, 600)},
@@ -199,3 +195,86 @@ def test_one_sample_per_frame_retrievable_without_a_full_report(synth):
     assert [s.t for s in curve] == [seq.time_at(f) for f in range(seq.n)]
     assert {s.side for s in curve} == {"l"}
     assert {s.processing for s in curve} == {"raw"}
+
+
+# --- invariants --------------------------------------------------------------
+#
+# Each transform is tested alone. Combining reflection, a facing flip, and a side-label
+# swap into one "mirror the clip" case would let two sign errors cancel and still pass.
+
+_RICH_POINTS = {
+    "l_hip": (300, 500), "l_ankle": (320, 600),
+    "l_heel": (310, 605), "l_big_toe": (340, 605),
+}
+
+
+def test_mirroring_the_image_and_flipping_facing_leaves_reach_unchanged():
+    """A horizontally flipped video reverses the apparent direction of travel, but not
+    which foot is which; the two must cancel."""
+    seq = pose_from_points("side-left", [_RICH_POINTS])
+    original = reach_curve(seq, "l", LEG100, facing=1)[0]
+    mirrored = reach_curve(mirror_image(seq), "l", LEG100, facing=-1)[0]
+
+    assert mirrored.ankle_reach.pct == pytest.approx(original.ankle_reach.pct)
+    assert mirrored.heel_reach.pct == pytest.approx(original.heel_reach.pct)
+    assert mirrored.toe_reach.pct == pytest.approx(original.toe_reach.pct)
+    assert mirrored.midpoint_reach.pct == pytest.approx(original.midpoint_reach.pct)
+    assert mirrored.inclination_deg == pytest.approx(original.inclination_deg)
+
+
+def test_swapping_left_and_right_labels_swaps_the_sides_reach_values():
+    seq = pose_from_points("side-left", [{
+        "l_hip": (300, 500), "l_ankle": (320, 600),   # reach = +20
+        "r_hip": (340, 500), "r_ankle": (345, 600),   # reach = +5
+    }])
+    swapped = swap_sides(seq)
+
+    assert reach_curve(seq, "l", LEG100, facing=1)[0].ankle_reach.pct == pytest.approx(20.0)
+    assert reach_curve(seq, "r", LEG100, facing=1)[0].ankle_reach.pct == pytest.approx(5.0)
+    assert reach_curve(swapped, "l", LEG100, facing=1)[0].ankle_reach.pct == pytest.approx(5.0)
+    assert reach_curve(swapped, "r", LEG100, facing=1)[0].ankle_reach.pct == pytest.approx(20.0)
+
+
+def test_scaling_every_coordinate_leaves_the_percentage_unchanged():
+    """A denominator derived from the same pose scales with it, so the ratio survives even
+    though the pixel offset does not."""
+    seq = pose_from_points("side-left", [{
+        "l_hip": (300, 500), "l_knee": (300, 550), "l_ankle": (320, 600),
+    }])
+    scaled = scale(seq, 3.0)
+    original = reach_curve(seq, "l", leg_denominator(seq), facing=1)[0]
+    grown = reach_curve(scaled, "l", leg_denominator(scaled), facing=1)[0]
+
+    assert grown.ankle_reach.px == pytest.approx(original.ankle_reach.px * 3.0)
+    assert grown.ankle_reach.pct == pytest.approx(original.ankle_reach.pct)
+    assert grown.inclination_deg == pytest.approx(original.inclination_deg)
+
+
+def test_translating_every_coordinate_leaves_reach_unchanged():
+    """Reach is a difference between two points, so a shared offset cancels regardless of
+    the denominator."""
+    seq = pose_from_points("side-left", [_RICH_POINTS])
+    moved = translate(seq, dx=1000.0, dy=-2000.0)
+    original = reach_curve(seq, "l", LEG100, facing=1)[0]
+    shifted = reach_curve(moved, "l", LEG100, facing=1)[0]
+
+    assert shifted.ankle_reach.px == pytest.approx(original.ankle_reach.px)
+    assert shifted.ankle_reach.pct == pytest.approx(original.ankle_reach.pct)
+    assert shifted.midpoint_reach.pct == pytest.approx(original.midpoint_reach.pct)
+    assert shifted.inclination_deg == pytest.approx(original.inclination_deg)
+
+
+def test_reach_does_not_depend_on_timestamps(synth):
+    """Overstride is not a timing metric: only detecting *which* frame is a strike depends
+    on timestamps, not the reach curve's value at a given frame."""
+    seq = synth("side-left", fps=60, duration=3, cadence=170, seed=2)
+    stretched = retime(seq, k=1.7)
+
+    original = reach_curve(seq, "l", LEG100, facing=1)
+    retimed = reach_curve(stretched, "l", LEG100, facing=1)
+
+    assert [s.t for s in original] != [s.t for s in retimed]
+    for o, r in zip(original, retimed):
+        assert r.ankle_reach.px == o.ankle_reach.px
+        assert r.ankle_reach.pct == o.ankle_reach.pct
+        assert r.inclination_deg == o.inclination_deg
