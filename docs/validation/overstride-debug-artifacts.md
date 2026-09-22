@@ -150,6 +150,12 @@ beside it. Regenerate all four with:
 python scripts/gen_overstride_debug_sequence.py
 ```
 
+`python scripts/gen_overstride_debug_sequence.py --check` regenerates into a temporary
+directory and names any stale artifact. JSON and GIFs are checked byte-for-byte. PNGs are
+checked by dimensions, decoded pixels, and embedded traceability metadata because compressed
+PNG bytes can vary with the host zlib build. The test suite runs the same check, so record or
+renderer drift cannot leave the committed evidence silently stale.
+
 The zero and +20 `%leg` endpoints are taken directly from the canonical
 `tests/fixtures/overstride_stage3.json` geometry. Intermediate frames change only the distal x
 coordinates; the sequence tests decoding, time, orientation, record identity, and drawing—not

@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 import pytest
-from PIL import Image
+from PIL import Image, PngImagePlugin
 
 from gaitlab.core.events import GaitEvents
 from gaitlab.debug.overstride import build_overstride_debug_record, record_by_id
@@ -233,11 +233,38 @@ def test_committed_sequence_is_reproducible_from_the_current_code():
     """Checking a few of the record's fields cannot notice a changed record shape.
 
     Without this, adding a field to the builder leaves the committed artifacts describing a
-    format the code no longer produces, and every other test here still passes.
+    format the code no longer produces, and every other test here still passes. PNG pixels,
+    dimensions and metadata are exact; its host-dependent compression bytes are not evidence.
     """
     from scripts.gen_overstride_debug_sequence import stale_artifacts
 
     assert not stale_artifacts()
+
+
+def test_png_staleness_compares_visual_evidence_not_host_compression(tmp_path, monkeypatch):
+    """A zlib byte difference is harmless; a pixel or traceability change is stale."""
+    from scripts import gen_overstride_debug_sequence as generator
+
+    assets = tmp_path / "assets"
+    assets.mkdir()
+    generator.write_artifacts(assets)
+    monkeypatch.setattr(generator, "ASSETS", assets)
+    path = assets / "overstride-debug-sequence.png"
+    original_bytes = path.read_bytes()
+
+    with Image.open(path) as source:
+        image = source.copy()
+        metadata = dict(source.info)
+    pnginfo = PngImagePlugin.PngInfo()
+    for key, value in metadata.items():
+        pnginfo.add_text(key, value)
+    image.save(path, format="PNG", pnginfo=pnginfo, compress_level=0)
+    assert path.read_bytes() != original_bytes
+    assert generator.stale_artifacts() == []
+
+    image.putpixel((0, 0), (0, 0, 0))
+    image.save(path, format="PNG", pnginfo=pnginfo, compress_level=0)
+    assert generator.stale_artifacts() == ["overstride-debug-sequence.png"]
 
 
 def test_committed_sequence_locks_decode_index_and_orientation():

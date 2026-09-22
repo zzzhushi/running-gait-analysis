@@ -130,14 +130,31 @@ def write_artifacts(destination: Path) -> None:
 
 
 def stale_artifacts() -> list[str]:
-    """Names of committed artifacts the current code no longer reproduces."""
+    """Names of committed artifacts the current code no longer reproduces.
+
+    PNG compression is allowed to differ across host zlib builds. Compare its decoded
+    pixels and text metadata instead; those are the evidence a reviewer sees and the record
+    identifiers that make it traceable. JSON and GIF remain byte-for-byte comparisons.
+    """
+    def matches(committed: Path, generated: Path) -> bool:
+        if not committed.is_file():
+            return False
+        if committed.suffix != ".png":
+            return committed.read_bytes() == generated.read_bytes()
+        with Image.open(committed) as expected, Image.open(generated) as actual:
+            return (
+                expected.mode == actual.mode
+                and expected.size == actual.size
+                and expected.info == actual.info
+                and expected.tobytes() == actual.tobytes()
+            )
+
     with tempfile.TemporaryDirectory() as tmp:
         fresh = Path(tmp)
         write_artifacts(fresh)
         return [
             name for name in ARTIFACTS
-            if not (ASSETS / name).is_file()
-            or (fresh / name).read_bytes() != (ASSETS / name).read_bytes()
+            if not matches(ASSETS / name, fresh / name)
         ]
 
 
