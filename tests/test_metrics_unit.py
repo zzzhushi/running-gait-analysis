@@ -11,12 +11,14 @@ from dataclasses import replace
 
 import pytest
 
-from gaitlab.core.events import GaitEvents, detect_events
+from gaitlab.core.events import GaitEvents
+from gaitlab.core.reach import reach_curve
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 from gaitlab.metrics.compute import compute
-from gaitlab.metrics.ctx import Ctx, _leg_length, knee_flexion_at, median
+from gaitlab.metrics.ctx import Ctx, _leg_length, knee_flexion_at
 from gaitlab.metrics.defs import METRIC_DEFS
 from gaitlab.metrics.keys import MetricKey
+from tests.reach_fixture import load_authored_reach_fixture
 
 
 def pose_from_points(view, frames, fps=60, width=1080, height=1920):
@@ -79,31 +81,27 @@ def test_overstride_worst_side_is_max(synth):
     assert m["values"]["overstride"] == pytest.approx(max(ps["l"]["overstride"], ps["r"]["overstride"]))
 
 
-def test_overstride_reads_the_reach_curve_rather_than_recomputing(synth):
-    """Sentinels cannot arise from the pose, so matching them proves the data path."""
-    seq = synth("side-left", fps=60, duration=6, cadence=170, seed=8)
-    ev = detect_events(seq)
-    real = Ctx(seq, ev, None)
-    strikes = ev.strikes["l"]
-    assert len(strikes) >= 3, "need several strikes for the median to be meaningful"
+def test_overstride_samples_the_authored_trace_at_its_single_forced_contact():
+    """One record now proves curve wiring, forced-frame selection and the final value."""
+    case = load_authored_reach_fixture()
+    curve = reach_curve(case.sequence, case.side, case.denominator, case.facing)
 
-    sentinels = [1000.0 + i for i in range(seq.n)]
-
-    class SpyCtx:
+    class AuthoredCtx:
         def __init__(self):
-            self.seq, self.ev, self.facing, self.leg = seq, ev, real.facing, real.leg
+            self.ev = GaitEvents(strikes=case.forced_strikes)
             self.calls = []
 
         def reach_curve(self, side):
             self.calls.append(side)
-            return [replace(s, ankle_reach=replace(s.ankle_reach, pct=sentinels[i]))
-                    for i, s in enumerate(real.reach_curve(side))]
+            assert side == case.side
+            return curve
 
-    spy = SpyCtx()
-    got = METRIC_DEFS[MetricKey.OVERSTRIDE].compute(spy, "l")
+    ctx = AuthoredCtx()
+    got = METRIC_DEFS[MetricKey.OVERSTRIDE].compute(ctx, case.side)
 
-    assert spy.calls == ["l"], "the metric must go through ctx.reach_curve()"
-    assert got == median([sentinels[s] for s in strikes])
+    assert ctx.calls == [case.side], "the metric must sample the first-class reach curve"
+    assert case.forced_strikes[case.side] == [1], "the fixture isolates one known contact"
+    assert got == pytest.approx(case.expected_metric_pct)
 
 
 def test_uncalibrated_contact_metrics_are_descriptive_only():

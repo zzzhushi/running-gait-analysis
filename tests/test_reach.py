@@ -12,8 +12,17 @@ import pytest
 
 from gaitlab.core.reach import Denominator, reach_curve
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
+from gaitlab.metrics.ctx import leg_denominator
+from tests.pose_transforms import mirror_image, retime, scale, swap_sides, translate
+from tests.reach_fixture import (
+    actual_trace_record,
+    expected_trace_record,
+    format_trace_failure,
+    load_authored_reach_fixture,
+)
 
 LEG100 = Denominator.injected(100.0)
+AUTHORED_REACH = load_authored_reach_fixture()
 
 
 def pose_from_points(view, frames, fps=60, width=1080, height=1920):
@@ -31,39 +40,60 @@ def one(points, denominator=LEG100, facing=1):
     return reach_curve(pose_from_points("side-left", [points]), "l", denominator, facing)[0]
 
 
-# --- arithmetic ------------------------------------------------------------
+# --- arithmetic: one complete authored trace -------------------------------
 
-def test_ankle_reach_is_exact_on_hand_computed_coordinates():
-    # hip at x=300, ankle 20px ahead in image x; denominator injected as exactly 100.
-    s = one({"l_hip": (300, 500), "l_ankle": (320, 600)})
-    assert s.ankle_reach.px == pytest.approx(20.0)
-    assert s.ankle_reach.pct == pytest.approx(20.0)
-    assert s.ankle_reach.available
+@pytest.fixture(scope="module")
+def authored_curve():
+    case = AUTHORED_REACH
+    return reach_curve(case.sequence, case.side, case.denominator, case.facing)
 
 
-def test_reach_behind_the_hip_is_negative():
-    assert one({"l_hip": (300, 500), "l_ankle": (295, 600)}).ankle_reach.pct == pytest.approx(-5.0)
+def _assert_trace_matches(name, expected, actual):
+    """Compare the complete record and print it whole when any field diverges."""
+    diagnostic = format_trace_failure(name, expected, actual)
+
+    def compare(want, got, path="record"):
+        if isinstance(want, dict):
+            assert isinstance(got, dict), diagnostic
+            assert set(got) == set(want), diagnostic
+            for key in want:
+                compare(want[key], got[key], f"{path}.{key}")
+        elif isinstance(want, list):
+            assert isinstance(got, list) and len(got) == len(want), diagnostic
+            for index, value in enumerate(want):
+                compare(value, got[index], f"{path}[{index}]")
+        elif isinstance(want, float):
+            assert got == pytest.approx(want, abs=1e-6), f"{path}\n{diagnostic}"
+        else:
+            assert got == want, f"{path}\n{diagnostic}"
+
+    compare(expected, actual)
+
+
+@pytest.mark.parametrize(
+    "frame",
+    range(len(AUTHORED_REACH.frames)),
+    ids=[frame["name"] for frame in AUTHORED_REACH.frames],
+)
+def test_authored_reach_trace_is_complete_and_hand_computable(authored_curve, frame):
+    """Every displayed/debuggable field comes from one independently authored sequence."""
+    case = AUTHORED_REACH
+    actual = actual_trace_record(authored_curve[frame])
+    expected = expected_trace_record(case, frame)
+    _assert_trace_matches(case.frames[frame]["name"], expected, actual)
+
+
+def test_authored_trace_preserves_the_three_original_hand_computed_anchors(authored_curve):
+    """The reusable sequence retains the issue's exact 0 / +20 / -5 arithmetic cases."""
+    anchors = AUTHORED_REACH.hand_computed_anchor_frames
+    assert anchors == [0, 1, 2]
+    assert [authored_curve[frame].ankle_reach.pct for frame in anchors] == pytest.approx(
+        [0.0, 20.0, -5.0])
 
 
 def test_facing_flips_the_sign_not_the_magnitude():
     pts = {"l_hip": (300, 500), "l_ankle": (320, 600)}
     assert one(pts, facing=-1).ankle_reach.pct == pytest.approx(-one(pts).ankle_reach.pct)
-
-
-def test_inclination_matches_the_contract_formula():
-    # ankle 20px ahead, 100px below the hip -> atan2(20, 100).
-    s = one({"l_hip": (300, 500), "l_ankle": (320, 600)})
-    assert s.inclination_deg == pytest.approx(math.degrees(math.atan2(20, 100)))
-    assert s.inclination_unavailable is None
-
-
-def test_heel_toe_and_midpoint_are_reported_alongside_ankle():
-    s = one({"l_hip": (300, 500), "l_ankle": (320, 600),
-             "l_heel": (310, 605), "l_big_toe": (340, 605)})
-    assert s.heel_reach.px == pytest.approx(10.0)
-    assert s.toe_reach.px == pytest.approx(40.0)
-    assert s.midpoint_reach.px == pytest.approx(25.0)
-    assert s.foot_midpoint_proxy == pytest.approx((325.0, 605.0))
 
 
 # --- per-candidate availability -------------------------------------------
@@ -122,8 +152,6 @@ def test_a_bad_denominator_invalidates_percentages_but_not_pixels(bad_px, reason
 
 def test_the_curve_carries_the_denominator_and_its_provenance(synth):
     """A suspicious percentage must be traceable to the observations behind its denominator."""
-    from gaitlab.metrics.ctx import leg_denominator
-
     seq = synth("side-left", fps=60, duration=4, cadence=170, seed=1)
     denominator = leg_denominator(seq)
     s = reach_curve(seq, "l", denominator, facing=1)[0]
@@ -150,8 +178,6 @@ def test_the_curve_carries_the_denominator_and_its_provenance(synth):
 
 def test_a_structurally_missing_knee_cannot_become_denominator_geometry():
     """An untracked point is the schema's (0,0,0) sentinel, not an image measurement."""
-    from gaitlab.metrics.ctx import leg_denominator
-
     seq = pose_from_points("side-left", [{
         "l_hip": (300, 500),
         "l_ankle": (320, 600),
@@ -168,9 +194,26 @@ def test_a_structurally_missing_knee_cannot_become_denominator_geometry():
     assert sample.ankle_reach.pct_unavailable == denominator.unavailable
 
 
-def test_denominator_uses_complete_observations_and_excludes_incomplete_ones():
-    from gaitlab.metrics.ctx import leg_denominator
+def test_current_code_excludes_only_zero_confidence_landmarks():
+    """Characterizes today's behavior; not a validated policy.
 
+    The code excludes confidence == 0 (structural absence) and nothing else. Whether a
+    stricter quality threshold should exclude more is separate, unvalidated work; an
+    evidence-based change there is not a regression of this test.
+    """
+    fr = [(0.0, 0.0, 0.0)] * len(KEYPOINTS)
+    fr[KEYPOINTS.index("l_hip")] = (300.0, 500.0, 0.01)
+    fr[KEYPOINTS.index("l_knee")] = (300.0, 550.0, 0.01)
+    fr[KEYPOINTS.index("l_ankle")] = (300.0, 600.0, 0.01)
+    seq = PoseSequence(fps=60, width=1080, height=1920, view="side-left", frames=[fr], source="test")
+
+    denominator = leg_denominator(seq)
+    assert len(denominator.samples) == 1
+    assert denominator.samples[0].min_confidence == pytest.approx(0.01)
+    assert denominator.px == pytest.approx(100.0)
+
+
+def test_denominator_uses_complete_observations_and_excludes_incomplete_ones():
     seq = pose_from_points("side-left", [
         {"l_hip": (300, 500), "l_ankle": (320, 600)},  # knee absent
         {"l_hip": (300, 500), "l_knee": (300, 550), "l_ankle": (300, 600)},
@@ -189,6 +232,43 @@ def test_injected_denominators_declare_that_they_have_no_provenance():
     assert LEG100.unavailable is None
 
 
+def test_leg_denominator_is_the_median_pooled_over_frames_and_both_sides():
+    """Chosen so every plausible wrong aggregation disagrees with the correct one:
+
+    pooled median (correct) = 110; left-only = 100; right-only = 200;
+    latest-frame = 210; mean = 150; min = 80. A regression landing on any of those
+    would fail here, where a less discriminating set of values might not.
+    """
+    seq = pose_from_points("side-left", [
+        {"l_hip": (300, 500), "l_knee": (300, 540), "l_ankle": (300, 580),   # l frame0: 80
+         "r_hip": (300, 500), "r_knee": (300, 550), "r_ankle": (300, 600)},  # r frame0: 100
+        {"l_hip": (300, 500), "l_knee": (300, 560), "l_ankle": (300, 620),   # l frame1: 120
+         "r_hip": (300, 500), "r_knee": (300, 650), "r_ankle": (300, 800)},  # r frame1: 300
+    ])
+    denominator = leg_denominator(seq)
+
+    lengths = [s.total_px for s in denominator.samples]
+    assert sorted(round(v) for v in lengths) == [80, 100, 120, 300]
+    assert denominator.px == pytest.approx(110.0)
+
+
+def test_a_derived_denominator_changes_when_the_ankle_moves_horizontally():
+    """Unlike an injected length, a derived one is a function of the geometry being
+    measured: moving the ankle sideways with the knee fixed makes the shank diagonal."""
+    import math
+
+    knee = (300, 550)
+
+    def leg_px(ankle_x):
+        seq = pose_from_points("side-left", [{"l_hip": (300, 500), "l_knee": knee, "l_ankle": (ankle_x, 600)}])
+        return leg_denominator(seq).px
+
+    thigh = 50.0
+    assert leg_px(300) == pytest.approx(100.0)  # ankle directly below the knee: shank = 50
+    assert leg_px(320) == pytest.approx(thigh + math.hypot(20, 50))   # 103.85...
+    assert leg_px(295) == pytest.approx(thigh + math.hypot(5, 50))    # 100.25...
+
+
 # --- shape -----------------------------------------------------------------
 
 def test_one_sample_per_frame_retrievable_without_a_full_report(synth):
@@ -199,3 +279,86 @@ def test_one_sample_per_frame_retrievable_without_a_full_report(synth):
     assert [s.t for s in curve] == [seq.time_at(f) for f in range(seq.n)]
     assert {s.side for s in curve} == {"l"}
     assert {s.processing for s in curve} == {"raw"}
+
+
+# --- invariants --------------------------------------------------------------
+#
+# Each transform is tested alone. Combining reflection, a facing flip, and a side-label
+# swap into one "mirror the clip" case would let two sign errors cancel and still pass.
+
+_RICH_POINTS = {
+    "l_hip": (300, 500), "l_ankle": (320, 600),
+    "l_heel": (310, 605), "l_big_toe": (340, 605),
+}
+
+
+def test_mirroring_the_image_and_flipping_facing_leaves_reach_unchanged():
+    """A horizontally flipped video reverses the apparent direction of travel, but not
+    which foot is which; the two must cancel."""
+    seq = pose_from_points("side-left", [_RICH_POINTS])
+    original = reach_curve(seq, "l", LEG100, facing=1)[0]
+    mirrored = reach_curve(mirror_image(seq), "l", LEG100, facing=-1)[0]
+
+    assert mirrored.ankle_reach.pct == pytest.approx(original.ankle_reach.pct)
+    assert mirrored.heel_reach.pct == pytest.approx(original.heel_reach.pct)
+    assert mirrored.toe_reach.pct == pytest.approx(original.toe_reach.pct)
+    assert mirrored.midpoint_reach.pct == pytest.approx(original.midpoint_reach.pct)
+    assert mirrored.inclination_deg == pytest.approx(original.inclination_deg)
+
+
+def test_swapping_left_and_right_labels_swaps_the_sides_reach_values():
+    seq = pose_from_points("side-left", [{
+        "l_hip": (300, 500), "l_ankle": (320, 600),   # reach = +20
+        "r_hip": (340, 500), "r_ankle": (345, 600),   # reach = +5
+    }])
+    swapped = swap_sides(seq)
+
+    assert reach_curve(seq, "l", LEG100, facing=1)[0].ankle_reach.pct == pytest.approx(20.0)
+    assert reach_curve(seq, "r", LEG100, facing=1)[0].ankle_reach.pct == pytest.approx(5.0)
+    assert reach_curve(swapped, "l", LEG100, facing=1)[0].ankle_reach.pct == pytest.approx(5.0)
+    assert reach_curve(swapped, "r", LEG100, facing=1)[0].ankle_reach.pct == pytest.approx(20.0)
+
+
+def test_scaling_every_coordinate_leaves_the_percentage_unchanged():
+    """A denominator derived from the same pose scales with it, so the ratio survives even
+    though the pixel offset does not."""
+    seq = pose_from_points("side-left", [{
+        "l_hip": (300, 500), "l_knee": (300, 550), "l_ankle": (320, 600),
+    }])
+    scaled = scale(seq, 3.0)
+    original = reach_curve(seq, "l", leg_denominator(seq), facing=1)[0]
+    grown = reach_curve(scaled, "l", leg_denominator(scaled), facing=1)[0]
+
+    assert grown.ankle_reach.px == pytest.approx(original.ankle_reach.px * 3.0)
+    assert grown.ankle_reach.pct == pytest.approx(original.ankle_reach.pct)
+    assert grown.inclination_deg == pytest.approx(original.inclination_deg)
+
+
+def test_translating_every_coordinate_leaves_reach_unchanged():
+    """Reach is a difference between two points, so a shared offset cancels regardless of
+    the denominator."""
+    seq = pose_from_points("side-left", [_RICH_POINTS])
+    moved = translate(seq, dx=1000.0, dy=-2000.0)
+    original = reach_curve(seq, "l", LEG100, facing=1)[0]
+    shifted = reach_curve(moved, "l", LEG100, facing=1)[0]
+
+    assert shifted.ankle_reach.px == pytest.approx(original.ankle_reach.px)
+    assert shifted.ankle_reach.pct == pytest.approx(original.ankle_reach.pct)
+    assert shifted.midpoint_reach.pct == pytest.approx(original.midpoint_reach.pct)
+    assert shifted.inclination_deg == pytest.approx(original.inclination_deg)
+
+
+def test_reach_does_not_depend_on_timestamps(synth):
+    """Overstride is not a timing metric: only detecting *which* frame is a strike depends
+    on timestamps, not the reach curve's value at a given frame."""
+    seq = synth("side-left", fps=60, duration=3, cadence=170, seed=2)
+    stretched = retime(seq, k=1.7)
+
+    original = reach_curve(seq, "l", LEG100, facing=1)
+    retimed = reach_curve(stretched, "l", LEG100, facing=1)
+
+    assert [s.t for s in original] != [s.t for s in retimed]
+    for o, r in zip(original, retimed):
+        assert r.ankle_reach.px == o.ankle_reach.px
+        assert r.ankle_reach.pct == o.ankle_reach.pct
+        assert r.inclination_deg == o.inclination_deg
