@@ -52,15 +52,31 @@ def test_reach_directly_under_the_hip_is_zero():
 
 
 def test_three_frame_fixture_spans_neutral_overstride_and_understride():
-    """One pose, three frames, injected leg = 100px exactly: the answer for each is
-    computable on paper without a pose model or contact detection."""
+    """One pose, three frames, injected leg = 100px exactly: every per-frame field is
+    computable on paper without a pose model or contact detection.
+
+    Heel and toe are held fixed across frames -- only the ankle moves -- so this is the
+    reference record for what one reach sample fully contains; other inspection tooling
+    (per-strike dumps, annotated-frame rendering) should reuse it rather than invent a
+    parallel one.
+    """
     seq = pose_from_points("side-left", [
-        {"l_hip": (300, 500), "l_ankle": (300, 600)},  # neutral
-        {"l_hip": (300, 500), "l_ankle": (320, 600)},  # overstride
-        {"l_hip": (300, 500), "l_ankle": (295, 600)},  # lands behind the hip
+        {"l_hip": (300, 500), "l_ankle": (300, 600), "l_heel": (310, 605), "l_big_toe": (340, 605)},  # neutral
+        {"l_hip": (300, 500), "l_ankle": (320, 600), "l_heel": (310, 605), "l_big_toe": (340, 605)},  # overstride
+        {"l_hip": (300, 500), "l_ankle": (295, 600), "l_heel": (310, 605), "l_big_toe": (340, 605)},  # lands behind
     ])
     curve = reach_curve(seq, "l", LEG100, facing=1)
+
+    assert [s.frame for s in curve] == [0, 1, 2]
+    assert [s.t for s in curve] == [seq.time_at(f) for f in range(3)]
+
     assert [s.ankle_reach.pct for s in curve] == pytest.approx([0.0, 20.0, -5.0])
+    assert [s.heel_reach.pct for s in curve] == pytest.approx([10.0, 10.0, 10.0])
+    assert [s.toe_reach.pct for s in curve] == pytest.approx([40.0, 40.0, 40.0])
+    assert [s.midpoint_reach.pct for s in curve] == pytest.approx([25.0, 25.0, 25.0])
+    assert [s.foot_midpoint_proxy for s in curve] == pytest.approx([(325.0, 605.0)] * 3)
+    assert [s.inclination_deg for s in curve] == pytest.approx(
+        [math.degrees(math.atan2(reach, 100)) for reach in (0.0, 20.0, -5.0)])
 
 
 def test_facing_flips_the_sign_not_the_magnitude():
@@ -182,9 +198,13 @@ def test_a_structurally_missing_knee_cannot_become_denominator_geometry():
     assert sample.ankle_reach.pct_unavailable == denominator.unavailable
 
 
-def test_denominator_retains_any_positive_confidence_however_low():
-    """The excluded case is confidence == 0 (structurally absent), not a quality
-    threshold; a stricter cutoff is separate, unimplemented work."""
+def test_current_code_excludes_only_zero_confidence_landmarks():
+    """Characterizes today's behavior; not a validated policy.
+
+    The code excludes confidence == 0 (structural absence) and nothing else. Whether a
+    stricter quality threshold should exclude more is separate, unvalidated work; an
+    evidence-based change there is not a regression of this test.
+    """
     fr = [(0.0, 0.0, 0.0)] * len(KEYPOINTS)
     fr[KEYPOINTS.index("l_hip")] = (300.0, 500.0, 0.01)
     fr[KEYPOINTS.index("l_knee")] = (300.0, 550.0, 0.01)
