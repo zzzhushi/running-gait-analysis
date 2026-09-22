@@ -83,7 +83,7 @@ class TestCalibrate:
         assert RunnerProfile().calibrate(400, 850) == Calibration()
 
     def test_degenerate_leg_pixels_do_not_divide_by_zero(self):
-        """_leg_length() floors at 1.0, but a caller passing 0 must not explode."""
+        """calibrate() is reached with whatever leg_px it is given, including 0."""
         cal = RunnerProfile(leg_length_cm=80).calibrate(leg_px=0, body_px_height=None)
         assert cal.px_per_cm is None
 
