@@ -5,3 +5,4 @@ pytest>=8.0
 hypothesis>=6.100
 PyYAML>=6.0        # parse the canonical spec (docs/spec/metrics.yaml) in tests/scripts only
 Pillow>=10.0       # deterministic PNG debug artifacts; never imported by shipped runtime
+opencv-python>=4.9 # real video decode, to test extraction against the renderer's ffmpeg path
