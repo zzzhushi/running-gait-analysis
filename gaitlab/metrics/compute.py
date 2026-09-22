@@ -21,7 +21,8 @@ def _valid(v) -> bool:
     return v is not None and isinstance(v, (int, float)) and v == v
 
 
-def _aggregate(mode: str, l, r):
+def aggregate(mode: str, l, r):
+    """Combine one metric's two per-side values into its headline value."""
     vals = [v for v in (l, r) if _valid(v)]
     if not vals:
         return None
@@ -70,7 +71,7 @@ def compute(seq: PoseSequence, events: Optional[GaitEvents] = None,
                 per_side["l"][key] = raw_l
             if raw_r is not None:
                 per_side["r"][key] = raw_r
-            headline = _aggregate(defn.aggregate, raw_l, raw_r)
+            headline = aggregate(defn.aggregate, raw_l, raw_r)
             if headline is not None:
                 values[key] = headline
             elif defn.card_visibility != "conditional":

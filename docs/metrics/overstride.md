@@ -143,6 +143,11 @@ denominator inputs and contact-frame selection inspectable; it does **not** vali
 accuracy, choose a confidence threshold above structural presence, or establish that sub-frame
 interpolation is reliable.
 
+For the record-first per-frame/per-contact dump, annotated PNG, reach trace, contact sheet, and
+blinded ±N strip workflow, see
+[`docs/validation/overstride-debug-artifacts.md`](../validation/overstride-debug-artifacts.md).
+Every visual is generated from the saved record rather than from a second copy of this formula.
+
 | Term | Landmark | Status |
 |---|---|---|
 | Proximal | pose `l_hip` / `r_hip` | **Keypoint proxy.** Offset from the greater trochanter unmeasured. |

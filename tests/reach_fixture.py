@@ -1,7 +1,7 @@
 """Loader and diagnostic records for the authored stage-3 reach fixture.
 
-This remains test support.  Production debug serialization and rendering belong to #73;
-that work can consume the same language-neutral JSON instead of recreating the geometry.
+This remains test support. The debug serialization and rendering modules under gaitlab/debug
+and scripts/ consume the same language-neutral JSON rather than recreating the geometry.
 """
 
 from __future__ import annotations
