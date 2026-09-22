@@ -140,7 +140,53 @@ def test_the_curve_carries_the_denominator_and_its_provenance(synth):
     contributing = s.denominator.samples[0]
     assert contributing.side in ("l", "r")
     assert 0 <= contributing.frame < seq.n
-    assert contributing.total_px == pytest.approx(contributing.thigh_px + contributing.shank_px)
+    assert contributing.t == seq.time_at(contributing.frame)
+    assert contributing.hip == seq.pt(contributing.frame, f"{contributing.side}_hip")
+    assert contributing.knee == seq.pt(contributing.frame, f"{contributing.side}_knee")
+    assert contributing.ankle == seq.pt(contributing.frame, f"{contributing.side}_ankle")
+    assert contributing.thigh_px == pytest.approx(
+        math.dist(contributing.hip[:2], contributing.knee[:2]))
+    assert contributing.shank_px == pytest.approx(
+        math.dist(contributing.knee[:2], contributing.ankle[:2]))
+    assert contributing.total_px == pytest.approx(
+        contributing.thigh_px + contributing.shank_px)
+    assert contributing.min_confidence == min(
+        contributing.hip[2], contributing.knee[2], contributing.ankle[2])
+
+
+def test_a_structurally_missing_knee_cannot_become_denominator_geometry():
+    """An untracked point is the schema's (0,0,0) sentinel, not an image measurement."""
+    from gaitlab.metrics.ctx import leg_denominator
+
+    seq = pose_from_points("side-left", [{
+        "l_hip": (300, 500),
+        "l_ankle": (320, 600),
+    }])
+    denominator = leg_denominator(seq)
+
+    assert denominator.samples == ()
+    assert denominator.px != denominator.px
+    assert denominator.unavailable == "no frames have tracked hip, knee, and ankle landmarks"
+
+    sample = reach_curve(seq, "l", denominator, facing=1)[0]
+    assert sample.ankle_reach.px == pytest.approx(20.0)
+    assert sample.ankle_reach.pct != sample.ankle_reach.pct
+    assert sample.ankle_reach.pct_unavailable == denominator.unavailable
+
+
+def test_denominator_uses_complete_observations_and_excludes_incomplete_ones():
+    from gaitlab.metrics.ctx import leg_denominator
+
+    seq = pose_from_points("side-left", [
+        {"l_hip": (300, 500), "l_ankle": (320, 600)},  # knee absent
+        {"l_hip": (300, 500), "l_knee": (300, 550), "l_ankle": (300, 600)},
+    ])
+    denominator = leg_denominator(seq)
+
+    assert len(denominator.samples) == 1
+    assert denominator.samples[0].frame == 1
+    assert denominator.px == pytest.approx(100.0)
+    assert denominator.unavailable is None
 
 
 def test_injected_denominators_declare_that_they_have_no_provenance():
@@ -157,3 +203,5 @@ def test_one_sample_per_frame_retrievable_without_a_full_report(synth):
     assert len(curve) == seq.n
     assert [s.frame for s in curve] == list(range(seq.n))
     assert [s.t for s in curve] == [seq.time_at(f) for f in range(seq.n)]
+    assert {s.side for s in curve} == {"l"}
+    assert {s.processing for s in curve} == {"raw"}

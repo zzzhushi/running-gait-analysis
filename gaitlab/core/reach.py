@@ -24,7 +24,7 @@ exposed for comparison, not as alternative definitions -- see docs/metrics/overs
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 from . import geometry as geo
@@ -35,10 +35,19 @@ NAN = float("nan")
 
 @dataclass(frozen=True)
 class DenominatorSample:
-    """One limb-length observation that fed the denominator, with its own traceability."""
+    """One limb-length observation that fed the denominator.
+
+    The raw points are retained so the segment lengths can be recomputed from this artifact
+    alone.  ``frame``/``t`` and ``side`` identify the observation in the source sequence; the
+    derived lengths make the exact aggregation input convenient to inspect.
+    """
 
     frame: int
+    t: float
     side: str
+    hip: Point
+    knee: Point
+    ankle: Point
     thigh_px: float
     shank_px: float
     total_px: float
@@ -56,6 +65,7 @@ class Denominator:
     px: float
     method: str
     samples: Tuple[DenominatorSample, ...] = ()
+    source_unavailable: Optional[str] = None
 
     @classmethod
     def injected(cls, px: float, method: str = "injected") -> "Denominator":
@@ -63,6 +73,8 @@ class Denominator:
 
     @property
     def unavailable(self) -> Optional[str]:
+        if self.source_unavailable:
+            return self.source_unavailable
         if self.px != self.px:
             return "denominator is NaN"
         if self.px <= 0:
@@ -100,6 +112,8 @@ class ReachSample:
 
     frame: int
     t: float
+    side: str
+    processing: str
     hip: Point
     ankle: Point
     heel: Point
@@ -167,6 +181,8 @@ def reach_curve(seq: PoseSequence, side: str, denominator: Denominator, facing: 
         out.append(ReachSample(
             frame=f,
             t=seq.time_at(f),
+            side=side,
+            processing="raw",
             hip=hip, ankle=ankle, heel=heel, toe=toe,
             foot_midpoint_proxy=midpoint_xy,
             facing=facing,

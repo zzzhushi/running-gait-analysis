@@ -41,3 +41,38 @@ def test_no_spurious_ground_tilt_warning(actual):
     """
     tilt = [f for f in actual["_quality"] if "tilt" in f.get("message", "").lower()]
     assert not tilt, f"spurious ground-tilt warning on a clip measured level: {tilt}"
+
+
+def test_reach_artifact_is_inspectable_on_the_committed_clip():
+    """Issue #71's artifact is demonstrable on real committed pose data, not only synths."""
+    from gaitlab.core.events import detect_events
+    from gaitlab.core.schema import PoseSequence
+    from gaitlab.metrics.ctx import Ctx, median
+    from gaitlab.metrics.defs import METRIC_DEFS
+    from gaitlab.metrics.keys import MetricKey
+
+    seq = PoseSequence.from_pose_dict(json.loads(CLIP.pose_path.read_text())).validate()
+    ctx = Ctx(seq, detect_events(seq), None)
+
+    for side in ("l", "r"):
+        curve = ctx.reach_curve(side)
+        assert len(curve) == seq.n
+        assert [sample.frame for sample in curve] == list(range(seq.n))
+        assert [sample.t for sample in curve] == [seq.time_at(frame) for frame in range(seq.n)]
+        assert {sample.side for sample in curve} == {side}
+        assert {sample.processing for sample in curve} == {"raw"}
+
+        sample = curve[ctx.ev.strikes[side][0]]
+        assert sample.hip == seq.pt(sample.frame, f"{side}_hip")
+        assert sample.ankle == seq.pt(sample.frame, f"{side}_ankle")
+        assert sample.heel == seq.pt(sample.frame, f"{side}_heel")
+        assert sample.toe == seq.pt(sample.frame, f"{side}_big_toe")
+        assert sample.denominator is ctx.denominator
+
+        source = sample.denominator.samples[0]
+        assert source.hip == seq.pt(source.frame, f"{source.side}_hip")
+        assert source.knee == seq.pt(source.frame, f"{source.side}_knee")
+        assert source.ankle == seq.pt(source.frame, f"{source.side}_ankle")
+
+        sampled = [curve[frame].ankle_reach.pct for frame in ctx.ev.strikes[side]]
+        assert METRIC_DEFS[MetricKey.OVERSTRIDE].compute(ctx, side) == median(sampled)

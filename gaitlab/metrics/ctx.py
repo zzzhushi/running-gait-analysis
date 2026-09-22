@@ -70,11 +70,18 @@ def leg_length_samples(seq: PoseSequence) -> List[DenominatorSample]:
             hip = seq.pt(f, f"{side}_hip")
             knee = seq.pt(f, f"{side}_knee")
             ankle = seq.pt(f, f"{side}_ankle")
+            # Confidence zero is the schema's structural "not tracked" sentinel.  A threshold
+            # policy is intentionally still open, but placeholder coordinates must never be
+            # treated as measured geometry.
+            if min(hip[2], knee[2], ankle[2]) <= 0:
+                continue
             thigh = geo.distance(hip[:2], knee[:2])
             shank = geo.distance(knee[:2], ankle[:2])
             if thigh + shank > 0:
                 out.append(DenominatorSample(
-                    frame=f, side=side, thigh_px=thigh, shank_px=shank,
+                    frame=f, t=seq.time_at(f), side=side,
+                    hip=hip, knee=knee, ankle=ankle,
+                    thigh_px=thigh, shank_px=shank,
                     total_px=thigh + shank,
                     min_confidence=min(hip[2], knee[2], ankle[2]),
                 ))
@@ -84,8 +91,14 @@ def leg_length_samples(seq: PoseSequence) -> List[DenominatorSample]:
 def leg_denominator(seq: PoseSequence) -> Denominator:
     """The current overstride denominator, carrying the observations that produced it."""
     samples = leg_length_samples(seq)
+    if not samples:
+        return Denominator(
+            px=float("nan"),
+            method="median of thigh+shank, pooled over both sides and all frames",
+            source_unavailable="no frames have tracked hip, knee, and ankle landmarks",
+        )
     return Denominator(
-        px=median([s.total_px for s in samples]) or 1.0,
+        px=median([s.total_px for s in samples]),
         method="median of thigh+shank, pooled over both sides and all frames",
         samples=tuple(samples),
     )
