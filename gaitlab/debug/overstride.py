@@ -41,9 +41,9 @@ ASSUMED_TIMESTAMP_SOURCE = "nominal-fps (assumed constant frame rate)"
 
 def _timestamp_source(seq: PoseSequence) -> str:
     """Name the clock behind `seq`'s frame times, never collapsing two providers into one."""
-    if seq.timestamps is None:
-        return ASSUMED_TIMESTAMP_SOURCE
-    return seq.timestamp_source or UNRECORDED_TIMESTAMP_SOURCE
+    if seq.timestamp_source is not None:
+        return seq.timestamp_source
+    return UNRECORDED_TIMESTAMP_SOURCE if seq.timestamps is not None else ASSUMED_TIMESTAMP_SOURCE
 
 
 def _finite(value: float) -> Optional[float]:

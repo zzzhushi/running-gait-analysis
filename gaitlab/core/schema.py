@@ -36,6 +36,11 @@ KP_INDEX = {name: i for i, name in enumerate(KEYPOINTS)}
 
 VIEWS = ("side-left", "side-right", "rear", "front")
 
+# The one `timestamp_source` that is valid without `timestamps`: frame times are derived
+# from the nominal rate rather than read from the source. Any other provider names a
+# real clock, which cannot be claimed when no per-frame times were kept.
+ASSUMED_TIMEBASE = "constant frame rate (f/fps)"
+
 # (x, y, confidence)
 Point = Tuple[float, float, float]
 XY = Tuple[float, float]
@@ -56,8 +61,8 @@ class PoseSequence:
     # Present when the extractor could read them (robust to variable frame rate);
     # None for synthetic/constant-rate clips, where f/fps is exact.
     timestamps: Optional[List[float]] = None
-    # How `timestamps` was obtained (e.g. container PTS vs. decoder-clock fallback).
-    # None whenever `timestamps` is None: there is no clock to attribute.
+    # How frame times were obtained: a real clock (container PTS, decoder clock) when
+    # `timestamps` is present, or `ASSUMED_TIMEBASE` when they are derived from `fps`.
     timestamp_source: Optional[str] = None
     # Set when decode produced fewer frames than the source container reports; None
     # when counts agreed or the container count was unavailable.
@@ -92,8 +97,11 @@ class PoseSequence:
             elif any(b <= a for a, b in zip(self.timestamps, self.timestamps[1:])):
                 # Strict: a repeated timestamp makes two frame indices name one instant.
                 errs.append("timestamps must strictly increase")
-        elif self.timestamp_source is not None:
-            errs.append("timestamp_source requires timestamps")
+        elif self.timestamp_source not in (None, ASSUMED_TIMEBASE):
+            errs.append(
+                f"timestamp_source {self.timestamp_source!r} names a real clock but no "
+                f"timestamps were kept; only {ASSUMED_TIMEBASE!r} is valid without them"
+            )
 
         k = len(self.keypoint_names)
         for fi, fr in enumerate(self.frames):
@@ -227,8 +235,8 @@ class PoseSequence:
         }
         if self.timestamps is not None:
             d["timestamps"] = [round(t, 4) for t in self.timestamps]
-            if self.timestamp_source is not None:
-                d["timestamp_source"] = self.timestamp_source
+        if self.timestamp_source is not None:
+            d["timestamp_source"] = self.timestamp_source
         if self.frame_count_note is not None:
             d["frame_count_note"] = self.frame_count_note
         return d
@@ -252,6 +260,6 @@ class PoseSequence:
             source=d.get("source", "unknown"),
             keypoint_names=list(d.get("keypoint_names", KEYPOINTS)),
             timestamps=[float(t) for t in ts] if ts else None,
-            timestamp_source=d.get("timestamp_source") if ts else None,
+            timestamp_source=d.get("timestamp_source"),
             frame_count_note=d.get("frame_count_note"),
         )

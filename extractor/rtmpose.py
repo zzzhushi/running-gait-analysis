@@ -143,6 +143,6 @@ class RTMPoseExtractor(PoseExtractor):
         return PoseSequence(
             fps=eff_fps, width=width, height=height, view=view, frames=frames,
             source=source, keypoint_names=list(KEYPOINTS), timestamps=timestamps,
-            timestamp_source=ts_src if timestamps is not None else None,
+            timestamp_source=ts_src,
             frame_count_note=frame_count_note,
         )

@@ -10,6 +10,8 @@ import shutil
 import subprocess
 from typing import List, Optional, Sequence, Tuple
 
+from gaitlab.core.schema import ASSUMED_TIMEBASE
+
 
 def probe_timestamps(path: str) -> Optional[List[float]]:
     """Real per-frame presentation timestamps (seconds), via ffprobe.
@@ -75,8 +77,9 @@ def choose_timestamps(
     # 2. OpenCV POS_MSEC — usable on many files, unreliable on some VFR clips.
     if _monotonic_positive(pos_msec):
         return list(pos_msec), "OpenCV POS_MSEC"
-    # 3. nothing trustworthy — the player falls back to f/fps.
-    return None, "constant frame rate (f/fps) — overlay may drift on VFR video"
+    # 3. nothing trustworthy — frame times are derived from the nominal rate, which
+    #    drifts against the real clock on variable-frame-rate video.
+    return None, ASSUMED_TIMEBASE
 
 
 # One unreadable frame at the tail is a known decoder edge effect; loss beyond that is

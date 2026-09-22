@@ -435,7 +435,10 @@ class TestTimestampProvenance:
         assert seq.timestamps == pytest.approx([0.0, 0.033333, 0.066666, 0.099999], abs=1e-4)
         assert seq.timestamp_source == "OpenCV POS_MSEC"
 
-    def test_no_trustworthy_clock_leaves_timestamps_and_source_unset(self, monkeypatch):
+    def test_no_trustworthy_clock_records_the_assumed_timebase(self, monkeypatch):
+        """Falling back to f/fps is a provenance claim, not an absence of one."""
+        from gaitlab.core.schema import ASSUMED_TIMEBASE
+
         capture = _TimedCapture(step_ms=0.0)  # a stalled clock carries no elapsed-time information
         _install_fake_cv2(monkeypatch, capture)
         fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
@@ -446,7 +449,8 @@ class TestTimestampProvenance:
         seq = RTMPoseExtractor().extract("clip.mov", "side-right", no_ffprobe=True)
 
         assert seq.timestamps is None
-        assert seq.timestamp_source is None
+        assert seq.timestamp_source == ASSUMED_TIMEBASE
+        seq.validate()
 
 
 class TestFrameCountEnforcement:

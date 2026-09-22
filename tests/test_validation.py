@@ -66,6 +66,19 @@ def test_timestamp_source_round_trips_through_pose_dict():
     assert restored.timestamp_source == s.timestamp_source
 
 
+def test_assumed_timebase_is_recorded_without_timestamps():
+    """An assumed clock is evidence in its own right: timing-derived metrics need to
+    know the timebase was synthesised rather than read from the source."""
+    from gaitlab.core.schema import ASSUMED_TIMEBASE
+
+    s = _valid_base()
+    s.timestamp_source = ASSUMED_TIMEBASE
+    s.validate()
+    restored = PoseSequence.from_pose_dict(s.to_pose_dict())
+    assert restored.timestamps is None
+    assert restored.timestamp_source == ASSUMED_TIMEBASE
+
+
 def test_frame_count_note_round_trips_through_pose_dict():
     s = _valid_base()
     s.frame_count_note = "decoded 119 of 120 container frames (1 dropped)"
