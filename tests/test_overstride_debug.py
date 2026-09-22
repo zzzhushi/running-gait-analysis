@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import json
 import shutil
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -415,3 +416,63 @@ def test_saved_record_refuses_a_same_sized_different_source_video(tmp_path):
         export_overstride_debug.main([
             "--record", str(record), "--video", str(source_b), "--output", str(tmp_path / "wrong"),
         ])
+
+
+@pytest.mark.parametrize("timestamp_source,expected", [
+    ("ffprobe (real container PTS)", "ffprobe (real container PTS)"),
+    ("OpenCV POS_MSEC", "OpenCV POS_MSEC"),
+])
+def test_record_carries_the_exact_timestamp_provider(timestamp_source, expected):
+    """Container PTS and the decoder clock are different evidence about a frame's
+    instant, so a record that reduces both to one value cannot answer what its
+    timestamps are worth.
+    """
+    case = load_authored_reach_fixture()
+    sequence = replace(
+        case.sequence,
+        timestamps=[i * 0.02 for i in range(case.sequence.n)],
+        timestamp_source=timestamp_source,
+    ).validate()
+
+    bundle = build_overstride_debug_record(sequence, GaitEvents(), source_id="clip")
+
+    assert bundle["source"]["timestamp_source"] == expected
+
+
+def test_record_distinguishes_an_unrecorded_provider_from_an_assumed_clock():
+    """A sequence extracted before provenance was recorded still has real per-frame
+    timestamps; it must not serialize as though the clock were assumed, nor as though
+    the provider were known.
+    """
+    case = load_authored_reach_fixture()
+    unrecorded = replace(
+        case.sequence, timestamps=[i * 0.02 for i in range(case.sequence.n)], timestamp_source=None
+    ).validate()
+    assumed = replace(case.sequence, timestamps=None, timestamp_source=None).validate()
+
+    unrecorded_value = build_overstride_debug_record(
+        unrecorded, GaitEvents(), source_id="clip")["source"]["timestamp_source"]
+    assumed_value = build_overstride_debug_record(
+        assumed, GaitEvents(), source_id="clip")["source"]["timestamp_source"]
+
+    assert unrecorded_value != assumed_value
+    assert unrecorded_value is not None and assumed_value is not None
+
+
+def test_record_carries_the_decode_frame_count_note():
+    """A tolerated frame deficit is invisible to a reviewer unless the record says so."""
+    case = load_authored_reach_fixture()
+    note = "decoded 119 of 120 container frames (1 dropped)"
+    sequence = replace(case.sequence, frame_count_note=note).validate()
+
+    bundle = build_overstride_debug_record(sequence, GaitEvents(), source_id="clip")
+
+    assert bundle["source"]["frame_count_note"] == note
+
+
+def test_record_states_when_no_frames_were_dropped():
+    case = load_authored_reach_fixture()
+    bundle = build_overstride_debug_record(case.sequence, GaitEvents(), source_id="clip")
+
+    assert "frame_count_note" in bundle["source"]
+    assert bundle["source"]["frame_count_note"] is None

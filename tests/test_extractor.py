@@ -212,6 +212,23 @@ class TestTimestamps:
     def test_monotonic_positive_accepts_strictly_increasing(self):
         assert _monotonic_positive([0.0, 0.5, 1.0])
 
+    def test_monotonic_positive_rejects_a_repeated_value(self):
+        """Two indices sharing one instant make a frame index ambiguous as a moment."""
+        assert not _monotonic_positive([0.0, 0.033, 0.033, 0.066])
+
+    def test_duplicate_container_pts_falls_back_to_a_usable_clock(self):
+        duplicated = [0.0, 0.033, 0.033, 0.066]
+        ts, src = choose_timestamps(duplicated, pos_msec=[0.0, 0.03, 0.06, 0.09],
+                                    kept_idx=[0, 1, 2, 3], total_read=4)
+        assert ts == [0.0, 0.03, 0.06, 0.09]
+        assert src == "OpenCV POS_MSEC"
+
+    def test_duplicates_in_every_source_fall_back_to_the_assumed_timebase(self):
+        ts, src = choose_timestamps(probe_ts=[0.0, 0.033, 0.033], pos_msec=[0.0, 0.03, 0.03],
+                                    kept_idx=[0, 1, 2], total_read=3)
+        assert ts is None
+        assert "constant frame rate" in src
+
     def test_prefers_ffprobe_when_frame_count_lines_up(self):
         probe_ts = [0.0, 0.1, 0.2, 0.3]
         ts, src = choose_timestamps(probe_ts, pos_msec=[0, 90, 205], kept_idx=[0, 1, 2], total_read=4)
@@ -255,6 +272,13 @@ class TestFrameCount:
     def test_large_deficit_is_severe(self):
         note, severe = check_frame_count(expected=120, actual=80)
         assert note is not None
+        assert severe is True
+
+    @pytest.mark.parametrize("expected,actual", [(4, 2), (10, 8), (40, 36)])
+    def test_short_clips_do_not_get_a_larger_allowance_than_long_ones(self, expected, actual):
+        """A fixed frame allowance would let proportionally worse losses through on a
+        short clip than the fraction permits on a long one."""
+        _note, severe = check_frame_count(expected=expected, actual=actual)
         assert severe is True
 
 

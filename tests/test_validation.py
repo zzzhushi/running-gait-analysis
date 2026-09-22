@@ -84,8 +84,9 @@ def test_frame_count_note_round_trips_through_pose_dict():
     (lambda s: s.frames[0].__setitem__(0, (float("nan"), 2.0, 1.0)), "non-finite"),
     (lambda s: setattr(s, "timestamps", [0.0]), "timestamps has"),
     (lambda s: setattr(s, "timestamps", [0.0, 0.1, float("nan"), 0.3, 0.4, 0.5]), "finite"),
-    (lambda s: setattr(s, "timestamps", [0.0, 0.1, 0.2, 0.15, 0.4, 0.5]), "non-decreasing"),
-    (lambda s: setattr(s, "timestamps", [1.0] * 6), "positive duration"),
+    (lambda s: setattr(s, "timestamps", [0.0, 0.1, 0.2, 0.15, 0.4, 0.5]), "strictly increase"),
+    (lambda s: setattr(s, "timestamps", [1.0] * 6), "strictly increase"),
+    (lambda s: setattr(s, "timestamps", [0.0, 0.1, 0.1, 0.3, 0.4, 0.5]), "strictly increase"),
     (lambda s: setattr(s, "timestamp_source", "ffprobe"), "timestamp_source"),
 ])
 def test_malformed_pose_rejected(mutate, match):
