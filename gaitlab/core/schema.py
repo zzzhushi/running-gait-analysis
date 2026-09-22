@@ -56,6 +56,9 @@ class PoseSequence:
     # Present when the extractor could read them (robust to variable frame rate);
     # None for synthetic/constant-rate clips, where f/fps is exact.
     timestamps: Optional[List[float]] = None
+    # How `timestamps` was obtained (e.g. container PTS vs. decoder-clock fallback).
+    # None whenever `timestamps` is None: there is no clock to attribute.
+    timestamp_source: Optional[str] = None
 
     # --- validation -------------------------------------------------------
     def validate(self) -> "PoseSequence":
@@ -87,6 +90,8 @@ class PoseSequence:
                 errs.append("timestamps must be non-decreasing")
             elif len(self.timestamps) > 1 and self.timestamps[-1] <= self.timestamps[0]:
                 errs.append("timestamps must span a positive duration")
+        elif self.timestamp_source is not None:
+            errs.append("timestamp_source requires timestamps")
 
         k = len(self.keypoint_names)
         for fi, fr in enumerate(self.frames):
@@ -220,6 +225,8 @@ class PoseSequence:
         }
         if self.timestamps is not None:
             d["timestamps"] = [round(t, 4) for t in self.timestamps]
+            if self.timestamp_source is not None:
+                d["timestamp_source"] = self.timestamp_source
         return d
 
     @staticmethod
@@ -241,4 +248,5 @@ class PoseSequence:
             source=d.get("source", "unknown"),
             keypoint_names=list(d.get("keypoint_names", KEYPOINTS)),
             timestamps=[float(t) for t in ts] if ts else None,
+            timestamp_source=d.get("timestamp_source") if ts else None,
         )

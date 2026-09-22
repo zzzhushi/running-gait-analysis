@@ -113,4 +113,5 @@ class MediaPipeExtractor(PoseExtractor):
         return PoseSequence(
             fps=fps / every, width=width, height=height, view=view, frames=frames,
             source="mediapipe-blazepose", keypoint_names=list(KEYPOINTS), timestamps=timestamps,
+            timestamp_source=ts_src if timestamps is not None else None,
         )
