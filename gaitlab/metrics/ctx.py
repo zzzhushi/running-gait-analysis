@@ -16,7 +16,7 @@ from ..core import geometry as geo
 from ..core import reach as reach_mod
 from ..core.events import GaitEvents
 from ..core.profile import Calibration, RunnerProfile
-from ..core.reach import ReachSample
+from ..core.reach import Denominator, DenominatorSample, ReachSample
 from ..core.schema import PoseSequence
 
 
@@ -58,17 +58,41 @@ def knee_flexion_at(seq: PoseSequence, f: int, side: str) -> float:
     return 180.0 - ang if ang == ang else float("nan")
 
 
-def _leg_length(seq: PoseSequence) -> float:
-    lens: List[float] = []
+def leg_length_samples(seq: PoseSequence) -> List[DenominatorSample]:
+    """Every limb-length observation behind the denominator, each traceable to its frame.
+
+    Pooling both sides and all frames into one median means a suspicious percentage cannot be
+    explained from the scalar alone; these are the observations that produced it.
+    """
+    out: List[DenominatorSample] = []
     for f in range(seq.n):
         for side in ("l", "r"):
-            hip = seq.xy(f, f"{side}_hip")
-            knee = seq.xy(f, f"{side}_knee")
-            ankle = seq.xy(f, f"{side}_ankle")
-            d = geo.distance(hip, knee) + geo.distance(knee, ankle)
-            if d > 0:
-                lens.append(d)
-    return median(lens) or 1.0
+            hip = seq.pt(f, f"{side}_hip")
+            knee = seq.pt(f, f"{side}_knee")
+            ankle = seq.pt(f, f"{side}_ankle")
+            thigh = geo.distance(hip[:2], knee[:2])
+            shank = geo.distance(knee[:2], ankle[:2])
+            if thigh + shank > 0:
+                out.append(DenominatorSample(
+                    frame=f, side=side, thigh_px=thigh, shank_px=shank,
+                    total_px=thigh + shank,
+                    min_confidence=min(hip[2], knee[2], ankle[2]),
+                ))
+    return out
+
+
+def leg_denominator(seq: PoseSequence) -> Denominator:
+    """The current overstride denominator, carrying the observations that produced it."""
+    samples = leg_length_samples(seq)
+    return Denominator(
+        px=median([s.total_px for s in samples]) or 1.0,
+        method="median of thigh+shank, pooled over both sides and all frames",
+        samples=tuple(samples),
+    )
+
+
+def _leg_length(seq: PoseSequence) -> float:
+    return leg_denominator(seq).px
 
 
 def _body_px_height(seq: PoseSequence) -> float:
@@ -111,7 +135,8 @@ class Ctx:
         self.ev = ev
         self.n = seq.n
         self.facing = seq.facing_sign()
-        self.leg = _leg_length(seq)
+        self.denominator = leg_denominator(seq)
+        self.leg = self.denominator.px
         self.cal = _calibration(seq, calibration, self.leg)
         self._cache: Dict[str, object] = {}
 
@@ -206,8 +231,8 @@ class Ctx:
     def reach_curve(self, side: str) -> List[ReachSample]:
         """Hip-relative foot position, one sample per frame; see gaitlab/core/reach.py.
 
-        `self.leg` is the current denominator (thigh+shank, whole-clip median) -- an open
+        `self.denominator` is the current choice (thigh+shank, whole-clip median) -- an open
         decision, not a validated one; see docs/metrics/overstride.md.
         """
         return self._memo(f"reach_curve_{side}",
-                           lambda: reach_mod.reach_curve(self.seq, side, self.leg, self.facing))
+                           lambda: reach_mod.reach_curve(self.seq, side, self.denominator, self.facing))

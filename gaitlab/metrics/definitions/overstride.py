@@ -24,7 +24,7 @@ def _compute(ctx, side):
     # Sampled from the reach curve (gaitlab/core/reach.py), not recomputed here, so the
     # per-strike value is provably the same quantity the curve exposes for debugging.
     curve = ctx.reach_curve(side)
-    vals = [curve[s].ankle_reach_pct for s in ctx.ev.strikes[side] if s < len(curve)]
+    vals = [curve[s].ankle_reach.pct for s in ctx.ev.strikes[side] if s < len(curve)]
     return median(vals)
 
 

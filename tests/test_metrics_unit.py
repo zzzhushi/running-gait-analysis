@@ -79,17 +79,37 @@ def test_overstride_worst_side_is_max(synth):
     assert m["values"]["overstride"] == pytest.approx(max(ps["l"]["overstride"], ps["r"]["overstride"]))
 
 
-def test_overstride_is_a_sample_of_the_reach_curve_not_a_second_formula(synth):
-    """The per-strike value must come from gaitlab/core/reach.py, not a parallel
-    computation -- otherwise the reach curve is not evidence about what the metric
-    actually reports (docs/metrics/overstride.md)."""
+def test_overstride_reads_the_reach_curve_rather_than_recomputing(synth):
+    """The per-strike value must come through ctx.reach_curve(), not a parallel formula.
+
+    The sentinel percentages below cannot be derived from the pose, so a metric that
+    recomputed the offset itself would return the pose-derived answer and fail here. Comparing
+    against numbers taken from the real curve would not: an inlined duplicate of the same
+    arithmetic produces the same value and would pass.
+    """
     seq = synth("side-left", fps=60, duration=6, cadence=170, seed=8)
     ev = detect_events(seq)
-    ctx = Ctx(seq, ev, None)
-    for side in ("l", "r"):
-        curve = ctx.reach_curve(side)
-        expected = [curve[s].ankle_reach_pct for s in ev.strikes[side]]
-        assert METRIC_DEFS[MetricKey.OVERSTRIDE].compute(ctx, side) == median(expected)
+    real = Ctx(seq, ev, None)
+    strikes = ev.strikes["l"]
+    assert len(strikes) >= 3, "need several strikes for the median to be meaningful"
+
+    sentinels = [1000.0 + i for i in range(seq.n)]
+
+    class SpyCtx:
+        def __init__(self):
+            self.seq, self.ev, self.facing, self.leg = seq, ev, real.facing, real.leg
+            self.calls = []
+
+        def reach_curve(self, side):
+            self.calls.append(side)
+            return [replace(s, ankle_reach=replace(s.ankle_reach, pct=sentinels[i]))
+                    for i, s in enumerate(real.reach_curve(side))]
+
+    spy = SpyCtx()
+    got = METRIC_DEFS[MetricKey.OVERSTRIDE].compute(spy, "l")
+
+    assert spy.calls == ["l"], "the metric must go through ctx.reach_curve()"
+    assert got == median([sentinels[s] for s in strikes])
 
 
 def test_uncalibrated_contact_metrics_are_descriptive_only():
