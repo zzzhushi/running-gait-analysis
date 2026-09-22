@@ -106,6 +106,19 @@ def test_overstride_reads_the_reach_curve_rather_than_recomputing(synth):
     assert got == median([sentinels[s] for s in strikes])
 
 
+def test_overstride_computes_from_a_single_contact():
+    """A per-step value does not require several strikes to be meaningful; only a
+    runner-level summary across many steps would need a minimum count."""
+    seq = pose_from_points("side-left", [
+        {"l_hip": (300, 500), "l_knee": (300, 550), "l_ankle": (320, 600)},
+    ])
+    ev = GaitEvents(strikes={"l": [0], "r": []})
+    ctx = Ctx(seq, ev, None)
+    leg_px = 50.0 + math.hypot(20, 50)  # thigh (vertical) + shank (diagonal)
+    expected = 20.0 / leg_px * 100.0
+    assert METRIC_DEFS[MetricKey.OVERSTRIDE].compute(ctx, "l") == pytest.approx(expected)
+
+
 def test_uncalibrated_contact_metrics_are_descriptive_only():
     """A provisional event anchor must not drive the score or coaching contract."""
     for key in (MetricKey.CONTACT_TIME, MetricKey.DUTY_FACTOR):

@@ -56,5 +56,9 @@ def translate(seq: PoseSequence, dx: float, dy: float) -> PoseSequence:
 
 
 def retime(seq: PoseSequence, k: float) -> PoseSequence:
-    """Stretch timestamps by `k`, holding every frame's landmarks fixed."""
-    return replace(seq, timestamps=[i / seq.fps * k for i in range(seq.n)])
+    """Scale every frame's presentation time by `k`, holding its landmarks fixed.
+
+    Scales `time_at(i)`, not a fresh `i / fps` grid, so a variable-rate or dropped-frame
+    clock is stretched rather than replaced by a uniform one.
+    """
+    return replace(seq, timestamps=[seq.time_at(i) * k for i in range(seq.n)])

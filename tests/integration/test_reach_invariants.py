@@ -31,6 +31,10 @@ def clip_seq(request):
     clip = request.param
     seq = PoseSequence.from_pose_dict(json.loads(clip.pose_path.read_text())).validate()
     strikes = detect_events(seq).strikes
+    for side in ("l", "r"):
+        # Every test below loops over strikes[side]; an empty list would pass vacuously
+        # rather than say the fixture no longer exercises the formula.
+        assert strikes[side], f"{clip.id}: no detected {side} strikes"
     return seq, strikes
 
 

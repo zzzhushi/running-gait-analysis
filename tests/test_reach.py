@@ -47,6 +47,22 @@ def test_reach_behind_the_hip_is_negative():
     assert one({"l_hip": (300, 500), "l_ankle": (295, 600)}).ankle_reach.pct == pytest.approx(-5.0)
 
 
+def test_reach_directly_under_the_hip_is_zero():
+    assert one({"l_hip": (300, 500), "l_ankle": (300, 600)}).ankle_reach.pct == pytest.approx(0.0)
+
+
+def test_three_frame_fixture_spans_neutral_overstride_and_understride():
+    """One pose, three frames, injected leg = 100px exactly: the answer for each is
+    computable on paper without a pose model or contact detection."""
+    seq = pose_from_points("side-left", [
+        {"l_hip": (300, 500), "l_ankle": (300, 600)},  # neutral
+        {"l_hip": (300, 500), "l_ankle": (320, 600)},  # overstride
+        {"l_hip": (300, 500), "l_ankle": (295, 600)},  # lands behind the hip
+    ])
+    curve = reach_curve(seq, "l", LEG100, facing=1)
+    assert [s.ankle_reach.pct for s in curve] == pytest.approx([0.0, 20.0, -5.0])
+
+
 def test_facing_flips_the_sign_not_the_magnitude():
     pts = {"l_hip": (300, 500), "l_ankle": (320, 600)}
     assert one(pts, facing=-1).ankle_reach.pct == pytest.approx(-one(pts).ankle_reach.pct)
@@ -183,6 +199,42 @@ def test_injected_denominators_declare_that_they_have_no_provenance():
     assert LEG100.samples == ()
     assert LEG100.method == "injected"
     assert LEG100.unavailable is None
+
+
+def test_leg_denominator_is_the_median_pooled_over_frames_and_both_sides():
+    """Every observation from either side, on every frame, feeds one shared median --
+    not a per-side value and not the latest frame."""
+    seq = pose_from_points("side-left", [
+        {"l_hip": (300, 500), "l_knee": (300, 550), "l_ankle": (300, 600),   # l: 100
+         "r_hip": (300, 500), "r_knee": (300, 540), "r_ankle": (300, 600)},  # r: 100
+        {"l_hip": (300, 500), "l_knee": (300, 530), "l_ankle": (300, 600),   # l: 100
+         "r_hip": (300, 500), "r_knee": (300, 600), "r_ankle": (300, 700)},  # r: 200 (outlier)
+    ])
+    denominator = leg_denominator(seq)
+
+    lengths = [s.total_px for s in denominator.samples]
+    assert len(lengths) == 4  # both sides, both frames
+    assert sorted(round(v) for v in lengths) == [100, 100, 100, 200]
+    # The outlier moves the median only slightly; a per-side or latest-frame denominator
+    # would not land here.
+    assert denominator.px == pytest.approx(100.0)
+
+
+def test_a_derived_denominator_changes_when_the_ankle_moves_horizontally():
+    """Unlike an injected length, a derived one is a function of the geometry being
+    measured: moving the ankle sideways with the knee fixed makes the shank diagonal."""
+    import math
+
+    knee = (300, 550)
+
+    def leg_px(ankle_x):
+        seq = pose_from_points("side-left", [{"l_hip": (300, 500), "l_knee": knee, "l_ankle": (ankle_x, 600)}])
+        return leg_denominator(seq).px
+
+    thigh = 50.0
+    assert leg_px(300) == pytest.approx(100.0)  # ankle directly below the knee: shank = 50
+    assert leg_px(320) == pytest.approx(thigh + math.hypot(20, 50))   # 103.85...
+    assert leg_px(295) == pytest.approx(thigh + math.hypot(5, 50))    # 100.25...
 
 
 # --- shape -----------------------------------------------------------------
