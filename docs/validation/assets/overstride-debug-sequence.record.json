@@ -1,0 +1,4134 @@
+{
+  "diagnostic_sequence": {
+    "frame_record_ids": [
+      "os-b30b6c0f540e91b7",
+      "os-4f0dc934f4d8321f",
+      "os-2320c73faad4d463",
+      "os-d553a367bfd0d08e",
+      "os-314993fceb29ae2e",
+      "os-1037bc52ebb21e64",
+      "os-3a50ac95f0e49428",
+      "os-d1f1114e00887505",
+      "os-20b9347679e0748d"
+    ],
+    "names": [
+      "zero_forward_reach",
+      "positive_forward_reach_2.5_pct",
+      "positive_forward_reach_5_pct",
+      "positive_forward_reach_7.5_pct",
+      "positive_forward_reach_10_pct",
+      "positive_forward_reach_12.5_pct",
+      "positive_forward_reach_15_pct",
+      "positive_forward_reach_17.5_pct",
+      "positive_forward_reach_20_pct"
+    ],
+    "purpose": "decode/time/orientation/overlay validation only"
+  },
+  "does_not_validate": [
+    "correct pose-landmark localization",
+    "correct initial-contact timing",
+    "anatomical or clinical meaning of the overstride value"
+  ],
+  "events": {
+    "adjustments": [],
+    "detected_contacts": [],
+    "reference_contacts": []
+  },
+  "frames": [
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "diagnostic_name": "zero_forward_reach",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": 0.0,
+        "unavailable": null
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 600.0
+        },
+        "big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 315.0,
+          "y": 605.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": 0.95,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": 300.0,
+          "y": 605.0
+        },
+        "heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 285.0,
+          "y": 605.0
+        },
+        "hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 315.0,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 285.0,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": 0.0,
+          "pct_unavailable": null,
+          "px": 0.0,
+          "px_unavailable": null
+        },
+        "big_toe": {
+          "pct_leg": 15.0,
+          "pct_unavailable": null,
+          "px": 15.0,
+          "px_unavailable": null
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": 0.0,
+          "pct_unavailable": null,
+          "px": 0.0,
+          "px_unavailable": null
+        },
+        "heel": {
+          "pct_leg": -15.0,
+          "pct_unavailable": null,
+          "px": -15.0,
+          "px_unavailable": null
+        }
+      },
+      "record_id": "os-b30b6c0f540e91b7",
+      "references": [],
+      "side": "l",
+      "source_frame": {
+        "decoded_index": 0,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=0",
+        "timestamp_s": 0.0
+      },
+      "validity": {
+        "reasons": [],
+        "usable": true
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "diagnostic_name": "positive_forward_reach_2.5_pct",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": 1.4320961841646465,
+        "unavailable": null
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 302.5,
+          "y": 600.0
+        },
+        "big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 317.5,
+          "y": 605.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": 0.95,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": 302.5,
+          "y": 605.0
+        },
+        "heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 287.5,
+          "y": 605.0
+        },
+        "hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 302.5,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 317.5,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 287.5,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": 2.5,
+          "pct_unavailable": null,
+          "px": 2.5,
+          "px_unavailable": null
+        },
+        "big_toe": {
+          "pct_leg": 17.5,
+          "pct_unavailable": null,
+          "px": 17.5,
+          "px_unavailable": null
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": 2.5,
+          "pct_unavailable": null,
+          "px": 2.5,
+          "px_unavailable": null
+        },
+        "heel": {
+          "pct_leg": -12.5,
+          "pct_unavailable": null,
+          "px": -12.5,
+          "px_unavailable": null
+        }
+      },
+      "record_id": "os-4f0dc934f4d8321f",
+      "references": [],
+      "side": "l",
+      "source_frame": {
+        "decoded_index": 1,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=1",
+        "timestamp_s": 0.016666666666666666
+      },
+      "validity": {
+        "reasons": [],
+        "usable": true
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "diagnostic_name": "positive_forward_reach_5_pct",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": 2.8624052261117474,
+        "unavailable": null
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 305.0,
+          "y": 600.0
+        },
+        "big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 320.0,
+          "y": 605.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": 0.95,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": 305.0,
+          "y": 605.0
+        },
+        "heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 290.0,
+          "y": 605.0
+        },
+        "hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 305.0,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 320.0,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 290.0,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": 5.0,
+          "pct_unavailable": null,
+          "px": 5.0,
+          "px_unavailable": null
+        },
+        "big_toe": {
+          "pct_leg": 20.0,
+          "pct_unavailable": null,
+          "px": 20.0,
+          "px_unavailable": null
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": 5.0,
+          "pct_unavailable": null,
+          "px": 5.0,
+          "px_unavailable": null
+        },
+        "heel": {
+          "pct_leg": -10.0,
+          "pct_unavailable": null,
+          "px": -10.0,
+          "px_unavailable": null
+        }
+      },
+      "record_id": "os-2320c73faad4d463",
+      "references": [],
+      "side": "l",
+      "source_frame": {
+        "decoded_index": 2,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=2",
+        "timestamp_s": 0.03333333333333333
+      },
+      "validity": {
+        "reasons": [],
+        "usable": true
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "diagnostic_name": "positive_forward_reach_7.5_pct",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": 4.289153328819018,
+        "unavailable": null
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 307.5,
+          "y": 600.0
+        },
+        "big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 322.5,
+          "y": 605.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": 0.95,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": 307.5,
+          "y": 605.0
+        },
+        "heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 292.5,
+          "y": 605.0
+        },
+        "hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 307.5,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 322.5,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 292.5,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": 7.5,
+          "pct_unavailable": null,
+          "px": 7.5,
+          "px_unavailable": null
+        },
+        "big_toe": {
+          "pct_leg": 22.5,
+          "pct_unavailable": null,
+          "px": 22.5,
+          "px_unavailable": null
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": 7.5,
+          "pct_unavailable": null,
+          "px": 7.5,
+          "px_unavailable": null
+        },
+        "heel": {
+          "pct_leg": -7.5,
+          "pct_unavailable": null,
+          "px": -7.5,
+          "px_unavailable": null
+        }
+      },
+      "record_id": "os-d553a367bfd0d08e",
+      "references": [],
+      "side": "l",
+      "source_frame": {
+        "decoded_index": 3,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=3",
+        "timestamp_s": 0.05
+      },
+      "validity": {
+        "reasons": [],
+        "usable": true
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "diagnostic_name": "positive_forward_reach_10_pct",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": 5.710593137499642,
+        "unavailable": null
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 310.0,
+          "y": 600.0
+        },
+        "big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 325.0,
+          "y": 605.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": 0.95,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": 310.0,
+          "y": 605.0
+        },
+        "heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 295.0,
+          "y": 605.0
+        },
+        "hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 310.0,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 325.0,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 295.0,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": 10.0,
+          "pct_unavailable": null,
+          "px": 10.0,
+          "px_unavailable": null
+        },
+        "big_toe": {
+          "pct_leg": 25.0,
+          "pct_unavailable": null,
+          "px": 25.0,
+          "px_unavailable": null
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": 10.0,
+          "pct_unavailable": null,
+          "px": 10.0,
+          "px_unavailable": null
+        },
+        "heel": {
+          "pct_leg": -5.0,
+          "pct_unavailable": null,
+          "px": -5.0,
+          "px_unavailable": null
+        }
+      },
+      "record_id": "os-314993fceb29ae2e",
+      "references": [],
+      "side": "l",
+      "source_frame": {
+        "decoded_index": 4,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=4",
+        "timestamp_s": 0.06666666666666667
+      },
+      "validity": {
+        "reasons": [],
+        "usable": true
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "diagnostic_name": "positive_forward_reach_12.5_pct",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": 7.125016348901798,
+        "unavailable": null
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 312.5,
+          "y": 600.0
+        },
+        "big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 327.5,
+          "y": 605.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": 0.95,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": 312.5,
+          "y": 605.0
+        },
+        "heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 297.5,
+          "y": 605.0
+        },
+        "hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 312.5,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 327.5,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 297.5,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": 12.5,
+          "pct_unavailable": null,
+          "px": 12.5,
+          "px_unavailable": null
+        },
+        "big_toe": {
+          "pct_leg": 27.500000000000004,
+          "pct_unavailable": null,
+          "px": 27.5,
+          "px_unavailable": null
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": 12.5,
+          "pct_unavailable": null,
+          "px": 12.5,
+          "px_unavailable": null
+        },
+        "heel": {
+          "pct_leg": -2.5,
+          "pct_unavailable": null,
+          "px": -2.5,
+          "px_unavailable": null
+        }
+      },
+      "record_id": "os-1037bc52ebb21e64",
+      "references": [],
+      "side": "l",
+      "source_frame": {
+        "decoded_index": 5,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=5",
+        "timestamp_s": 0.08333333333333333
+      },
+      "validity": {
+        "reasons": [],
+        "usable": true
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "diagnostic_name": "positive_forward_reach_15_pct",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": 8.530765609948133,
+        "unavailable": null
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 315.0,
+          "y": 600.0
+        },
+        "big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 330.0,
+          "y": 605.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": 0.95,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": 315.0,
+          "y": 605.0
+        },
+        "heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 605.0
+        },
+        "hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 315.0,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 330.0,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": 15.0,
+          "pct_unavailable": null,
+          "px": 15.0,
+          "px_unavailable": null
+        },
+        "big_toe": {
+          "pct_leg": 30.0,
+          "pct_unavailable": null,
+          "px": 30.0,
+          "px_unavailable": null
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": 15.0,
+          "pct_unavailable": null,
+          "px": 15.0,
+          "px_unavailable": null
+        },
+        "heel": {
+          "pct_leg": 0.0,
+          "pct_unavailable": null,
+          "px": 0.0,
+          "px_unavailable": null
+        }
+      },
+      "record_id": "os-3a50ac95f0e49428",
+      "references": [],
+      "side": "l",
+      "source_frame": {
+        "decoded_index": 6,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=6",
+        "timestamp_s": 0.1
+      },
+      "validity": {
+        "reasons": [],
+        "usable": true
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "diagnostic_name": "positive_forward_reach_17.5_pct",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": 9.926245506651705,
+        "unavailable": null
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 317.5,
+          "y": 600.0
+        },
+        "big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 332.5,
+          "y": 605.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": 0.95,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": 317.5,
+          "y": 605.0
+        },
+        "heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 302.5,
+          "y": 605.0
+        },
+        "hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 317.5,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 332.5,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 302.5,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": 17.5,
+          "pct_unavailable": null,
+          "px": 17.5,
+          "px_unavailable": null
+        },
+        "big_toe": {
+          "pct_leg": 32.5,
+          "pct_unavailable": null,
+          "px": 32.5,
+          "px_unavailable": null
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": 17.5,
+          "pct_unavailable": null,
+          "px": 17.5,
+          "px_unavailable": null
+        },
+        "heel": {
+          "pct_leg": 2.5,
+          "pct_unavailable": null,
+          "px": 2.5,
+          "px_unavailable": null
+        }
+      },
+      "record_id": "os-d1f1114e00887505",
+      "references": [],
+      "side": "l",
+      "source_frame": {
+        "decoded_index": 7,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=7",
+        "timestamp_s": 0.11666666666666667
+      },
+      "validity": {
+        "reasons": [],
+        "usable": true
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "diagnostic_name": "positive_forward_reach_20_pct",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": 11.309932474020213,
+        "unavailable": null
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 320.0,
+          "y": 600.0
+        },
+        "big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 335.0,
+          "y": 605.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": 0.95,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": 320.0,
+          "y": 605.0
+        },
+        "heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 305.0,
+          "y": 605.0
+        },
+        "hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 320.0,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 335.0,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 305.0,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": 20.0,
+          "pct_unavailable": null,
+          "px": 20.0,
+          "px_unavailable": null
+        },
+        "big_toe": {
+          "pct_leg": 35.0,
+          "pct_unavailable": null,
+          "px": 35.0,
+          "px_unavailable": null
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": 20.0,
+          "pct_unavailable": null,
+          "px": 20.0,
+          "px_unavailable": null
+        },
+        "heel": {
+          "pct_leg": 5.0,
+          "pct_unavailable": null,
+          "px": 5.0,
+          "px_unavailable": null
+        }
+      },
+      "record_id": "os-20b9347679e0748d",
+      "references": [],
+      "side": "l",
+      "source_frame": {
+        "decoded_index": 8,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=8",
+        "timestamp_s": 0.13333333333333333
+      },
+      "validity": {
+        "reasons": [],
+        "usable": true
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": null,
+        "unavailable": "hip not tracked this frame"
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": null,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": null,
+          "y": null
+        },
+        "heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 315.0,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 285.0,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "big_toe": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "heel": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        }
+      },
+      "record_id": "os-56a66463e64b953e",
+      "references": [],
+      "side": "r",
+      "source_frame": {
+        "decoded_index": 0,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=0",
+        "timestamp_s": 0.0
+      },
+      "validity": {
+        "reasons": [
+          "hip not tracked this frame"
+        ],
+        "usable": false
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": null,
+        "unavailable": "hip not tracked this frame"
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": null,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": null,
+          "y": null
+        },
+        "heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 302.5,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 317.5,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 287.5,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "big_toe": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "heel": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        }
+      },
+      "record_id": "os-2c074e58748581e3",
+      "references": [],
+      "side": "r",
+      "source_frame": {
+        "decoded_index": 1,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=1",
+        "timestamp_s": 0.016666666666666666
+      },
+      "validity": {
+        "reasons": [
+          "hip not tracked this frame"
+        ],
+        "usable": false
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": null,
+        "unavailable": "hip not tracked this frame"
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": null,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": null,
+          "y": null
+        },
+        "heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 305.0,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 320.0,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 290.0,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "big_toe": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "heel": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        }
+      },
+      "record_id": "os-aca47a038aba0822",
+      "references": [],
+      "side": "r",
+      "source_frame": {
+        "decoded_index": 2,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=2",
+        "timestamp_s": 0.03333333333333333
+      },
+      "validity": {
+        "reasons": [
+          "hip not tracked this frame"
+        ],
+        "usable": false
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": null,
+        "unavailable": "hip not tracked this frame"
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": null,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": null,
+          "y": null
+        },
+        "heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 307.5,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 322.5,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 292.5,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "big_toe": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "heel": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        }
+      },
+      "record_id": "os-0335e21e2e2dec06",
+      "references": [],
+      "side": "r",
+      "source_frame": {
+        "decoded_index": 3,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=3",
+        "timestamp_s": 0.05
+      },
+      "validity": {
+        "reasons": [
+          "hip not tracked this frame"
+        ],
+        "usable": false
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": null,
+        "unavailable": "hip not tracked this frame"
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": null,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": null,
+          "y": null
+        },
+        "heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 310.0,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 325.0,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 295.0,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "big_toe": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "heel": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        }
+      },
+      "record_id": "os-a21dc101211149f6",
+      "references": [],
+      "side": "r",
+      "source_frame": {
+        "decoded_index": 4,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=4",
+        "timestamp_s": 0.06666666666666667
+      },
+      "validity": {
+        "reasons": [
+          "hip not tracked this frame"
+        ],
+        "usable": false
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": null,
+        "unavailable": "hip not tracked this frame"
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": null,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": null,
+          "y": null
+        },
+        "heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 312.5,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 327.5,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 297.5,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "big_toe": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "heel": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        }
+      },
+      "record_id": "os-b7a66c3db5b6947a",
+      "references": [],
+      "side": "r",
+      "source_frame": {
+        "decoded_index": 5,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=5",
+        "timestamp_s": 0.08333333333333333
+      },
+      "validity": {
+        "reasons": [
+          "hip not tracked this frame"
+        ],
+        "usable": false
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": null,
+        "unavailable": "hip not tracked this frame"
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": null,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": null,
+          "y": null
+        },
+        "heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 315.0,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 330.0,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "big_toe": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "heel": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        }
+      },
+      "record_id": "os-d00d582768eafdcd",
+      "references": [],
+      "side": "r",
+      "source_frame": {
+        "decoded_index": 6,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=6",
+        "timestamp_s": 0.1
+      },
+      "validity": {
+        "reasons": [
+          "hip not tracked this frame"
+        ],
+        "usable": false
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": null,
+        "unavailable": "hip not tracked this frame"
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": null,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": null,
+          "y": null
+        },
+        "heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 317.5,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 332.5,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 302.5,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "big_toe": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "heel": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        }
+      },
+      "record_id": "os-5aff891c3ab19d76",
+      "references": [],
+      "side": "r",
+      "source_frame": {
+        "decoded_index": 7,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=7",
+        "timestamp_s": 0.11666666666666667
+      },
+      "validity": {
+        "reasons": [
+          "hip not tracked this frame"
+        ],
+        "usable": false
+      },
+      "view": "side-left"
+    },
+    {
+      "contact": {
+        "adjusted_frame_index": null,
+        "adjusted_timestamp_s": null,
+        "adjustment_provenance": null,
+        "detected": false,
+        "original_frame_index": null,
+        "original_timestamp_s": null,
+        "subframe_timestamp_s": null
+      },
+      "denominator_id": "projected-leg-length",
+      "facing_sign": 1,
+      "inclination": {
+        "degrees_from_vertical": null,
+        "unavailable": "hip not tracked this frame"
+      },
+      "measurement_landmarks": {
+        "ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "foot_midpoint_proxy": {
+          "confidence": null,
+          "provenance": "arithmetic mean of pose heel and big-toe coordinates",
+          "x": null,
+          "y": null
+        },
+        "heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "pose_landmarks": {
+        "head": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_ankle": {
+          "confidence": 0.97,
+          "provenance": "pose",
+          "x": 320.0,
+          "y": 600.0
+        },
+        "l_big_toe": {
+          "confidence": 0.95,
+          "provenance": "pose",
+          "x": 335.0,
+          "y": 605.0
+        },
+        "l_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_heel": {
+          "confidence": 0.96,
+          "provenance": "pose",
+          "x": 305.0,
+          "y": 605.0
+        },
+        "l_hip": {
+          "confidence": 0.99,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 500.0
+        },
+        "l_knee": {
+          "confidence": 0.98,
+          "provenance": "pose",
+          "x": 300.0,
+          "y": 550.0
+        },
+        "l_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "l_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "mid_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "neck": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "nose": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_ankle": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_big_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_elbow": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_heel": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_hip": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_knee": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_shoulder": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_small_toe": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        },
+        "r_wrist": {
+          "confidence": 0.0,
+          "provenance": "pose",
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "processing": "raw",
+      "reach": {
+        "ankle": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "big_toe": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "foot_midpoint_proxy": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        },
+        "heel": {
+          "pct_leg": null,
+          "pct_unavailable": "hip not tracked this frame",
+          "px": null,
+          "px_unavailable": "hip not tracked this frame"
+        }
+      },
+      "record_id": "os-b2fd145a0a7e1cc4",
+      "references": [],
+      "side": "r",
+      "source_frame": {
+        "decoded_index": 8,
+        "effective_fps": 60.0,
+        "identifier": "overstride-debug-sequence.source.gif#decoded-frame=8",
+        "timestamp_s": 0.13333333333333333
+      },
+      "validity": {
+        "reasons": [
+          "hip not tracked this frame"
+        ],
+        "usable": false
+      },
+      "view": "side-left"
+    }
+  ],
+  "measurement": {
+    "debug_dependency_overrides": {
+      "denominator": true,
+      "facing": true
+    },
+    "definition": "facing-adjusted horizontal ankle-to-hip reach at detected contact",
+    "denominator": {
+      "id": "projected-leg-length",
+      "method": "canonical authored 100 px",
+      "samples": [],
+      "unavailable": null,
+      "value_px": 100.0
+    },
+    "name": "overstride",
+    "production_report": {
+      "contact_record_ids": [],
+      "per_side": {
+        "l": null,
+        "r": null
+      },
+      "value": null
+    },
+    "unit": "%leg"
+  },
+  "schema": "gaitlab.overstride-debug/v1",
+  "source": {
+    "effective_fps": 60.0,
+    "frame_count": 9,
+    "height": 720,
+    "id": "overstride-debug-sequence.source.gif",
+    "nominal_fps": 60.0,
+    "pose_source": "authored:overstride_stage3-render-sequence",
+    "timestamp_source": "per-frame",
+    "view": "side-left",
+    "width": 640
+  }
+}
