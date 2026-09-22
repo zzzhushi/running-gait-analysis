@@ -14,8 +14,15 @@ from gaitlab.core.reach import Denominator, reach_curve
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 from gaitlab.metrics.ctx import leg_denominator
 from tests.pose_transforms import mirror_image, retime, scale, swap_sides, translate
+from tests.reach_fixture import (
+    actual_trace_record,
+    expected_trace_record,
+    format_trace_failure,
+    load_authored_reach_fixture,
+)
 
 LEG100 = Denominator.injected(100.0)
+AUTHORED_REACH = load_authored_reach_fixture()
 
 
 def pose_from_points(view, frames, fps=60, width=1080, height=1920):
@@ -33,71 +40,60 @@ def one(points, denominator=LEG100, facing=1):
     return reach_curve(pose_from_points("side-left", [points]), "l", denominator, facing)[0]
 
 
-# --- arithmetic ------------------------------------------------------------
+# --- arithmetic: one complete authored trace -------------------------------
 
-def test_ankle_reach_is_exact_on_hand_computed_coordinates():
-    # hip at x=300, ankle 20px ahead in image x; denominator injected as exactly 100.
-    s = one({"l_hip": (300, 500), "l_ankle": (320, 600)})
-    assert s.ankle_reach.px == pytest.approx(20.0)
-    assert s.ankle_reach.pct == pytest.approx(20.0)
-    assert s.ankle_reach.available
+@pytest.fixture(scope="module")
+def authored_curve():
+    case = AUTHORED_REACH
+    return reach_curve(case.sequence, case.side, case.denominator, case.facing)
 
 
-def test_reach_behind_the_hip_is_negative():
-    assert one({"l_hip": (300, 500), "l_ankle": (295, 600)}).ankle_reach.pct == pytest.approx(-5.0)
+def _assert_trace_matches(name, expected, actual):
+    """Compare the complete record and print it whole when any field diverges."""
+    diagnostic = format_trace_failure(name, expected, actual)
+
+    def compare(want, got, path="record"):
+        if isinstance(want, dict):
+            assert isinstance(got, dict), diagnostic
+            assert set(got) == set(want), diagnostic
+            for key in want:
+                compare(want[key], got[key], f"{path}.{key}")
+        elif isinstance(want, list):
+            assert isinstance(got, list) and len(got) == len(want), diagnostic
+            for index, value in enumerate(want):
+                compare(value, got[index], f"{path}[{index}]")
+        elif isinstance(want, float):
+            assert got == pytest.approx(want, abs=1e-6), f"{path}\n{diagnostic}"
+        else:
+            assert got == want, f"{path}\n{diagnostic}"
+
+    compare(expected, actual)
 
 
-def test_reach_directly_under_the_hip_is_zero():
-    assert one({"l_hip": (300, 500), "l_ankle": (300, 600)}).ankle_reach.pct == pytest.approx(0.0)
+@pytest.mark.parametrize(
+    "frame",
+    range(len(AUTHORED_REACH.frames)),
+    ids=[frame["name"] for frame in AUTHORED_REACH.frames],
+)
+def test_authored_reach_trace_is_complete_and_hand_computable(authored_curve, frame):
+    """Every displayed/debuggable field comes from one independently authored sequence."""
+    case = AUTHORED_REACH
+    actual = actual_trace_record(authored_curve[frame])
+    expected = expected_trace_record(case, frame)
+    _assert_trace_matches(case.frames[frame]["name"], expected, actual)
 
 
-def test_three_frame_fixture_spans_neutral_overstride_and_understride():
-    """One pose, three frames, injected leg = 100px exactly: every per-frame field is
-    computable on paper without a pose model or contact detection.
-
-    Heel and toe are held fixed across frames -- only the ankle moves -- so this is the
-    reference record for what one reach sample fully contains; other inspection tooling
-    (per-strike dumps, annotated-frame rendering) should reuse it rather than invent a
-    parallel one.
-    """
-    seq = pose_from_points("side-left", [
-        {"l_hip": (300, 500), "l_ankle": (300, 600), "l_heel": (310, 605), "l_big_toe": (340, 605)},  # neutral
-        {"l_hip": (300, 500), "l_ankle": (320, 600), "l_heel": (310, 605), "l_big_toe": (340, 605)},  # overstride
-        {"l_hip": (300, 500), "l_ankle": (295, 600), "l_heel": (310, 605), "l_big_toe": (340, 605)},  # lands behind
-    ])
-    curve = reach_curve(seq, "l", LEG100, facing=1)
-
-    assert [s.frame for s in curve] == [0, 1, 2]
-    assert [s.t for s in curve] == [seq.time_at(f) for f in range(3)]
-
-    assert [s.ankle_reach.pct for s in curve] == pytest.approx([0.0, 20.0, -5.0])
-    assert [s.heel_reach.pct for s in curve] == pytest.approx([10.0, 10.0, 10.0])
-    assert [s.toe_reach.pct for s in curve] == pytest.approx([40.0, 40.0, 40.0])
-    assert [s.midpoint_reach.pct for s in curve] == pytest.approx([25.0, 25.0, 25.0])
-    assert [s.foot_midpoint_proxy for s in curve] == pytest.approx([(325.0, 605.0)] * 3)
-    assert [s.inclination_deg for s in curve] == pytest.approx(
-        [math.degrees(math.atan2(reach, 100)) for reach in (0.0, 20.0, -5.0)])
+def test_authored_trace_preserves_the_three_original_hand_computed_anchors(authored_curve):
+    """The reusable sequence retains the issue's exact 0 / +20 / -5 arithmetic cases."""
+    anchors = AUTHORED_REACH.hand_computed_anchor_frames
+    assert anchors == [0, 1, 2]
+    assert [authored_curve[frame].ankle_reach.pct for frame in anchors] == pytest.approx(
+        [0.0, 20.0, -5.0])
 
 
 def test_facing_flips_the_sign_not_the_magnitude():
     pts = {"l_hip": (300, 500), "l_ankle": (320, 600)}
     assert one(pts, facing=-1).ankle_reach.pct == pytest.approx(-one(pts).ankle_reach.pct)
-
-
-def test_inclination_matches_the_contract_formula():
-    # ankle 20px ahead, 100px below the hip -> atan2(20, 100).
-    s = one({"l_hip": (300, 500), "l_ankle": (320, 600)})
-    assert s.inclination_deg == pytest.approx(math.degrees(math.atan2(20, 100)))
-    assert s.inclination_unavailable is None
-
-
-def test_heel_toe_and_midpoint_are_reported_alongside_ankle():
-    s = one({"l_hip": (300, 500), "l_ankle": (320, 600),
-             "l_heel": (310, 605), "l_big_toe": (340, 605)})
-    assert s.heel_reach.px == pytest.approx(10.0)
-    assert s.toe_reach.px == pytest.approx(40.0)
-    assert s.midpoint_reach.px == pytest.approx(25.0)
-    assert s.foot_midpoint_proxy == pytest.approx((325.0, 605.0))
 
 
 # --- per-candidate availability -------------------------------------------

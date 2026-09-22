@@ -19,10 +19,10 @@ def _seq(**points):
     return PoseSequence(fps=60, width=1000, height=2000, view="side-left", frames=[fr], source="test")
 
 
-def test_mirror_image_reflects_x_about_the_frame_width():
+def test_mirror_image_matches_a_discrete_horizontal_pixel_flip():
     seq = _seq(l_hip=(300, 500))
     mirrored = mirror_image(seq)
-    assert mirrored.xy(0, "l_hip") == pytest.approx((700.0, 500.0))  # width=1000
+    assert mirrored.xy(0, "l_hip") == pytest.approx((699.0, 500.0))  # 1000 - 1 - 300
 
 
 def test_swap_sides_moves_each_side_to_its_opposite_label():
@@ -37,9 +37,16 @@ def test_swap_sides_leaves_the_midline_unchanged():
     assert swap_sides(seq).xy(0, "mid_hip") == pytest.approx((500.0, 500.0))
 
 
-def test_scale_multiplies_every_coordinate():
+def test_scale_multiplies_coordinates_and_image_extent():
     seq = _seq(l_hip=(300, 500))
-    assert scale(seq, 2.0).xy(0, "l_hip") == pytest.approx((600.0, 1000.0))
+    scaled = scale(seq, 2.0)
+    assert scaled.xy(0, "l_hip") == pytest.approx((600.0, 1000.0))
+    assert (scaled.width, scaled.height) == (2000, 4000)
+
+
+def test_scale_rejects_a_nonpositive_extent():
+    with pytest.raises(ValueError, match="positive"):
+        scale(_seq(l_hip=(300, 500)), 0.0)
 
 
 def test_translate_adds_the_same_offset_to_every_point():

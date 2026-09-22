@@ -30,13 +30,13 @@ def _map_points(seq: PoseSequence, fn: Callable[[float, float], XY]) -> PoseSequ
 
 
 def mirror_image(seq: PoseSequence) -> PoseSequence:
-    """Reflect every point horizontally (`x' = width - x`); side labels unchanged.
+    """Mirror pixel-centre coordinates (`x' = width - 1 - x`); labels unchanged.
 
     Pair with facing=-1: a horizontally flipped video reverses the apparent direction of
     travel, but a runner's own left foot is still their left foot.
     """
     w = seq.width
-    return _map_points(seq, lambda x, y: (w - x, y))
+    return _map_points(seq, lambda x, y: (w - 1 - x, y))
 
 
 def swap_sides(seq: PoseSequence) -> PoseSequence:
@@ -48,7 +48,11 @@ def swap_sides(seq: PoseSequence) -> PoseSequence:
 
 
 def scale(seq: PoseSequence, k: float) -> PoseSequence:
-    return _map_points(seq, lambda x, y: (x * k, y * k))
+    """Scale coordinates and their image extent together; timestamps are unchanged."""
+    if k <= 0:
+        raise ValueError("scale factor must be positive")
+    scaled = _map_points(seq, lambda x, y: (x * k, y * k))
+    return replace(scaled, width=int(round(seq.width * k)), height=int(round(seq.height * k)))
 
 
 def translate(seq: PoseSequence, dx: float, dy: float) -> PoseSequence:

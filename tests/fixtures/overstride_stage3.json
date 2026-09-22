@@ -1,0 +1,91 @@
+{
+  "schema": "gaitlab.test/reach-fixture/v1",
+  "name": "overstride_stage3",
+  "purpose": "Authored geometry for validating the complete reach sample and its forced-contact overstride value without pose extraction or contact detection.",
+  "pose": {
+    "fps": 60,
+    "width": 640,
+    "height": 720,
+    "view": "side-left"
+  },
+  "measurement": {
+    "side": "l",
+    "facing": 1,
+    "denominator": {
+      "px": 100.0,
+      "method": "injected authored fixture"
+    },
+    "forced_strikes": {
+      "l": [1],
+      "r": []
+    },
+    "hand_computed_anchor_frames": [0, 1, 2],
+    "expected_metric_pct": 20.0
+  },
+  "does_not_validate": [
+    "pose landmark accuracy",
+    "contact detection",
+    "anatomical validity of the denominator",
+    "confidence suitability",
+    "whether any value is harmful"
+  ],
+  "frames": [
+    {
+      "name": "zero_forward_reach",
+      "timestamp": 0.0,
+      "points": {
+        "l_hip": [300.0, 500.0, 0.99],
+        "l_knee": [300.0, 550.0, 0.98],
+        "l_ankle": [300.0, 600.0, 0.97],
+        "l_heel": [285.0, 605.0, 0.96],
+        "l_big_toe": [315.0, 605.0, 0.95]
+      },
+      "expected": {
+        "ankle_reach": {"px": 0.0, "pct": 0.0},
+        "heel_reach": {"px": -15.0, "pct": -15.0},
+        "toe_reach": {"px": 15.0, "pct": 15.0},
+        "midpoint_reach": {"px": 0.0, "pct": 0.0},
+        "foot_midpoint_proxy": [300.0, 605.0],
+        "inclination_deg": 0.0
+      }
+    },
+    {
+      "name": "positive_forward_reach",
+      "timestamp": 0.016667,
+      "points": {
+        "l_hip": [300.0, 500.0, 0.99],
+        "l_knee": [300.0, 550.0, 0.98],
+        "l_ankle": [320.0, 600.0, 0.97],
+        "l_heel": [305.0, 605.0, 0.96],
+        "l_big_toe": [335.0, 605.0, 0.95]
+      },
+      "expected": {
+        "ankle_reach": {"px": 20.0, "pct": 20.0},
+        "heel_reach": {"px": 5.0, "pct": 5.0},
+        "toe_reach": {"px": 35.0, "pct": 35.0},
+        "midpoint_reach": {"px": 20.0, "pct": 20.0},
+        "foot_midpoint_proxy": [320.0, 605.0],
+        "inclination_deg": 11.309932
+      }
+    },
+    {
+      "name": "negative_forward_reach",
+      "timestamp": 0.033333,
+      "points": {
+        "l_hip": [300.0, 500.0, 0.99],
+        "l_knee": [300.0, 550.0, 0.98],
+        "l_ankle": [295.0, 600.0, 0.97],
+        "l_heel": [280.0, 605.0, 0.96],
+        "l_big_toe": [310.0, 605.0, 0.95]
+      },
+      "expected": {
+        "ankle_reach": {"px": -5.0, "pct": -5.0},
+        "heel_reach": {"px": -20.0, "pct": -20.0},
+        "toe_reach": {"px": 10.0, "pct": 10.0},
+        "midpoint_reach": {"px": -5.0, "pct": -5.0},
+        "foot_midpoint_proxy": [295.0, 605.0],
+        "inclination_deg": -2.862405
+      }
+    }
+  ]
+}
