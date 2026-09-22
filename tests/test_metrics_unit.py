@@ -11,10 +11,10 @@ from dataclasses import replace
 
 import pytest
 
-from gaitlab.core.events import GaitEvents
+from gaitlab.core.events import GaitEvents, detect_events
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 from gaitlab.metrics.compute import compute
-from gaitlab.metrics.ctx import Ctx, _leg_length, knee_flexion_at
+from gaitlab.metrics.ctx import Ctx, _leg_length, knee_flexion_at, median
 from gaitlab.metrics.defs import METRIC_DEFS
 from gaitlab.metrics.keys import MetricKey
 
@@ -77,6 +77,33 @@ def test_overstride_worst_side_is_max(synth):
     m = compute(synth("side-left", fps=60, duration=6, cadence=170, asymmetry=0.3, seed=6))
     ps = m["per_side"]
     assert m["values"]["overstride"] == pytest.approx(max(ps["l"]["overstride"], ps["r"]["overstride"]))
+
+
+def test_overstride_reads_the_reach_curve_rather_than_recomputing(synth):
+    """Sentinels cannot arise from the pose, so matching them proves the data path."""
+    seq = synth("side-left", fps=60, duration=6, cadence=170, seed=8)
+    ev = detect_events(seq)
+    real = Ctx(seq, ev, None)
+    strikes = ev.strikes["l"]
+    assert len(strikes) >= 3, "need several strikes for the median to be meaningful"
+
+    sentinels = [1000.0 + i for i in range(seq.n)]
+
+    class SpyCtx:
+        def __init__(self):
+            self.seq, self.ev, self.facing, self.leg = seq, ev, real.facing, real.leg
+            self.calls = []
+
+        def reach_curve(self, side):
+            self.calls.append(side)
+            return [replace(s, ankle_reach=replace(s.ankle_reach, pct=sentinels[i]))
+                    for i, s in enumerate(real.reach_curve(side))]
+
+    spy = SpyCtx()
+    got = METRIC_DEFS[MetricKey.OVERSTRIDE].compute(spy, "l")
+
+    assert spy.calls == ["l"], "the metric must go through ctx.reach_curve()"
+    assert got == median([sentinels[s] for s in strikes])
 
 
 def test_uncalibrated_contact_metrics_are_descriptive_only():

@@ -13,8 +13,10 @@ from statistics import median as _median
 from typing import Dict, List, Optional
 
 from ..core import geometry as geo
+from ..core import reach as reach_mod
 from ..core.events import GaitEvents
 from ..core.profile import Calibration, RunnerProfile
+from ..core.reach import Denominator, DenominatorSample, ReachSample
 from ..core.schema import PoseSequence
 
 
@@ -56,17 +58,53 @@ def knee_flexion_at(seq: PoseSequence, f: int, side: str) -> float:
     return 180.0 - ang if ang == ang else float("nan")
 
 
-def _leg_length(seq: PoseSequence) -> float:
-    lens: List[float] = []
+def leg_length_samples(seq: PoseSequence) -> List[DenominatorSample]:
+    """Every limb-length observation behind the denominator.
+
+    Pooled over both sides and all frames, so each observation retains its frame and raw
+    points and a normalized value can be traced past the scalar.
+    """
+    out: List[DenominatorSample] = []
     for f in range(seq.n):
         for side in ("l", "r"):
-            hip = seq.xy(f, f"{side}_hip")
-            knee = seq.xy(f, f"{side}_knee")
-            ankle = seq.xy(f, f"{side}_ankle")
-            d = geo.distance(hip, knee) + geo.distance(knee, ankle)
-            if d > 0:
-                lens.append(d)
-    return median(lens) or 1.0
+            hip = seq.pt(f, f"{side}_hip")
+            knee = seq.pt(f, f"{side}_knee")
+            ankle = seq.pt(f, f"{side}_ankle")
+            # Confidence zero is the schema's not-tracked sentinel; its placeholder
+            # coordinates are not geometry. No higher threshold is applied.
+            if min(hip[2], knee[2], ankle[2]) <= 0:
+                continue
+            thigh = geo.distance(hip[:2], knee[:2])
+            shank = geo.distance(knee[:2], ankle[:2])
+            if thigh + shank > 0:
+                out.append(DenominatorSample(
+                    frame=f, t=seq.time_at(f), side=side,
+                    hip=hip, knee=knee, ankle=ankle,
+                    thigh_px=thigh, shank_px=shank,
+                    total_px=thigh + shank,
+                    min_confidence=min(hip[2], knee[2], ankle[2]),
+                ))
+    return out
+
+
+def leg_denominator(seq: PoseSequence) -> Denominator:
+    """The current overstride denominator, carrying the observations that produced it."""
+    samples = leg_length_samples(seq)
+    if not samples:
+        return Denominator(
+            px=float("nan"),
+            method="median of thigh+shank, pooled over both sides and all frames",
+            source_unavailable="no frames have tracked hip, knee, and ankle landmarks",
+        )
+    return Denominator(
+        px=median([s.total_px for s in samples]),
+        method="median of thigh+shank, pooled over both sides and all frames",
+        samples=tuple(samples),
+    )
+
+
+def _leg_length(seq: PoseSequence) -> float:
+    return leg_denominator(seq).px
 
 
 def _body_px_height(seq: PoseSequence) -> float:
@@ -109,7 +147,8 @@ class Ctx:
         self.ev = ev
         self.n = seq.n
         self.facing = seq.facing_sign()
-        self.leg = _leg_length(seq)
+        self.denominator = leg_denominator(seq)
+        self.leg = self.denominator.px
         self.cal = _calibration(seq, calibration, self.leg)
         self._cache: Dict[str, object] = {}
 
@@ -200,3 +239,12 @@ class Ctx:
         if not self.seq.has("head"):
             return None
         return self._memo("head_x", lambda: geo.moving_average(self.seq.series_x("head"), 5))
+
+    def reach_curve(self, side: str) -> List[ReachSample]:
+        """Hip-relative foot position for `side`, one sample per frame.
+
+        Normalized by the projected thigh+shank median, which the measurement contract
+        records as an open choice rather than a validated one.
+        """
+        return self._memo(f"reach_curve_{side}",
+                           lambda: reach_mod.reach_curve(self.seq, side, self.denominator, self.facing))

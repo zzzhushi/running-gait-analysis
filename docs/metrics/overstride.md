@@ -44,16 +44,20 @@ decoded frames + timestamps
         |
         v
 pose hip / knee / ankle coordinates + confidence
-        |                                  |
-        |                                  v
-        |                         ankle-y event detector (LIFT_FRACTION)
-        |                                  |
-        v                                  v
-facing direction + projected leg      detected strike frame
-        |                                  |
-        +----------------+-----------------+
-                         v
-          per-strike signed normalized reach
+        |                         |
+        v                         v
+tracked hip/knee/ankle       ankle-y event detector (LIFT_FRACTION)
+        |                         |
+        v                         v
+projected-leg denominator    detected strike frame
+with raw-point provenance         |
+        |                         |
+        +-----------+-------------+
+                    v
+       raw per-frame reach-curve artifact
+                    |
+                    v
+       sample artifact at each strike frame
                          |
                          v
                per-side median values
@@ -88,15 +92,19 @@ headline          = max(left side_value, right side_value)
 | Confidence / scoring | `high`, scored | contradicted by integration status `UNVALIDATED` |
 
 Source: [`overstride.py`](../../gaitlab/metrics/definitions/overstride.py),
-[`ctx.py`](../../gaitlab/metrics/ctx.py), [`events.py`](../../gaitlab/core/events.py),
+[`reach.py`](../../gaitlab/core/reach.py), [`ctx.py`](../../gaitlab/metrics/ctx.py),
+[`events.py`](../../gaitlab/core/events.py),
 [`clipcase.py`](../../tests/integration/clipcase.py).
 
 ### Denominator behaviour worth recording
 
-`_leg_length` pools both anatomical sides and every frame into a single median, uses 2-D
+`_leg_length` pools both anatomical sides and every frame into a single median and uses 2-D
 projected segment distances that change with out-of-plane motion even though anatomical segment
-length is constant, does not gate contributing hip/knee/ankle points on confidence, and ends in
-`median(lens) or 1.0` — which never substitutes `1.0`, because `NaN` is truthy.
+length is constant. Structurally absent points (`confidence == 0`) are excluded so their `(0,0)`
+sentinels cannot become geometry. No higher confidence threshold is applied: choosing and
+validating one remains separate work. Every contributing sample retains its frame, timestamp,
+side, raw hip/knee/ankle points and derived segment lengths; if no complete observation exists,
+the denominator is unavailable rather than replaced with a plausible-looking fallback.
 
 None of this makes the denominator unusable. It establishes that `%leg` is not yet comparable
 with a published anthropometric normalization, and that the unit should be named **percent of
@@ -111,6 +119,29 @@ reach       = (ankle_x − hip_x) · facing          pixels, positive = ahead of
 value       = reach / denominator · 100           percent; denominator undecided, see below
 inclination = atan2(reach, ankle_y − hip_y)       degrees from vertical
 ```
+
+### Inspectable reach artifact
+
+`Ctx.reach_curve(side)` exposes the quantity before contact detection samples it. It returns one
+`ReachSample` for every source frame and identifies the side, frame index, timestamp, facing and
+processing state (`raw`). Each sample contains:
+
+- raw hip, ankle, heel and big-toe `(x, y, confidence)` points;
+- the explicitly derived `foot_midpoint_proxy`;
+- signed pixel and normalized-percent readings for ankle, heel, toe and midpoint;
+- separate refusal reasons for unavailable pixel geometry and unavailable normalization;
+- hip-to-ankle inclination and its refusal reason; and
+- the exact `Denominator`, including method and every raw hip/knee/ankle observation that fed it.
+
+The production metric samples `ankle_reach.pct` from this same curve at each detected strike; it
+does not maintain a second copy of the formula. Isolation tests inject hand-computed geometry and
+a sentinel curve, while the committed `female_overstride` fixture demonstrates the complete
+inspection path on recorded pose data.
+
+This artifact is raw: it contains no smoothing or interpolation. It makes pose localization,
+denominator inputs and contact-frame selection inspectable; it does **not** validate their
+accuracy, choose a confidence threshold above structural presence, or establish that sub-frame
+interpolation is reliable.
 
 | Term | Landmark | Status |
 |---|---|---|
