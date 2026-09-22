@@ -20,6 +20,9 @@ from tests.pose_transforms import mirror_image, scale, swap_sides, translate
 
 CLIPS = [c for c in load_clips(extractors=("rtmpose",))
          if PoseSequence.from_pose_dict(json.loads(c.pose_path.read_text())).is_side()]
+# A fixture-discovery or filter regression that empties this list would make every test
+# below a silent no-op (pytest skips an empty parametrization) rather than fail.
+assert CLIPS, "no side-view rtmpose clips found -- the real-clip invariant layer would be silently empty"
 
 
 def _ids(clip):

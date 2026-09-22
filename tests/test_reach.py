@@ -182,6 +182,21 @@ def test_a_structurally_missing_knee_cannot_become_denominator_geometry():
     assert sample.ankle_reach.pct_unavailable == denominator.unavailable
 
 
+def test_denominator_retains_any_positive_confidence_however_low():
+    """The excluded case is confidence == 0 (structurally absent), not a quality
+    threshold; a stricter cutoff is separate, unimplemented work."""
+    fr = [(0.0, 0.0, 0.0)] * len(KEYPOINTS)
+    fr[KEYPOINTS.index("l_hip")] = (300.0, 500.0, 0.01)
+    fr[KEYPOINTS.index("l_knee")] = (300.0, 550.0, 0.01)
+    fr[KEYPOINTS.index("l_ankle")] = (300.0, 600.0, 0.01)
+    seq = PoseSequence(fps=60, width=1080, height=1920, view="side-left", frames=[fr], source="test")
+
+    denominator = leg_denominator(seq)
+    assert len(denominator.samples) == 1
+    assert denominator.samples[0].min_confidence == pytest.approx(0.01)
+    assert denominator.px == pytest.approx(100.0)
+
+
 def test_denominator_uses_complete_observations_and_excludes_incomplete_ones():
     seq = pose_from_points("side-left", [
         {"l_hip": (300, 500), "l_ankle": (320, 600)},  # knee absent
@@ -202,22 +217,23 @@ def test_injected_denominators_declare_that_they_have_no_provenance():
 
 
 def test_leg_denominator_is_the_median_pooled_over_frames_and_both_sides():
-    """Every observation from either side, on every frame, feeds one shared median --
-    not a per-side value and not the latest frame."""
+    """Chosen so every plausible wrong aggregation disagrees with the correct one:
+
+    pooled median (correct) = 110; left-only = 100; right-only = 200;
+    latest-frame = 210; mean = 150; min = 80. A regression landing on any of those
+    would fail here, where a less discriminating set of values might not.
+    """
     seq = pose_from_points("side-left", [
-        {"l_hip": (300, 500), "l_knee": (300, 550), "l_ankle": (300, 600),   # l: 100
-         "r_hip": (300, 500), "r_knee": (300, 540), "r_ankle": (300, 600)},  # r: 100
-        {"l_hip": (300, 500), "l_knee": (300, 530), "l_ankle": (300, 600),   # l: 100
-         "r_hip": (300, 500), "r_knee": (300, 600), "r_ankle": (300, 700)},  # r: 200 (outlier)
+        {"l_hip": (300, 500), "l_knee": (300, 540), "l_ankle": (300, 580),   # l frame0: 80
+         "r_hip": (300, 500), "r_knee": (300, 550), "r_ankle": (300, 600)},  # r frame0: 100
+        {"l_hip": (300, 500), "l_knee": (300, 560), "l_ankle": (300, 620),   # l frame1: 120
+         "r_hip": (300, 500), "r_knee": (300, 650), "r_ankle": (300, 800)},  # r frame1: 300
     ])
     denominator = leg_denominator(seq)
 
     lengths = [s.total_px for s in denominator.samples]
-    assert len(lengths) == 4  # both sides, both frames
-    assert sorted(round(v) for v in lengths) == [100, 100, 100, 200]
-    # The outlier moves the median only slightly; a per-side or latest-frame denominator
-    # would not land here.
-    assert denominator.px == pytest.approx(100.0)
+    assert sorted(round(v) for v in lengths) == [80, 100, 120, 300]
+    assert denominator.px == pytest.approx(110.0)
 
 
 def test_a_derived_denominator_changes_when_the_ankle_moves_horizontally():
