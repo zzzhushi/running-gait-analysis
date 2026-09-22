@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Regenerate the committed 9-frame overstride overlay diagnostic sequence.
 
+    python scripts/gen_overstride_debug_sequence.py            # rewrite the committed assets
+    python scripts/gen_overstride_debug_sequence.py --check    # exit 1 if any is stale
+
 The endpoints come from the canonical authored reach fixture introduced before rendering work.
 Intermediate frames interpolate the distal x coordinates only. This is an overlay/decode/time
 fixture with neutral names, not a claim about acceptable or harmful running form.
@@ -10,6 +13,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +31,12 @@ from scripts.overstride_render import find_row, render_annotated_frame, save_gri
 CANONICAL = ROOT / "tests" / "fixtures" / "overstride_stage3.json"
 ASSETS = ROOT / "docs" / "validation" / "assets"
 FRAME_COUNT = 9
+ARTIFACTS = (
+    "overstride-debug-sequence.record.json",
+    "overstride-debug-sequence.source.gif",
+    "overstride-debug-sequence.png",
+    "overstride-debug-sequence.gif",
+)
 
 
 def _sequence():
@@ -74,7 +84,8 @@ def _background(index: int, size: tuple[int, int]) -> Image.Image:
     return image
 
 
-def main() -> int:
+def write_artifacts(destination: Path) -> None:
+    """Write all four artifacts into `destination`, which must already exist."""
     sequence, names = _sequence()
     denominator = Denominator.injected(100.0, method="canonical authored 100 px")
     bundle = build_overstride_debug_record(
@@ -92,13 +103,12 @@ def main() -> int:
         "purpose": "decode/time/orientation/overlay validation only",
     }
 
-    ASSETS.mkdir(parents=True, exist_ok=True)
-    record_path = ASSETS / "overstride-debug-sequence.record.json"
+    record_path = destination / "overstride-debug-sequence.record.json"
     record_path.write_text(json.dumps(bundle, indent=2, sort_keys=True, allow_nan=False) + "\n")
 
     backgrounds = [_background(index, (sequence.width, sequence.height)) for index in range(FRAME_COUNT)]
     backgrounds[0].save(
-        ASSETS / "overstride-debug-sequence.source.gif", save_all=True,
+        destination / "overstride-debug-sequence.source.gif", save_all=True,
         append_images=backgrounds[1:], duration=round(1000 / sequence.fps), loop=0,
         optimize=False,
     )
@@ -108,15 +118,41 @@ def main() -> int:
     ]
     save_grid(
         rendered,
-        ASSETS / "overstride-debug-sequence.png",
+        destination / "overstride-debug-sequence.png",
         columns=3,
         artifact="diagnostic-sequence",
     )
     rendered_images = [image for image, _plan in rendered]
     rendered_images[0].save(
-        ASSETS / "overstride-debug-sequence.gif", save_all=True,
+        destination / "overstride-debug-sequence.gif", save_all=True,
         append_images=rendered_images[1:], duration=500, loop=0, optimize=False,
     )
+
+
+def stale_artifacts() -> list[str]:
+    """Names of committed artifacts the current code no longer reproduces."""
+    with tempfile.TemporaryDirectory() as tmp:
+        fresh = Path(tmp)
+        write_artifacts(fresh)
+        return [
+            name for name in ARTIFACTS
+            if not (ASSETS / name).is_file()
+            or (fresh / name).read_bytes() != (ASSETS / name).read_bytes()
+        ]
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if "--check" in argv:
+        stale = stale_artifacts()
+        if stale:
+            print("stale, rerun scripts/gen_overstride_debug_sequence.py: "
+                  + ", ".join(stale), file=sys.stderr)
+            return 1
+        return 0
+
+    ASSETS.mkdir(parents=True, exist_ok=True)
+    write_artifacts(ASSETS)
     print(ASSETS / "overstride-debug-sequence.png")
     return 0
 

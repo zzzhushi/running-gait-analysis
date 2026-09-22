@@ -74,3 +74,36 @@ def test_pages_builder_selects_only_the_portable_engine(monkeypatch):
     assert all(path.is_relative_to(REPO / "gaitlab") for path, _ in written)
     assert all(Path(arcname).parts[0] == "gaitlab" for _, arcname in written)
     assert not any("gaitlab_local" in Path(arcname).parts for _, arcname in written)
+
+
+def test_browser_bundle_excludes_developer_only_subpackages(monkeypatch):
+    """Being under gaitlab/ is not the same as belonging in a browser.
+
+    Diagnostics run from scripts/ on a developer's machine; bundling them only grows what
+    every visitor downloads, and nothing in the shipped engine imports them.
+    """
+    written: list[str] = []
+
+    class RecordingZipFile:
+        def __init__(self, *_args):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def write(self, _path, arcname):
+            written.append(arcname)
+
+    monkeypatch.setattr(build_web, "OUT", REPO / "unused-gaitlab.zip")
+    monkeypatch.setattr(build_web.zipfile, "ZipFile", RecordingZipFile)
+    build_web.build_zip()
+
+    assert build_web.EXCLUDED_PACKAGES, "the exclusion set is what this test protects"
+    for package in build_web.EXCLUDED_PACKAGES:
+        on_disk = sorted((REPO / "gaitlab" / package).rglob("*.py"))
+        assert on_disk, f"gaitlab/{package} does not exist; drop it from EXCLUDED_PACKAGES"
+        bundled = [name for name in written if Path(name).parts[1:2] == (package,)]
+        assert not bundled, f"developer-only gaitlab/{package} reached the browser bundle: {bundled}"

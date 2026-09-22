@@ -29,6 +29,10 @@ The record contains:
   hand-placed landmarks as separate layers; and
 - refusal/validity reasons instead of unexplained missing numbers.
 
+`measurement.production_report.value` is the unrounded result of the registered formula and
+aggregator. The report card rounds to three decimals when it serializes, so a record showing
+`24.81505325125974` and a card showing `24.815` are the same measurement, not a disagreement.
+
 ## Generate a bundle
 
 Install the development dependencies (Pillow renders deterministic PNGs) and ensure `ffmpeg`

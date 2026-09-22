@@ -229,6 +229,17 @@ def test_committed_nine_frame_sequence_uses_neutral_names_and_canonical_endpoint
     assert (assets / "overstride-debug-sequence.png").is_file()
 
 
+def test_committed_sequence_is_reproducible_from_the_current_code():
+    """Checking a few of the record's fields cannot notice a changed record shape.
+
+    Without this, adding a field to the builder leaves the committed artifacts describing a
+    format the code no longer produces, and every other test here still passes.
+    """
+    from scripts.gen_overstride_debug_sequence import stale_artifacts
+
+    assert not stale_artifacts()
+
+
 def test_committed_sequence_locks_decode_index_and_orientation():
     assets = Path(__file__).resolve().parents[1] / "docs" / "validation" / "assets"
     bundle = json.loads((assets / "overstride-debug-sequence.record.json").read_text())

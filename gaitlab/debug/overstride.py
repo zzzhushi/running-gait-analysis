@@ -19,7 +19,7 @@ from typing import Any, Dict, Iterable, Mapping, Optional
 from ..core.events import GaitEvents, detect_events
 from ..core.reach import Denominator, ReachSample
 from ..core.schema import PoseSequence
-from ..metrics.compute import _aggregate
+from ..metrics.compute import aggregate
 from ..metrics.ctx import Ctx
 from ..metrics.defs import METRIC_DEFS
 from ..metrics.keys import MetricKey
@@ -258,7 +258,7 @@ def build_overstride_debug_record(
     # formula fixture can keep its known denominator/facing while exercising the same hook.
     definition = METRIC_DEFS[MetricKey.OVERSTRIDE]
     raw_per_side = {side: definition.compute(ctx, side) for side in ("l", "r")}
-    metric_value = _aggregate(
+    metric_value = aggregate(
         definition.aggregate, raw_per_side["l"], raw_per_side["r"]
     )
     per_side = {side: _finite(value) for side, value in raw_per_side.items()}

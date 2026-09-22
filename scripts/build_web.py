@@ -26,13 +26,18 @@ SRC = ROOT / "gaitlab"
 WEB = ROOT / "web"
 OUT = WEB / "py" / "gaitlab.zip"
 
+# Subpackages the browser never reaches. Diagnostics are driven from scripts/ on a
+# developer's machine, so shipping them only grows what every visitor downloads.
+EXCLUDED_PACKAGES = {"debug"}
+
 
 def build_zip() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     n = 0
     with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as z:
         for path in sorted(SRC.rglob("*.py")):
-            if "__pycache__" in path.parts:
+            parts = path.relative_to(SRC).parts
+            if "__pycache__" in path.parts or parts[0] in EXCLUDED_PACKAGES:
                 continue
             z.write(path, path.relative_to(ROOT).as_posix())  # arcname -> gaitlab/...
             n += 1
