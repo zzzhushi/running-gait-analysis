@@ -57,6 +57,15 @@ def test_timestamp_clock_controls_duration_and_effective_fps():
     assert s.duration == pytest.approx(0.12)
 
 
+def test_timestamp_source_round_trips_through_pose_dict():
+    s = _valid_base()
+    s.timestamps = [i * 0.02 for i in range(s.n)]
+    s.timestamp_source = "ffprobe (real container PTS)"
+    s.validate()
+    restored = PoseSequence.from_pose_dict(s.to_pose_dict())
+    assert restored.timestamp_source == s.timestamp_source
+
+
 @pytest.mark.parametrize("mutate,match", [
     (lambda s: setattr(s, "fps", 0), "fps"),
     (lambda s: setattr(s, "fps", -30), "fps"),
@@ -69,6 +78,7 @@ def test_timestamp_clock_controls_duration_and_effective_fps():
     (lambda s: setattr(s, "timestamps", [0.0, 0.1, float("nan"), 0.3, 0.4, 0.5]), "finite"),
     (lambda s: setattr(s, "timestamps", [0.0, 0.1, 0.2, 0.15, 0.4, 0.5]), "non-decreasing"),
     (lambda s: setattr(s, "timestamps", [1.0] * 6), "positive duration"),
+    (lambda s: setattr(s, "timestamp_source", "ffprobe"), "timestamp_source"),
 ])
 def test_malformed_pose_rejected(mutate, match):
     s = _valid_base()

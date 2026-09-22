@@ -326,6 +326,77 @@ class TestOrientation:
         assert (seq.width, seq.height) == (1080, 1920)
 
 
+class _TimedCapture:
+    """An unrotated capture whose POS_MSEC advances by a fixed step each read."""
+
+    def __init__(self, n_frames=4, step_ms=33.333):
+        self._n_frames = n_frames
+        self._step_ms = step_ms
+        self._read = 0
+
+    def isOpened(self):
+        return True
+
+    def get(self, prop):
+        import cv2
+        if prop == cv2.CAP_PROP_FPS:
+            return 30.0
+        if prop == cv2.CAP_PROP_FRAME_WIDTH:
+            return 640.0
+        if prop == cv2.CAP_PROP_FRAME_HEIGHT:
+            return 480.0
+        if prop == cv2.CAP_PROP_POS_MSEC:
+            return self._read * self._step_ms
+        return 0.0
+
+    def set(self, prop, value):
+        return True
+
+    def read(self):
+        if self._read >= self._n_frames:
+            return False, None
+        self._read += 1
+        return True, object()
+
+    def release(self):
+        pass
+
+
+class TestTimestampProvenance:
+    """The extractor must not discard where its timestamps came from.
+
+    Duration, effective FPS, and every timing-dependent metric depend on whether the
+    clock is a real per-frame timestamp or an assumed constant frame rate; that
+    provenance has to survive on the PoseSequence, not just print to stderr.
+    """
+
+    def test_opencv_pos_msec_source_is_recorded_on_the_sequence(self, monkeypatch):
+        capture = _TimedCapture()
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right", no_ffprobe=True)
+
+        assert seq.timestamps == pytest.approx([0.0, 0.033333, 0.066666, 0.099999], abs=1e-4)
+        assert seq.timestamp_source == "OpenCV POS_MSEC"
+
+    def test_no_trustworthy_clock_leaves_timestamps_and_source_unset(self, monkeypatch):
+        capture = _TimedCapture(step_ms=0.0)  # a stalled clock carries no elapsed-time information
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right", no_ffprobe=True)
+
+        assert seq.timestamps is None
+        assert seq.timestamp_source is None
+
+
 class TestResolveVideo:
     def test_returns_an_existing_absolute_path_unchanged(self, tmp_path):
         f = tmp_path / "clip.mp4"
