@@ -1,24 +1,15 @@
-"""Per-frame hip-relative foot position ("reach"): the signal overstride samples.
+"""Per-frame hip-relative foot position, the signal overstride samples.
 
-A wrong overstride value can come from a bad frame, a bad landmark, or a bad formula, and
-without this signal materialized those three are indistinguishable -- the per-strike formula
-computes a value and discards everything that produced it. This module exposes the whole
-curve so a value can be traced back to its frame, its landmarks, and their confidences.
+Every frame yields a sample regardless of contact detection, so the quantity is inspectable
+without event detection or annotation.
 
-It is independent of contact detection: it maps every frame to a reach sample regardless of
-whether that frame is a strike, so it can be tested and inspected without any event-detection
-or annotation work. The denominator is supplied, not chosen here -- see
-docs/metrics/overstride.md for why that choice is still open.
+Each distal candidate is computed from the landmarks it needs alone; the hip is the shared
+reference, so only its absence makes every candidate unavailable. Pixel and normalized
+availability are separate, because an unusable denominator leaves pixel offsets measurable.
 
-Each distal candidate is computed from the landmarks it actually needs, and carries its own
-unavailability reason. A candidate is not withheld because a different landmark is missing:
-comparing candidates empirically is the reason they are all exposed, so an untracked ankle
-must not erase heel, toe, or midpoint geometry. Availability in pixels and availability after
-normalization are recorded separately, because a bad denominator leaves pixel offsets usable.
-
-Ankle is the measurement point the metric currently uses. Heel, toe, and their midpoint are
-exposed for comparison, not as alternative definitions -- see docs/metrics/overstride.md's
-"Open decisions".
+Ankle is the measurement point the metric uses; heel, toe and their midpoint are exposed for
+comparison, not as alternative definitions. The denominator is supplied rather than chosen
+here, and the measurement contract records why that choice is open.
 """
 
 from __future__ import annotations
@@ -35,11 +26,9 @@ NAN = float("nan")
 
 @dataclass(frozen=True)
 class DenominatorSample:
-    """One limb-length observation that fed the denominator.
+    """One limb-length observation behind the denominator.
 
-    The raw points are retained so the segment lengths can be recomputed from this artifact
-    alone.  ``frame``/``t`` and ``side`` identify the observation in the source sequence; the
-    derived lengths make the exact aggregation input convenient to inspect.
+    Retains the raw points, so the segment lengths can be recomputed from this record alone.
     """
 
     frame: int
@@ -56,10 +45,10 @@ class DenominatorSample:
 
 @dataclass(frozen=True)
 class Denominator:
-    """The normalizing length, with enough provenance to audit a suspicious percentage.
+    """The normalizing length in pixels, with the observations that produced it.
 
-    `samples` are the observations that produced `px`; they are empty when a caller injects a
-    length directly rather than deriving it from the pose.
+    `samples` is empty when a caller injects a length rather than deriving it from pose.
+    `unavailable` names why the length cannot normalize, or None.
     """
 
     px: float
@@ -84,10 +73,9 @@ class Denominator:
 
 @dataclass(frozen=True)
 class Reading:
-    """One distal candidate's hip-relative offset.
+    """One distal candidate's hip-relative offset, in pixels and as a percentage.
 
-    `px` and `pct` fail independently: missing landmarks make both unavailable, while a bad
-    denominator leaves `px` usable and only invalidates `pct`.
+    Missing landmarks make both unavailable; an unusable denominator invalidates `pct` only.
     """
 
     px: float
@@ -104,10 +92,9 @@ class Reading:
 class ReachSample:
     """One frame's hip-relative foot position, for one side.
 
-    `foot_midpoint_proxy` is a derived point, not a tracked keypoint -- there is no midfoot
-    landmark in the canonical schema. There is deliberately no sample-wide validity flag: a
-    sample can hold a usable heel offset and an unusable ankle offset at once, so each
-    measurement carries its own reason instead.
+    `foot_midpoint_proxy` is derived, not a tracked keypoint: the schema has no midfoot
+    landmark. Availability is per measurement, since one sample can hold a usable heel offset
+    and an unusable ankle offset at once.
     """
 
     frame: int
@@ -143,10 +130,10 @@ def _reading(distal_x: float, hip_x: float, facing: int, denominator: Denominato
 
 
 def reach_curve(seq: PoseSequence, side: str, denominator: Denominator, facing: int) -> List[ReachSample]:
-    """The hip-relative reach curve for one side, one sample per frame.
+    """Return one sample per frame for `side`.
 
-    `denominator` and `facing` are supplied rather than derived here, so this stays testable
-    against a hand-computed length and usable once the denominator decision changes.
+    `denominator` and `facing` are supplied, so the curve is independent of how either is
+    derived.
     """
     has_heel = seq.has(f"{side}_heel")
     has_toe = seq.has(f"{side}_big_toe")
@@ -158,8 +145,6 @@ def reach_curve(seq: PoseSequence, side: str, denominator: Denominator, facing: 
         heel = seq.pt(f, f"{side}_heel") if has_heel else (0.0, 0.0, 0.0)
         toe = seq.pt(f, f"{side}_big_toe") if has_toe else (0.0, 0.0, 0.0)
 
-        # The hip is the shared reference, so its absence is the only failure that takes
-        # every candidate with it.
         no_hip = None if hip[2] > 0 else "hip not tracked this frame"
         no_ankle = no_hip or (None if ankle[2] > 0 else "ankle not tracked this frame")
         no_heel = no_hip or (None if heel[2] > 0 else "heel not tracked this frame")

@@ -1,8 +1,7 @@
-"""Hip-relative reach curve (gaitlab/core/reach.py).
+"""Hip-relative reach curve.
 
-The denominator and facing are injected rather than derived, so these tests check the curve's
-own arithmetic in isolation from leg_denominator and facing_sign -- see
-docs/metrics/overstride.md for why the denominator itself is still an open decision.
+The denominator and facing are injected, so these cover the curve's own arithmetic and
+availability rules in isolation from how either is derived.
 """
 
 from __future__ import annotations
@@ -70,11 +69,6 @@ def test_heel_toe_and_midpoint_are_reported_alongside_ankle():
 # --- per-candidate availability -------------------------------------------
 
 def test_a_missing_ankle_does_not_erase_heel_toe_or_midpoint():
-    """Each candidate needs only its own landmarks.
-
-    The candidates exist to be compared against each other, so withholding heel/toe/midpoint
-    because a different landmark is missing would defeat the artifact's purpose.
-    """
     s = one({"l_hip": (300, 500), "l_heel": (310, 605), "l_big_toe": (340, 605)})
 
     assert s.ankle_reach.px_unavailable == "ankle not tracked this frame"

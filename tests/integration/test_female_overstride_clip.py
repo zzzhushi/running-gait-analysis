@@ -44,7 +44,7 @@ def test_no_spurious_ground_tilt_warning(actual):
 
 
 def test_reach_artifact_is_inspectable_on_the_committed_clip():
-    """Issue #71's artifact is demonstrable on real committed pose data, not only synths."""
+    """The curve reports what the recorded pose contains, not a transformed copy."""
     from gaitlab.core.events import detect_events
     from gaitlab.core.schema import PoseSequence
     from gaitlab.metrics.ctx import Ctx, median

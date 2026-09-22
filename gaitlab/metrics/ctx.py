@@ -59,10 +59,10 @@ def knee_flexion_at(seq: PoseSequence, f: int, side: str) -> float:
 
 
 def leg_length_samples(seq: PoseSequence) -> List[DenominatorSample]:
-    """Every limb-length observation behind the denominator, each traceable to its frame.
+    """Every limb-length observation behind the denominator.
 
-    Pooling both sides and all frames into one median means a suspicious percentage cannot be
-    explained from the scalar alone; these are the observations that produced it.
+    Pooled over both sides and all frames, so each observation retains its frame and raw
+    points and a normalized value can be traced past the scalar.
     """
     out: List[DenominatorSample] = []
     for f in range(seq.n):
@@ -70,9 +70,8 @@ def leg_length_samples(seq: PoseSequence) -> List[DenominatorSample]:
             hip = seq.pt(f, f"{side}_hip")
             knee = seq.pt(f, f"{side}_knee")
             ankle = seq.pt(f, f"{side}_ankle")
-            # Confidence zero is the schema's structural "not tracked" sentinel.  A threshold
-            # policy is intentionally still open, but placeholder coordinates must never be
-            # treated as measured geometry.
+            # Confidence zero is the schema's not-tracked sentinel; its placeholder
+            # coordinates are not geometry. No higher threshold is applied.
             if min(hip[2], knee[2], ankle[2]) <= 0:
                 continue
             thigh = geo.distance(hip[:2], knee[:2])
@@ -242,10 +241,10 @@ class Ctx:
         return self._memo("head_x", lambda: geo.moving_average(self.seq.series_x("head"), 5))
 
     def reach_curve(self, side: str) -> List[ReachSample]:
-        """Hip-relative foot position, one sample per frame; see gaitlab/core/reach.py.
+        """Hip-relative foot position for `side`, one sample per frame.
 
-        `self.denominator` is the current choice (thigh+shank, whole-clip median) -- an open
-        decision, not a validated one; see docs/metrics/overstride.md.
+        Normalized by the projected thigh+shank median, which the measurement contract
+        records as an open choice rather than a validated one.
         """
         return self._memo(f"reach_curve_{side}",
                            lambda: reach_mod.reach_curve(self.seq, side, self.denominator, self.facing))

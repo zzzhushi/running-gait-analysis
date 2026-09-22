@@ -80,13 +80,7 @@ def test_overstride_worst_side_is_max(synth):
 
 
 def test_overstride_reads_the_reach_curve_rather_than_recomputing(synth):
-    """The per-strike value must come through ctx.reach_curve(), not a parallel formula.
-
-    The sentinel percentages below cannot be derived from the pose, so a metric that
-    recomputed the offset itself would return the pose-derived answer and fail here. Comparing
-    against numbers taken from the real curve would not: an inlined duplicate of the same
-    arithmetic produces the same value and would pass.
-    """
+    """Sentinels cannot arise from the pose, so matching them proves the data path."""
     seq = synth("side-left", fps=60, duration=6, cadence=170, seed=8)
     ev = detect_events(seq)
     real = Ctx(seq, ev, None)

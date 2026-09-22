@@ -9,8 +9,8 @@ Modeled after Lieberman et al. 2015's d_OH (J Exp Biol 218:3406), which associat
 distance with braking impulse. Not a reproduction of it: the landmarks are pose keypoint
 proxies for the markers that work used, the denominator is projected rather than a standing
 anthropometric length, and contact is a heuristic boundary rather than force-plate onset. The
-good/warn bands come from neither source and carry no evidence. See
-docs/metrics/overstride.md for the status of each constant.
+good/warn bands come from neither source and carry no evidence; the measurement contract
+records the status of each constant.
 """
 
 from __future__ import annotations
@@ -21,8 +21,7 @@ from ..spec import MetricDef, register
 
 
 def _compute(ctx, side):
-    # Sampled from the reach curve (gaitlab/core/reach.py), not recomputed here, so the
-    # per-strike value is provably the same quantity the curve exposes for debugging.
+    # A sample of the reach curve, so the reported value is the quantity that curve exposes.
     curve = ctx.reach_curve(side)
     vals = [curve[s].ankle_reach.pct for s in ctx.ev.strikes[side] if s < len(curve)]
     return median(vals)
@@ -43,7 +42,7 @@ register(MetricDef(
     label="Overstride",
     unit="%leg",
     # Heuristic bands: no published percent-of-leg-length cutoff for overstride was found.
-    # TODO: add comment citing a threshold source, or stop scoring this metric.
+    # TODO: add comment citing a threshold source for these bands.
     good=(None, 8),
     warn=(None, 15),
     note="Foot should land close to under your hips. Landing far ahead (>~8% of leg length) brakes you.",
