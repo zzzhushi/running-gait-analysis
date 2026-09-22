@@ -22,7 +22,12 @@ from extractor.rtmpose import HALPE26, WHOLEBODY
 from extractor.rtmpose import RTMPoseExtractor
 from extractor.rtmpose import build_model, pick_person
 from extractor.rtmpose import to_canonical as rtmpose_to_canonical
-from extractor.timestamps import _monotonic_positive, choose_timestamps, probe_timestamps
+from extractor.timestamps import (
+    _monotonic_positive,
+    check_frame_count,
+    choose_timestamps,
+    probe_timestamps,
+)
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 from pipeline import analyze_video
 
@@ -230,6 +235,29 @@ class TestTimestamps:
         assert probe_timestamps("/nonexistent/video.mp4") is None
 
 
+class TestFrameCount:
+    def test_matching_counts_produce_no_note(self):
+        assert check_frame_count(expected=120, actual=120) == (None, False)
+
+    def test_more_decoded_than_expected_produces_no_note(self):
+        """The container's own count can undercount at the edges; more frames out
+        than the container reported is not evidence of a dropped frame."""
+        assert check_frame_count(expected=120, actual=121) == (None, False)
+
+    def test_unknown_container_count_produces_no_note(self):
+        assert check_frame_count(expected=None, actual=87) == (None, False)
+
+    def test_small_deficit_is_noted_but_not_severe(self):
+        note, severe = check_frame_count(expected=120, actual=119)
+        assert note is not None and "120" in note and "119" in note
+        assert severe is False
+
+    def test_large_deficit_is_severe(self):
+        note, severe = check_frame_count(expected=120, actual=80)
+        assert note is not None
+        assert severe is True
+
+
 class _ScoreRow(list):
     """Duck-types rtmlib's numpy score arrays: pick_person only calls .mean()."""
 
@@ -395,6 +423,69 @@ class TestTimestampProvenance:
 
         assert seq.timestamps is None
         assert seq.timestamp_source is None
+
+
+class TestFrameCountEnforcement:
+    """The extractor must not silently return a shorter sequence than its source video."""
+
+    def test_matching_container_count_produces_no_note(self, monkeypatch):
+        capture = _TimedCapture(n_frames=4)
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+        monkeypatch.setattr("extractor.rtmpose.probe_timestamps", lambda path: [0.0, 0.1, 0.2, 0.3])
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right")
+
+        assert seq.frame_count_note is None
+
+    def test_small_deficit_is_recorded_without_raising(self, monkeypatch):
+        capture = _TimedCapture(n_frames=4)
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+        # container reports 5 frames; only 4 were decodable.
+        monkeypatch.setattr("extractor.rtmpose.probe_timestamps",
+                            lambda path: [0.0, 0.1, 0.2, 0.3, 0.4])
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right")
+
+        assert seq.frame_count_note is not None
+        assert "4" in seq.frame_count_note and "5" in seq.frame_count_note
+
+    def test_severe_deficit_raises_instead_of_returning_a_truncated_sequence(self, monkeypatch):
+        capture = _TimedCapture(n_frames=4)
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+        # container reports 40 frames; only 4 were decodable — a badly truncated file.
+        monkeypatch.setattr("extractor.rtmpose.probe_timestamps",
+                            lambda path: [i * 0.1 for i in range(40)])
+
+        with pytest.raises(RuntimeError, match="dropped"):
+            RTMPoseExtractor().extract("clip.mov", "side-right")
+
+    def test_a_max_seconds_request_does_not_falsely_report_dropped_frames(self, monkeypatch):
+        """Stopping early because the caller asked for a shorter clip is not the
+        same failure as OpenCV silently losing frames mid-decode."""
+        capture = _TimedCapture(n_frames=40)
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+        monkeypatch.setattr("extractor.rtmpose.probe_timestamps",
+                            lambda path: [i * 0.1 for i in range(40)])
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right", max_seconds=0.1)
+
+        assert seq.frame_count_note is None
 
 
 class TestResolveVideo:

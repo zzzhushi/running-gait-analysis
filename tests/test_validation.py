@@ -66,6 +66,14 @@ def test_timestamp_source_round_trips_through_pose_dict():
     assert restored.timestamp_source == s.timestamp_source
 
 
+def test_frame_count_note_round_trips_through_pose_dict():
+    s = _valid_base()
+    s.frame_count_note = "decoded 119 of 120 container frames (1 dropped)"
+    s.validate()
+    restored = PoseSequence.from_pose_dict(s.to_pose_dict())
+    assert restored.frame_count_note == s.frame_count_note
+
+
 @pytest.mark.parametrize("mutate,match", [
     (lambda s: setattr(s, "fps", 0), "fps"),
     (lambda s: setattr(s, "fps", -30), "fps"),
