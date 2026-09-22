@@ -156,6 +156,12 @@ checked by dimensions, decoded pixels, and embedded traceability metadata becaus
 PNG bytes can vary with the host zlib build. The test suite runs the same check, so record or
 renderer drift cannot leave the committed evidence silently stale.
 
+Animated GIF is the container for this sequence because Pillow already decodes it by index, so
+it adds no renderer dependency and no new decoder semantics; the cost is a 256-colour palette
+per frame and no interframe compression. Before adding further rendered fixtures, benchmark a
+file-sequence PNG source and animated WebP or APNG against review rendering, exact-frame decode
+semantics, renderer support, and repository weight.
+
 The zero and +20 `%leg` endpoints are taken directly from the canonical
 `tests/fixtures/overstride_stage3.json` geometry. Intermediate frames change only the distal x
 coordinates; the sequence tests decoding, time, orientation, record identity, and drawing—not
