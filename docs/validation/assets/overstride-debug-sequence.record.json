@@ -4124,11 +4124,12 @@
   "source": {
     "effective_fps": 60.0,
     "frame_count": 9,
+    "frame_count_note": null,
     "height": 720,
     "id": "overstride-debug-sequence.source.gif",
     "nominal_fps": 60.0,
     "pose_source": "authored:overstride_stage3-render-sequence",
-    "timestamp_source": "per-frame",
+    "timestamp_source": "authored (uniform f/fps)",
     "view": "side-left",
     "width": 640
   }

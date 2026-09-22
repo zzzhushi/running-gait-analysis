@@ -48,8 +48,13 @@ def probe_timestamps(path: str) -> Optional[List[float]]:
 
 
 def _monotonic_positive(ts: Optional[Sequence[float]]) -> bool:
-    return (ts is not None and len(ts) > 1 and ts[-1] > ts[0]
-            and all(ts[i] >= ts[i - 1] for i in range(1, len(ts))))
+    """True when every frame carries a distinct, advancing instant.
+
+    Strict: a repeated timestamp makes two frame indices name the same moment, which
+    breaks the index-to-instant mapping every timing-derived metric assumes.
+    """
+    return (ts is not None and len(ts) > 1
+            and all(ts[i] > ts[i - 1] for i in range(1, len(ts))))
 
 
 def choose_timestamps(
@@ -74,9 +79,11 @@ def choose_timestamps(
     return None, "constant frame rate (f/fps) — overlay may drift on VFR video"
 
 
-# A deficit within this fraction of the container's own count is treated as a decode
-# edge effect (e.g. an unreadable trailing frame), not evidence of silent truncation.
-# Heuristic threshold; not derived from a measured failure rate.
+# One unreadable frame at the tail is a known decoder edge effect; loss beyond that is
+# judged as a fraction of the container's own count, so a short clip gets no larger
+# proportional allowance than a long one. Heuristic thresholds; not derived from a
+# measured failure rate.
+TRAILING_FRAME_ALLOWANCE = 1
 DROPPED_FRAME_FRACTION = 0.01
 
 
@@ -86,12 +93,14 @@ def check_frame_count(expected: Optional[int], actual: int) -> Tuple[Optional[st
     `expected` is the container's frame count (e.g. `len(probe_timestamps(...))`), or
     None when it could not be determined. Returns `(note, severe)`: `note` is None when
     the counts agree, more frames were decoded than expected, or `expected` is None.
-    `severe` means the deficit exceeds `DROPPED_FRAME_FRACTION` of `expected`, and the
-    caller should refuse rather than silently return a shorter sequence.
+    `severe` means the loss beyond `TRAILING_FRAME_ALLOWANCE` exceeds
+    `DROPPED_FRAME_FRACTION` of `expected`, and the caller should refuse rather than
+    silently return a shorter sequence.
     """
     if expected is None or actual >= expected:
         return None, False
     deficit = expected - actual
     note = f"decoded {actual} of {expected} container frames ({deficit} dropped)"
-    severe = deficit > max(2, round(expected * DROPPED_FRAME_FRACTION))
+    beyond_edge = deficit - TRAILING_FRAME_ALLOWANCE
+    severe = beyond_edge > expected * DROPPED_FRAME_FRACTION
     return note, severe

@@ -33,6 +33,19 @@ DOES_NOT_VALIDATE = [
 ]
 
 
+# Distinguishes a sequence whose per-frame clock predates provenance recording from one
+# whose clock is deliberately assumed, so neither reads as the other.
+UNRECORDED_TIMESTAMP_SOURCE = "per-frame (provider unrecorded)"
+ASSUMED_TIMESTAMP_SOURCE = "nominal-fps (assumed constant frame rate)"
+
+
+def _timestamp_source(seq: PoseSequence) -> str:
+    """Name the clock behind `seq`'s frame times, never collapsing two providers into one."""
+    if seq.timestamps is None:
+        return ASSUMED_TIMESTAMP_SOURCE
+    return seq.timestamp_source or UNRECORDED_TIMESTAMP_SOURCE
+
+
 def _finite(value: float) -> Optional[float]:
     return float(value) if isinstance(value, (int, float)) and math.isfinite(value) else None
 
@@ -275,7 +288,8 @@ def build_overstride_debug_record(
             "nominal_fps": seq.fps,
             "effective_fps": seq.effective_fps,
             "frame_count": seq.n,
-            "timestamp_source": "per-frame" if seq.timestamps is not None else "nominal-fps",
+            "timestamp_source": _timestamp_source(seq),
+            "frame_count_note": seq.frame_count_note,
         },
         "measurement": {
             "name": "overstride",

@@ -89,10 +89,9 @@ class PoseSequence:
             elif any(not isinstance(t, (int, float)) or not math.isfinite(t)
                      for t in self.timestamps):
                 errs.append("timestamps must be finite numbers")
-            elif any(b < a for a, b in zip(self.timestamps, self.timestamps[1:])):
-                errs.append("timestamps must be non-decreasing")
-            elif len(self.timestamps) > 1 and self.timestamps[-1] <= self.timestamps[0]:
-                errs.append("timestamps must span a positive duration")
+            elif any(b <= a for a, b in zip(self.timestamps, self.timestamps[1:])):
+                # Strict: a repeated timestamp makes two frame indices name one instant.
+                errs.append("timestamps must strictly increase")
         elif self.timestamp_source is not None:
             errs.append("timestamp_source requires timestamps")
 
