@@ -72,3 +72,26 @@ def choose_timestamps(
         return list(pos_msec), "OpenCV POS_MSEC"
     # 3. nothing trustworthy — the player falls back to f/fps.
     return None, "constant frame rate (f/fps) — overlay may drift on VFR video"
+
+
+# A deficit within this fraction of the container's own count is treated as a decode
+# edge effect (e.g. an unreadable trailing frame), not evidence of silent truncation.
+# Heuristic threshold; not derived from a measured failure rate.
+DROPPED_FRAME_FRACTION = 0.01
+
+
+def check_frame_count(expected: Optional[int], actual: int) -> Tuple[Optional[str], bool]:
+    """Compare frames OpenCV actually decoded against the container's own count.
+
+    `expected` is the container's frame count (e.g. `len(probe_timestamps(...))`), or
+    None when it could not be determined. Returns `(note, severe)`: `note` is None when
+    the counts agree, more frames were decoded than expected, or `expected` is None.
+    `severe` means the deficit exceeds `DROPPED_FRAME_FRACTION` of `expected`, and the
+    caller should refuse rather than silently return a shorter sequence.
+    """
+    if expected is None or actual >= expected:
+        return None, False
+    deficit = expected - actual
+    note = f"decoded {actual} of {expected} container frames ({deficit} dropped)"
+    severe = deficit > max(2, round(expected * DROPPED_FRAME_FRACTION))
+    return note, severe

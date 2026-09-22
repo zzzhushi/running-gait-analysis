@@ -59,6 +59,9 @@ class PoseSequence:
     # How `timestamps` was obtained (e.g. container PTS vs. decoder-clock fallback).
     # None whenever `timestamps` is None: there is no clock to attribute.
     timestamp_source: Optional[str] = None
+    # Set when decode produced fewer frames than the source container reports; None
+    # when counts agreed or the container count was unavailable.
+    frame_count_note: Optional[str] = None
 
     # --- validation -------------------------------------------------------
     def validate(self) -> "PoseSequence":
@@ -227,6 +230,8 @@ class PoseSequence:
             d["timestamps"] = [round(t, 4) for t in self.timestamps]
             if self.timestamp_source is not None:
                 d["timestamp_source"] = self.timestamp_source
+        if self.frame_count_note is not None:
+            d["frame_count_note"] = self.frame_count_note
         return d
 
     @staticmethod
@@ -249,4 +254,5 @@ class PoseSequence:
             keypoint_names=list(d.get("keypoint_names", KEYPOINTS)),
             timestamps=[float(t) for t in ts] if ts else None,
             timestamp_source=d.get("timestamp_source") if ts else None,
+            frame_count_note=d.get("frame_count_note"),
         )
