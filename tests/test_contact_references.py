@@ -193,14 +193,14 @@ def _annotation_bundle(tmp_path, radius="1"):
         "--pose", str(pose), "--video", str(clip), "--output", str(out),
         "--sweep", "--strip-radius", radius,
     ]) == 0
-    return case, out
+    return case, out, pose
 
 
 def test_annotation_bundle_contains_nothing_the_detector_selected(tmp_path):
     """Hiding the marker is not blinding. Filenames, a contact sheet, traces or a record
     chosen by the detector announce its predictions without drawing one.
     """
-    _case, out = _annotation_bundle(tmp_path)
+    _case, out, _pose = _annotation_bundle(tmp_path)
 
     produced = sorted(path.relative_to(out).as_posix()
                       for path in out.rglob("*") if path.is_file())
@@ -221,7 +221,7 @@ def test_annotation_frames_carry_no_model_layer(tmp_path):
 
     from scripts.overstride_render import render_annotated_frame
 
-    case, out = _annotation_bundle(tmp_path)
+    case, out, _pose = _annotation_bundle(tmp_path)
     plain = PILImage.new("RGB", (case.sequence.width, case.sequence.height), (30, 40, 50))
     with PILImage.open(out / "frames" / "frame-000001.png") as annotation:
         annotated = annotation.convert("RGB").copy()
@@ -255,9 +255,10 @@ def _row_for(case, frame):
 
 
 def test_annotation_manifest_states_coverage_and_that_no_model_layer_was_shown(tmp_path):
+    import hashlib
     import json
 
-    _case, out = _annotation_bundle(tmp_path)
+    _case, out, pose = _annotation_bundle(tmp_path)
     manifest = json.loads((out / "manifest.json").read_text())
 
     assert manifest["coverage"] == "full-sweep"
@@ -265,15 +266,21 @@ def test_annotation_manifest_states_coverage_and_that_no_model_layer_was_shown(t
     assert manifest["model_layers_visible"] is False
     assert manifest["annotation_rule"] == "initial-contact-v1"
     assert manifest["source_video"]["sha256"]
-    assert manifest["pose_input"]["sha256"]
-    assert manifest["does_not_validate"], (
+    # Compared against the actual input's digest, not just checked for presence: a
+    # hard-coded or otherwise wrong hash would still be truthy.
+    assert manifest["pose_input"]["sha256"] == hashlib.sha256(pose.read_bytes()).hexdigest()
+    assert (
+        "that pose_input's timestamps were extracted from source_video's actual frames"
+        in manifest["does_not_validate"]
+    ), (
         "a shifted or stale pose timeline can produce ordered, finite label timestamps "
-        "that refer to the wrong instants; the manifest must say this is not checked"
+        "that refer to the wrong instants; the manifest must name that limitation "
+        "specifically, not just carry some does_not_validate entry"
     )
 
 
 def test_annotation_frames_cover_every_frame_of_the_clip(tmp_path):
-    case, out = _annotation_bundle(tmp_path)
+    case, out, _pose = _annotation_bundle(tmp_path)
 
     written = sorted(path.name for path in (out / "frames").iterdir())
 
