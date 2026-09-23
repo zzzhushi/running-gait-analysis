@@ -13,11 +13,27 @@ The two committed, reviewer-visible anchors are:
 
 - [120 fps female_overstride frame 262](assets/overstride-timebase-female_overstride-frame-262.png)
 - [30 fps male_side frame 120](assets/overstride-timebase-male_side-frame-120.png)
+- [male_side frames 116–124, with frame 120 highlighted](assets/overstride-timebase-male_side-context.png)
 
 Each is decoded by zero-based frame index and overlaid with that index's pose points.
 The footer burns in the index, pose time, current container PTS, frame count, rate, and
 validation limit. PNG metadata carries the same identifiers and the video/pose hashes.
 Neither frame claims to be a validated contact or a correct landmark placement.
+The selected frames are fixed samples for checking index, time, and overlay alignment.
+They were not chosen because a foot appeared to land there. In the `male_side` sequence,
+the forward shoe appears above the treadmill at frame 120. It approaches the belt over
+the next frames. This visual observation is a reason to inspect the interval, not a
+reference contact label.
+
+## Review together
+
+The context image shows each neighboring frame's zero-based index, stored pose time,
+and video PTS. Frame 120 has a yellow border. A human reviewer can check whether the
+overlaid ankles, heels, and toes follow the shoes and whether the video order matches
+the displayed times. For contact annotation, the reviewer should separately mark a
+plausible **interval** around the first visible ground contact, note which foot is in
+question, and flag occlusion or motion blur. Keep that label separate from this report
+so the timebase check cannot be mistaken for detector validation.
 
 ## Regenerate and verify
 

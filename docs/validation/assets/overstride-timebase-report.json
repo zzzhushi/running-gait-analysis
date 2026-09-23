@@ -4,6 +4,7 @@
       "anchor_container_pts_s": null,
       "anchor_frame": null,
       "anchor_pose_timestamp_s": null,
+      "anchor_selection": null,
       "checks": {
         "declared_and_probed_frame_counts_equal": true,
         "duration_within_one_median_frame": true,
@@ -16,6 +17,7 @@
       "coded_width": 720,
       "container_average_fps": 120.0,
       "container_duration_s": 12.216667,
+      "context_frame_indices": [],
       "declared_frame_count": 1466,
       "duration_estimate_minus_container_s": -9.999999992515995e-07,
       "effective_fps_from_pts_span": 120.0000032764506,
@@ -55,6 +57,7 @@
       "anchor_container_pts_s": null,
       "anchor_frame": null,
       "anchor_pose_timestamp_s": null,
+      "anchor_selection": null,
       "checks": {
         "declared_and_probed_frame_counts_equal": true,
         "duration_within_one_median_frame": true,
@@ -67,6 +70,7 @@
       "coded_width": 720,
       "container_average_fps": 119.91578947368421,
       "container_duration_s": 11.875,
+      "context_frame_indices": [],
       "declared_frame_count": 1424,
       "duration_estimate_minus_container_s": 0.0,
       "effective_fps_from_pts_span": 119.91572696865936,
@@ -108,6 +112,7 @@
       "anchor_container_pts_s": 2.183333,
       "anchor_frame": 262,
       "anchor_pose_timestamp_s": 2.1833,
+      "anchor_selection": "fixed visual alignment sample; no contact label",
       "checks": {
         "declared_and_probed_frame_counts_equal": true,
         "duration_within_one_median_frame": true,
@@ -120,6 +125,7 @@
       "coded_width": 720,
       "container_average_fps": 119.89664082687338,
       "container_duration_s": 9.675,
+      "context_frame_indices": [],
       "declared_frame_count": 1160,
       "duration_estimate_minus_container_s": 0.0,
       "effective_fps_from_pts_span": 119.89654758977422,
@@ -161,6 +167,7 @@
       "anchor_container_pts_s": null,
       "anchor_frame": null,
       "anchor_pose_timestamp_s": null,
+      "anchor_selection": null,
       "checks": {
         "declared_and_probed_frame_counts_equal": true,
         "duration_within_one_median_frame": true,
@@ -173,6 +180,7 @@
       "coded_width": 720,
       "container_average_fps": 119.9298245614035,
       "container_duration_s": 14.25,
+      "context_frame_indices": [],
       "declared_frame_count": 1709,
       "duration_estimate_minus_container_s": 0.0,
       "effective_fps_from_pts_span": 119.92978069210578,
@@ -214,6 +222,7 @@
       "anchor_container_pts_s": null,
       "anchor_frame": null,
       "anchor_pose_timestamp_s": null,
+      "anchor_selection": null,
       "checks": {
         "declared_and_probed_frame_counts_equal": true,
         "duration_within_one_median_frame": true,
@@ -226,6 +235,7 @@
       "coded_width": 720,
       "container_average_fps": 120.0,
       "container_duration_s": 10.916667,
+      "context_frame_indices": [],
       "declared_frame_count": 1310,
       "duration_estimate_minus_container_s": -9.999999992515995e-07,
       "effective_fps_from_pts_span": 120.00000366692142,
@@ -265,6 +275,7 @@
       "anchor_container_pts_s": 4.0,
       "anchor_frame": 120,
       "anchor_pose_timestamp_s": 4.0,
+      "anchor_selection": "fixed visual alignment sample; no contact label",
       "checks": {
         "declared_and_probed_frame_counts_equal": true,
         "duration_within_one_median_frame": true,
@@ -277,6 +288,17 @@
       "coded_width": 720,
       "container_average_fps": 30.0,
       "container_duration_s": 12.0,
+      "context_frame_indices": [
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124
+      ],
       "declared_frame_count": 360,
       "duration_estimate_minus_container_s": 0.0,
       "effective_fps_from_pts_span": 29.99999916434543,
@@ -324,7 +346,7 @@
   "issue": 81,
   "manifest": {
     "path": "docs/validation/assets/overstride-timebase-manifest.json",
-    "sha256": "0df41f3f598d7bccade19c9b4c5afa32d226adb00875757e68113f4828b8ae7e"
+    "sha256": "1c3c2e7e8c99918ddaa17bc7cab7ed047db22343e2b6441c6b26ce4edde40b2c"
   },
   "schema": "gaitlab.timebase-evidence/v1",
   "timestamp_tolerance_s": 5.1e-05

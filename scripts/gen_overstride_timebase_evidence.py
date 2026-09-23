@@ -63,7 +63,7 @@ def probe(path: Path) -> tuple[dict, list[float]]:
     }, pts
 
 
-def inspect_case(case: dict) -> tuple[dict, PoseSequence, Path]:
+def inspect_case(case: dict) -> tuple[dict, PoseSequence, Path, list[float]]:
     clip = case["id"]
     video = ROOT / "tests/data" / f"{clip}.mp4"
     pose = ROOT / "tests/data" / f"{clip}.pose.rtmpose.json"
@@ -94,6 +94,12 @@ def inspect_case(case: dict) -> tuple[dict, PoseSequence, Path]:
     anchor = case["anchor_frame"]
     if anchor is not None and not 0 <= anchor < len(pts):
         raise ValueError(f"{clip}: anchor out of range")
+    radius = case.get("context_radius", 0)
+    if not isinstance(radius, int) or radius < 0 or (anchor is None and radius):
+        raise ValueError(f"{clip}: invalid context radius")
+    context_indices = (list(range(max(0, anchor - radius),
+                                  min(len(pts), anchor + radius + 1)))
+                       if anchor is not None and radius else [])
     report = {
         "id": clip, "video": identity(video), "pose_input": identity(pose),
         "pose_source": seq.source, "pose_view": seq.view,
@@ -112,11 +118,14 @@ def inspect_case(case: dict) -> tuple[dict, PoseSequence, Path]:
         "pose_frame_count_note": seq.frame_count_note,
         "pose_display_width": seq.width, "pose_display_height": seq.height,
         "anchor_frame": anchor,
+        "anchor_selection": ("fixed visual alignment sample; no contact label"
+                             if anchor is not None else None),
         "anchor_pose_timestamp_s": seq.timestamps[anchor] if anchor is not None else None,
         "anchor_container_pts_s": pts[anchor] if anchor is not None else None,
+        "context_frame_indices": context_indices,
         **metadata, "checks": checks,
     }
-    return report, seq, video
+    return report, seq, video, pts
 
 
 def footer_lines(case: dict, seq: PoseSequence, report: dict) -> list[str]:
@@ -127,9 +136,10 @@ def footer_lines(case: dict, seq: PoseSequence, report: dict) -> list[str]:
 
 
 def render_anchor(case: dict, seq: PoseSequence, video: Path, report: dict,
-                  destination: Path) -> None:
+                  destination: Path | None, *, decoded: Image.Image | None = None,
+                  banner: bool = True) -> Image.Image:
     index = case["anchor_frame"]
-    image = SourceFrames(video, (seq.width, seq.height))(index)
+    image = decoded.copy() if decoded is not None else SourceFrames(video, (seq.width, seq.height))(index)
     draw = ImageDraw.Draw(image, "RGBA")
     points = {name: seq.frames[index][i] for i, name in enumerate(seq.keypoint_names)}
     for left, right in BONES:
@@ -138,19 +148,62 @@ def render_anchor(case: dict, seq: PoseSequence, video: Path, report: dict,
     for x, y, confidence in points.values():
         if confidence > 0 and math.isfinite(x) and math.isfinite(y):
             draw.ellipse((x - 3, y - 3, x + 3, y + 3), fill=(255, 220, 0, 235))
-    footer = footer_lines(case, seq, report)
-    top = 0  # keep the feet unobstructed for visual alignment review
-    draw.rectangle((0, top, image.width, 80), fill=(0, 0, 0, 230))
-    for row, line in enumerate(footer):
-        draw.text((8, top + 6 + row * 22), line, fill="white")
+    if banner:
+        footer = footer_lines(case, seq, report)
+        top = 0  # keep the feet unobstructed for visual alignment review
+        draw.rectangle((0, top, image.width, 80), fill=(0, 0, 0, 230))
+        for row, line in enumerate(footer):
+            draw.text((8, top + 6 + row * 22), line, fill="white")
+    if destination is not None:
+        info = PngImagePlugin.PngInfo()
+        for key, value in {"artifact": "issue81-timebase-anchor", "case": case["id"],
+                           "decoded_frame": index, "pose_timestamp_s": seq.timestamps[index],
+                           "container_pts_s": report["anchor_container_pts_s"],
+                           "video_sha256": report["video"]["sha256"],
+                           "pose_sha256": report["pose_input"]["sha256"]}.items():
+            info.add_text("gaitlab." + key, str(value))
+        image.save(destination, pnginfo=info, compress_level=9)
+    return image
+
+
+def render_context(case: dict, seq: PoseSequence, video: Path, report: dict,
+                   pts: list[float], destination: Path) -> None:
+    """Show neighboring decoded frames at readable foot size for human review."""
+    indices = report["context_frame_indices"]
+    source = SourceFrames(video, (seq.width, seq.height))
+    source.preload(indices)
+    columns = 3
+    tile_width, crop_height, label_height = 480, 390, 34
+    rows = math.ceil(len(indices) / columns)
+    sheet = Image.new("RGB", (columns * tile_width, rows * (crop_height + label_height)),
+                      (24, 30, 38))
+    draw = ImageDraw.Draw(sheet)
+    for position, index in enumerate(indices):
+        neighbor = {**case, "anchor_frame": index}
+        neighbor_report = {**report, "anchor_container_pts_s": pts[index]}
+        annotated = render_anchor(neighbor, seq, video, neighbor_report, None,
+                                  decoded=source(index), banner=False)
+        # Full-frame anchor above provides orientation. This crop keeps both feet visible.
+        lower_body = annotated.crop((0, round(seq.height * 0.543), seq.width, seq.height))
+        lower_body = lower_body.resize((tile_width, crop_height), Image.Resampling.LANCZOS)
+        x = (position % columns) * tile_width
+        y = (position // columns) * (crop_height + label_height)
+        sheet.paste(lower_body, (x, y + label_height))
+        selected = index == case["anchor_frame"]
+        if selected:
+            draw.rectangle((x, y, x + tile_width - 1, y + label_height + crop_height - 1),
+                           outline="#ffd43b", width=4)
+        label = f"frame {index}  |  pose {seq.timestamps[index]:.4f}s  |  video PTS {pts[index]:.6f}s"
+        if selected:
+            label += "  |  SAMPLE"
+        draw.text((x + 8, y + 8), label, fill="#ffd43b" if selected else "white")
     info = PngImagePlugin.PngInfo()
-    for key, value in {"artifact": "issue81-timebase-anchor", "case": case["id"],
-                       "decoded_frame": index, "pose_timestamp_s": seq.timestamps[index],
-                       "container_pts_s": report["anchor_container_pts_s"],
+    for key, value in {"artifact": "issue81-timebase-context", "case": case["id"],
+                       "frame_indices": json.dumps(indices), "selected_frame": case["anchor_frame"],
                        "video_sha256": report["video"]["sha256"],
                        "pose_sha256": report["pose_input"]["sha256"]}.items():
         info.add_text("gaitlab." + key, str(value))
-    image.save(destination, pnginfo=info, compress_level=9)
+    sheet.save(destination, pnginfo=info, compress_level=9)
 
 
 def generate(destination: Path) -> list[str]:
@@ -158,11 +211,15 @@ def generate(destination: Path) -> list[str]:
     reports = []
     artifacts = [REPORT]
     for case in manifest["clips"]:
-        report, seq, video = inspect_case(case)
+        report, seq, video, pts = inspect_case(case)
         reports.append(report)
         if case["anchor_frame"] is not None:
             name = f"overstride-timebase-{case['id']}-frame-{case['anchor_frame']}.png"
             render_anchor(case, seq, video, report, destination / name)
+            artifacts.append(name)
+        if report["context_frame_indices"]:
+            name = f"overstride-timebase-{case['id']}-context.png"
+            render_context(case, seq, video, report, pts, destination / name)
             artifacts.append(name)
     document = {
         "schema": "gaitlab.timebase-evidence/v1", "issue": 81,
