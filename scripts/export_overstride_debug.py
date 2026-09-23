@@ -179,10 +179,19 @@ def _write_annotation_bundle(args, seq: PoseSequence) -> int:
         "annotation_rule": "initial-contact-v1",
         "clip": args.video.stem,
         "source_video": _media_identity(args.video),
+        "pose_input": _media_identity(args.pose),
         "coverage": "full-sweep",
         "frame_count": seq.n,
         "window_radius": args.strip_radius,
         "frames": written,
+        # No check ties a label's timestamp to the video's own clock beyond both files
+        # being passed together at export time: a stale or re-extracted pose timeline
+        # with the same frame count would produce ordered, finite timestamps that refer
+        # to the wrong instants without anything here detecting it. That correspondence
+        # is #81's scope (decode identity, timebase provenance), not this bundle's.
+        "does_not_validate": [
+            "that pose_input's timestamps were extracted from source_video's actual frames",
+        ],
         "detector_markers_visible": False,
         "model_layers_visible": False,
     })

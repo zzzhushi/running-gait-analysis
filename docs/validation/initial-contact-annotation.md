@@ -61,8 +61,11 @@ that works in sides, and recorded where it is made. Nothing derives it silently.
    toward confirming it.
 4. **Record per event**: track, contact interval, nominated frame, the instants those frames
    resolve to, visibility (`clear` / `uncertain` / `occluded`), and an unlabelable reason
-   where applicable. Timestamps travel with the frames so a label cannot be audited against
-   the wrong clock without the record showing it.
+   where applicable. Timestamps travel with the frames so an internally inconsistent label
+   — a nominated frame whose timestamp falls outside its own interval's timestamps — is
+   caught by validation. This does not establish that the timebase itself is correct: that
+   `pose_input`'s timestamps were genuinely extracted from `source_video`'s frames is
+   recorded as an explicit `does_not_validate` boundary, not checked, and is #81's scope.
 5. **Repeat blind.** A second pass, separated in time or by a different annotator, with event
    order randomised so the sequence itself carries no information from the first pass. A
    record is `draft` until two passes exist that were both blinded **and** run with the
