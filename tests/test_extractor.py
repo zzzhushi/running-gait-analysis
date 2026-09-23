@@ -275,11 +275,20 @@ class TestFrameCount:
         assert severe is True
 
     @pytest.mark.parametrize("expected,actual", [(4, 2), (10, 8), (40, 36)])
-    def test_short_clips_do_not_get_a_larger_allowance_than_long_ones(self, expected, actual):
-        """A fixed frame allowance would let proportionally worse losses through on a
-        short clip than the fraction permits on a long one."""
+    def test_loss_past_the_trailing_frame_is_judged_proportionally(self, expected, actual):
+        """Beyond the one-frame edge case, a short clip gets no larger proportional
+        allowance than a long one."""
         _note, severe = check_frame_count(expected=expected, actual=actual)
         assert severe is True
+
+    @pytest.mark.parametrize("expected", [4, 10, 120, 1160])
+    def test_one_trailing_frame_is_allowed_at_every_clip_length(self, expected):
+        """The flat allowance is intentionally disproportionate on a short clip, where one
+        frame is a large share of the whole. It is recorded either way, so the deficit stays
+        visible rather than being silently accepted."""
+        note, severe = check_frame_count(expected=expected, actual=expected - 1)
+        assert note is not None
+        assert severe is False
 
 
 class _ScoreRow(list):

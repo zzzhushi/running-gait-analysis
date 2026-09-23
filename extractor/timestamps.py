@@ -82,10 +82,11 @@ def choose_timestamps(
     return None, ASSUMED_TIMEBASE
 
 
-# One unreadable frame at the tail is a known decoder edge effect; loss beyond that is
-# judged as a fraction of the container's own count, so a short clip gets no larger
-# proportional allowance than a long one. Heuristic thresholds; not derived from a
-# measured failure rate.
+# One unreadable frame at the tail is a known decoder edge effect, allowed at any clip
+# length; loss beyond it is judged as a fraction of the container's own count. That flat
+# allowance is deliberately disproportionate on a very short clip, where a single frame is
+# a large share of the whole — it is an edge case of the decoder, not of the material.
+# Heuristic thresholds; not derived from a measured failure rate.
 TRAILING_FRAME_ALLOWANCE = 1
 DROPPED_FRAME_FRACTION = 0.01
 
