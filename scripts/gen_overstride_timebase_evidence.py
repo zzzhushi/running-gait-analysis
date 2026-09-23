@@ -29,7 +29,8 @@ from scripts.overstride_render import BONES, SourceFrames
 ASSETS = ROOT / "docs/validation/assets"
 MANIFEST = ASSETS / "overstride-timebase-manifest.json"
 REPORT = "overstride-timebase-report.json"
-TOLERANCE_S = 0.000051  # legacy timestamps were rounded to four decimal places
+# 50 us covers four-decimal pose rounding; 1 us allows ffprobe timestamp rounding.
+TOLERANCE_S = 0.000051
 
 
 def identity(path: Path) -> dict:
@@ -186,7 +187,7 @@ def render_context(case: dict, seq: PoseSequence, video: Path, report: dict,
         neighbor_report = {**report, "anchor_container_pts_s": pts[index]}
         annotated = render_anchor(neighbor, seq, video, neighbor_report, None,
                                   decoded=source(index), banner=False)
-        # Full-frame anchor above provides orientation. This crop keeps both feet visible.
+        # Context tiles show both feet; the separate anchor retains full-body orientation.
         lower_body = annotated.crop((0, round(seq.height * 0.543), seq.width, seq.height))
         lower_body = lower_body.resize((tile_width, crop_height), Image.Resampling.LANCZOS)
         x = (position % columns) * tile_width
