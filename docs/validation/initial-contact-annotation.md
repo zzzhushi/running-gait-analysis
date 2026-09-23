@@ -10,9 +10,18 @@ nothing labelled under this rule may be described as ground truth.
 
 ## What counts as initial contact
 
-**The first frame in which any part of the shoe is in contact with the ground and has stopped
-descending.** Both conditions must hold. Descent continuing after apparent touch means the
-shoe has not yet loaded; apparent touch without a stop is usually shadow or blur.
+**The first frame in which any part of the shoe touches the ground.**
+
+This is initial contact as clinical video analysis defines it — "the first frame when the foot
+hits the ground" — and it is a different event from loading response, "the first frame in
+which the runner's weight is being transferred onto the lead leg", marked by shoe deformation.
+Loading response comes after contact. This rule labels contact only. (Souza, "An
+Evidence-Based Videotaped Running Biomechanics Analysis", *Physical Medicine and
+Rehabilitation Clinics of North America*, https://pmc.ncbi.nlm.nih.gov/articles/PMC4714754/.)
+
+The foot keeps moving downward for a few frames after touchdown as the shoe compresses and the
+limb takes load. Continued descent therefore does not mean contact has not happened, and the
+frame where descent stops is later than contact, not a confirmation of it.
 
 Because a single frame cannot be resolved reliably, the annotator records the **interval** of
 frames over which contact plausibly occurred, and nominates one frame within it for
@@ -24,6 +33,8 @@ uncertainty forward rather than treating the nominated frame as exact.
 | Situation | Rule |
 |---|---|
 | Shadow under the foot | Shadow is not contact. Widen the interval instead of choosing a frame from shadow alone. |
+| Foot still descending after the sole reaches the ground | Contact has happened; the descent is loading. Do not move the label to where descent stops. |
+| Shoe visibly compressing | Loading response, which follows contact. The contact frame is earlier. |
 | Rocker or heavily curved sole | Contact is the first ground touch of any part of the sole, not the heel specifically. |
 | Motion blur across several frames | Every blurred candidate frame belongs inside the interval. |
 | Partial occlusion of the foot | Label if the ground line and any part of the shoe are both visible; otherwise unlabelable. |
@@ -34,12 +45,13 @@ uncertainty forward rather than treating the nominated frame as exact.
 event as unlabelable with a reason. Forcing a frame produces a label indistinguishable from a
 confident one, which is worse than recording the ambiguity.
 
-### Lowest foot position is not the definition
+### Lowest foot and descent reversal are not the definition
 
-The lowest point of the heel or ankle is a convenient signal and a poor rule: a foot can keep
-descending after touchdown as the limb loads. Sampling a corpus at lowest-heel produces
-values behind the hip at contact, which is not plausible for running. Use it as a bracket
-when scanning, never as the label.
+The lowest point of the heel or ankle, and the frame where their descent stops or their
+vertical velocity reverses, are convenient signals and poor rules. All of them fall at or after
+loading, so they bound contact from above rather than locating it. Sampling a corpus at
+lowest-heel produces values behind the hip at contact, which is not plausible for running. Use
+them as late brackets when scanning, never as the label.
 
 ## Tracks, not sides
 
