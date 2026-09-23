@@ -97,9 +97,12 @@ def inspect_case(case: dict) -> tuple[dict, PoseSequence, Path, list[float]]:
     radius = case.get("context_radius", 0)
     if not isinstance(radius, int) or radius < 0 or (anchor is None and radius):
         raise ValueError(f"{clip}: invalid context radius")
+    after = case.get("context_after", radius)
+    if not isinstance(after, int) or after < 0 or (anchor is None and after):
+        raise ValueError(f"{clip}: invalid context after")
     context_indices = (list(range(max(0, anchor - radius),
-                                  min(len(pts), anchor + radius + 1)))
-                       if anchor is not None and radius else [])
+                                  min(len(pts), anchor + after + 1)))
+                       if anchor is not None and (radius or after) else [])
     report = {
         "id": clip, "video": identity(video), "pose_input": identity(pose),
         "pose_source": seq.source, "pose_view": seq.view,

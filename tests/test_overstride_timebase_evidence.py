@@ -38,7 +38,7 @@ def test_committed_timebase_evidence_is_current():
                 assert image.info["gaitlab.video_sha256"] == clip["video"]["sha256"]
                 assert image.info["gaitlab.pose_sha256"] == clip["pose_input"]["sha256"]
         if clip["context_frame_indices"]:
-            assert clip["context_frame_indices"] == list(range(116, 125))
+            assert clip["context_frame_indices"] == list(range(116, 131))
             with Image.open(ASSETS / f"overstride-timebase-{clip['id']}-context.png") as image:
                 assert json.loads(image.info["gaitlab.frame_indices"]) == clip["context_frame_indices"]
                 assert image.info["gaitlab.selected_frame"] == str(clip["anchor_frame"])

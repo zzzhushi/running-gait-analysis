@@ -6,6 +6,6 @@
     {"id": "female_overstride", "anchor_frame": 262},
     {"id": "female_rear_view", "anchor_frame": null},
     {"id": "female_side_view", "anchor_frame": null},
-    {"id": "male_side", "anchor_frame": 120, "context_radius": 4}
+    {"id": "male_side", "anchor_frame": 120, "context_radius": 4, "context_after": 10}
   ]
 }

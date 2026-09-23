@@ -13,7 +13,7 @@ The two committed, reviewer-visible anchors are:
 
 - [120 fps female_overstride frame 262](assets/overstride-timebase-female_overstride-frame-262.png)
 - [30 fps male_side frame 120](assets/overstride-timebase-male_side-frame-120.png)
-- [male_side frames 116–124, with frame 120 highlighted](assets/overstride-timebase-male_side-context.png)
+- [male_side frames 116–130, with frame 120 highlighted](assets/overstride-timebase-male_side-context.png)
 
 Each is decoded by zero-based frame index and overlaid with that index's pose points.
 The footer burns in the index, pose time, current container PTS, frame count, rate, and
@@ -30,7 +30,9 @@ reference contact label.
 The context image shows each neighboring frame's zero-based index, stored pose time,
 and video PTS. Frame 120 has a yellow border. A human reviewer can check whether the
 overlaid ankles, heels, and toes follow the shoes and whether the video order matches
-the displayed times. For contact annotation, the reviewer should separately mark a
+the displayed times. Frames 125–130 include the detector's smoothed left-ankle-height
+peak at frame 126; that peak is a stance landmark, not the initial-contact label.
+For contact annotation, the reviewer should separately mark a
 plausible **interval** around the first visible ground contact, note which foot is in
 question, and flag occlusion or motion blur. Keep that label separate from this report
 so the timebase check cannot be mistaken for detector validation.

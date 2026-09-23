@@ -297,7 +297,13 @@
         121,
         122,
         123,
-        124
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130
       ],
       "declared_frame_count": 360,
       "duration_estimate_minus_container_s": 0.0,
@@ -346,7 +352,7 @@
   "issue": 81,
   "manifest": {
     "path": "docs/validation/assets/overstride-timebase-manifest.json",
-    "sha256": "1c3c2e7e8c99918ddaa17bc7cab7ed047db22343e2b6441c6b26ce4edde40b2c"
+    "sha256": "da92464642dae53fed5da8f0a047b4eb7cd0f14d510dd4b53c5ce11574bd3a09"
   },
   "schema": "gaitlab.timebase-evidence/v1",
   "timestamp_tolerance_s": 5.1e-05
