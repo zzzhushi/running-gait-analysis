@@ -65,8 +65,10 @@ that works in sides, and recorded where it is made. Nothing derives it silently.
    the wrong clock without the record showing it.
 5. **Repeat blind.** A second pass, separated in time or by a different annotator, with event
    order randomised so the sequence itself carries no information from the first pass. A
-   record is `draft` until two blinded passes exist and the repeat was presented in
-   randomised order; only a `complete` record may be read as agreement evidence.
+   record is `draft` until two passes exist that were both blinded **and** run with the
+   detector hidden, and the repeat was presented in randomised order; only a `complete`
+   record may be read as agreement evidence. A pass shown the detector is not blinded, and a
+   record claiming both is refused.
 6. **Collect toe-off opportunistically.** It is nearly free once the clip is open and unblocks
    contact time and duty factor, but overstride needs initial contact only, so it never blocks
    this work.

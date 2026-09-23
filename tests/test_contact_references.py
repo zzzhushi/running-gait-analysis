@@ -340,3 +340,30 @@ def test_a_mapped_reference_is_visible_to_the_debug_record(tmp_path):
 
     assert find_row(bundle, "l", 1)["references"], "mapped reference never reached the record"
     assert bundle["events"]["reference_contacts"][0]["side"] == "l"
+
+
+def test_a_detector_exposed_pass_cannot_be_blinded():
+    """The rule defines a pass shown detector output as not blinded, so the pair describes
+    no procedure that can be run."""
+    record = _record()
+    record["passes"][0]["detector_hidden"] = False
+
+    with pytest.raises(ContactReferenceError, match="shown the detector is not blinded"):
+        validate(record)
+
+
+def test_detector_exposed_passes_cannot_complete_a_record():
+    """Two passes asserting `blinded` while the detector was on screen, with a randomized
+    repeat, otherwise satisfy every completion condition — and would stand as agreement
+    evidence about the bias that same detector is suspected of.
+    """
+    record = _record()
+    record["status"] = "complete"
+    record["passes"][0]["detector_hidden"] = False
+    repeat = copy.deepcopy(record["passes"][0])
+    repeat["pass_id"] = "a2"
+    repeat["presentation_order"] = "randomized"
+    record["passes"].append(repeat)
+
+    with pytest.raises(ContactReferenceError):
+        validate(record)

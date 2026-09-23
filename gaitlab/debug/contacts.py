@@ -117,6 +117,10 @@ def _check_pass(entry: Mapping[str, Any], index: int, errs: List[str]) -> None:
     for flag in ("blinded", "detector_hidden"):
         if not isinstance(entry.get(flag), bool):
             errs.append(f"{where}: {flag} must be true or false")
+    if entry.get("blinded") is True and entry.get("detector_hidden") is False:
+        # The rule defines a pass shown detector output as not blinded, so this pair
+        # describes no procedure that can be run.
+        errs.append(f"{where}: a pass shown the detector is not blinded")
     if entry.get("presentation_order") not in PRESENTATION_ORDERS:
         errs.append(
             f"{where}: presentation_order must be one of {PRESENTATION_ORDERS} "
@@ -130,16 +134,25 @@ def _check_pass(entry: Mapping[str, Any], index: int, errs: List[str]) -> None:
         _check_event(event, f"{where} event {position}", errs)
 
 
+def _qualifies(entry: Mapping[str, Any]) -> bool:
+    """Whether a pass may count toward agreement evidence.
+
+    Both conditions, because they are asserted separately and a pass that saw the detector
+    is anchored by it whatever else was withheld.
+    """
+    return entry.get("blinded") is True and entry.get("detector_hidden") is True
+
+
 def _completion_gaps(passes: List[Mapping[str, Any]]) -> List[str]:
     """Why a record cannot yet be treated as agreement evidence, if anything."""
     errs: List[str] = []
-    blinded = [entry for entry in passes if entry.get("blinded") is True]
-    if len(blinded) < REQUIRED_BLINDED_PASSES:
+    qualifying = [entry for entry in passes if _qualifies(entry)]
+    if len(qualifying) < REQUIRED_BLINDED_PASSES:
         errs.append(
-            f"status 'complete' needs {REQUIRED_BLINDED_PASSES} blinded passes "
-            f"(got {len(blinded)})"
+            f"status 'complete' needs {REQUIRED_BLINDED_PASSES} blinded passes with the "
+            f"detector hidden (got {len(qualifying)})"
         )
-    elif not any(entry.get("presentation_order") == "randomized" for entry in blinded[1:]):
+    elif not any(entry.get("presentation_order") == "randomized" for entry in qualifying[1:]):
         # A repeat shown the same order can be reproduced from memory of the sequence
         # rather than from the footage.
         errs.append("status 'complete' needs a repeat pass presented in randomized order")
