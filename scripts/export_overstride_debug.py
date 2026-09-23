@@ -34,6 +34,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from gaitlab.core.schema import PoseSequence
+from gaitlab.debug.contacts import TIMEBASE_NOT_VALIDATED
 from gaitlab.debug.overstride import build_overstride_debug_record, record_by_id
 from scripts.overstride_render import (
     SourceFrames,
@@ -184,14 +185,7 @@ def _write_annotation_bundle(args, seq: PoseSequence) -> int:
         "frame_count": seq.n,
         "window_radius": args.strip_radius,
         "frames": written,
-        # No check ties a label's timestamp to the video's own clock beyond both files
-        # being passed together at export time: a stale or re-extracted pose timeline
-        # with the same frame count would produce ordered, finite timestamps that refer
-        # to the wrong instants without anything here detecting it. That correspondence
-        # is #81's scope (decode identity, timebase provenance), not this bundle's.
-        "does_not_validate": [
-            "that pose_input's timestamps were extracted from source_video's actual frames",
-        ],
+        "does_not_validate": [TIMEBASE_NOT_VALIDATED],
         "detector_markers_visible": False,
         "model_layers_visible": False,
     })

@@ -99,10 +99,14 @@ rather than precise.
 ## Record format
 
 Labels are stored as `<clip>.contacts.json`, a sibling of the existing ground-truth records.
-Each record names the clip, the source video hash, this rule version, and how coverage was
-obtained, then carries one entry per pass. `gaitlab/debug/contacts.py` validates the shape and
-refuses records that contradict themselves — a nominated frame outside its own interval, or an
-unlabelable event that still carries frames.
+Each record names the clip, the source video hash, the hash of the pose file that supplied
+its timestamps, this rule version, and how coverage was obtained, then carries one entry per
+pass. It also carries a `does_not_validate` list that must state the pose timestamps were not
+checked against the video's own frames: the record is the committed evidence, so the limit
+travels with it rather than living only in the disposable annotation bundle.
+`gaitlab/debug/contacts.py` validates the shape and refuses records that contradict
+themselves — a nominated frame outside its own interval, or an unlabelable event that still
+carries frames.
 
 A pass records its annotator, blinded/detector-hidden state, presentation order and a
 timezone-aware completion time. A completed record also carries an `agreement_pair` naming the
@@ -121,8 +125,8 @@ apart.
 ## The annotation bundle
 
 `--sweep` writes the view a first pass is done against: source pixels tiling the whole clip,
-frames named by index, and a manifest recording the rule version, coverage and source-video
-hash. It contains no detector record, contact sheet, reach trace or detector-named file, and
+frames named by index, and a manifest recording the rule version, coverage, source-video and
+pose-input identities, and the same timebase limitation the record carries. It contains no detector record, contact sheet, reach trace or detector-named file, and
 the frames carry no pose, measurement or metric layer. A directory whose filenames were chosen
 by the detector announces its predictions without drawing one, which is why hiding the marker
 alone is not blinding.
