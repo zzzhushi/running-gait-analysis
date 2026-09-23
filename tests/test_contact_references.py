@@ -397,3 +397,76 @@ def test_detector_exposed_passes_cannot_complete_a_record():
 
     with pytest.raises(ContactReferenceError):
         validate(record)
+
+
+def test_agreement_pair_is_required_to_complete():
+    record = _record()
+    _complete_with_repeat(record)
+    del record["agreement_pair"]
+
+    with pytest.raises(ContactReferenceError, match="needs agreement_pair"):
+        validate(record)
+
+
+@pytest.mark.parametrize("mutate,match", [
+    (lambda pair: pair.update(repeat_pass_id="a1"), "two distinct pass ids"),
+    (lambda pair: pair.update(repeat_pass_id="nope"), "does not exist"),
+    (lambda pair: pair.update(independence_basis="vibes"), "independence_basis"),
+])
+def test_malformed_agreement_pairs_are_rejected(mutate, match):
+    record = _record()
+    _complete_with_repeat(record)
+    mutate(record["agreement_pair"])
+
+    with pytest.raises(ContactReferenceError, match=match):
+        validate(record)
+
+
+def test_agreement_pair_cannot_name_a_pass_that_saw_the_detector():
+    """Two other passes may qualify; the pair named is the one the claim rests on."""
+    record = _record()
+    _complete_with_repeat(record)
+    exposed = copy.deepcopy(record["passes"][1])
+    exposed.update(pass_id="a3", blinded=False, detector_hidden=False)
+    record["passes"].append(exposed)
+    record["agreement_pair"]["repeat_pass_id"] = "a3"
+
+    with pytest.raises(ContactReferenceError, match="blinded with the detector hidden"):
+        validate(record)
+
+
+def test_different_annotator_basis_needs_distinct_annotators():
+    """Without this, one annotator completes a record by declaring the basis and waiting
+    for nothing: the separation requirement becomes opt-out."""
+    record = _record()
+    _complete_with_repeat(
+        record, annotator="annotator-a", completed_at="2026-09-20T10:05:00Z",
+        independence_basis="different-annotator",
+    )
+
+    with pytest.raises(ContactReferenceError, match="distinct annotators"):
+        validate(record)
+
+
+def test_a_repeat_recorded_before_the_first_pass_is_not_a_repeat():
+    """The passes here are far enough apart; what is wrong is which one is called the repeat."""
+    record = _record()
+    _complete_with_repeat(record, completed_at="2026-09-18T10:00:00Z")
+
+    with pytest.raises(ContactReferenceError, match="predates"):
+        validate(record)
+
+
+def test_independent_completion_problems_are_reported_together():
+    """validate() documents listing every problem; an annotator fixing a record should not
+    discover the next one only after fixing the last."""
+    record = _record()
+    _complete_with_repeat(record)
+    record["passes"][1]["presentation_order"] = "sequential"
+    record["agreement_pair"]["independence_basis"] = "vibes"
+
+    with pytest.raises(ContactReferenceError) as caught:
+        validate(record)
+
+    assert "randomized order" in str(caught.value)
+    assert "independence_basis" in str(caught.value)
