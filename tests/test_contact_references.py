@@ -9,6 +9,7 @@ from PIL import Image
 
 from gaitlab.debug.contacts import (
     SCHEMA,
+    TIMEBASE_NOT_VALIDATED,
     ContactReferenceError,
     as_debug_references,
     labelled_events,
@@ -23,6 +24,8 @@ def _record():
         "schema": SCHEMA,
         "clip": "female_overstride",
         "video_sha256": "0" * 64,
+        "pose_sha256": "1" * 64,
+        "does_not_validate": [TIMEBASE_NOT_VALIDATED],
         "annotation_rule": "initial-contact-v1",
         "coverage": "full-sweep",
         "status": "draft",
@@ -64,6 +67,11 @@ def test_a_well_formed_record_validates():
     (lambda r: r.update(schema="gaitlab.contact-references/v0"), "schema"),
     (lambda r: r.update(clip=""), "clip is required"),
     (lambda r: r.update(video_sha256=""), "video_sha256 is required"),
+    (lambda r: r.pop("pose_sha256"), "pose_sha256 is required"),
+    (lambda r: r.update(video_sha256="unknown"), "video_sha256 must be"),
+    (lambda r: r.update(pose_sha256="0" * 63), "pose_sha256 must be"),
+    (lambda r: r.update(pose_sha256="G" * 64), "pose_sha256 must be"),
+    (lambda r: r.update(video_sha256="A" * 64), "video_sha256 must be"),
     (lambda r: r.update(annotation_rule=""), "annotation_rule is required"),
     (lambda r: r.update(coverage="detector-seeded"), "coverage"),
     (lambda r: r.update(passes=[]), "non-empty"),
@@ -193,14 +201,14 @@ def _annotation_bundle(tmp_path, radius="1"):
         "--pose", str(pose), "--video", str(clip), "--output", str(out),
         "--sweep", "--strip-radius", radius,
     ]) == 0
-    return case, out
+    return case, out, pose
 
 
 def test_annotation_bundle_contains_nothing_the_detector_selected(tmp_path):
     """Hiding the marker is not blinding. Filenames, a contact sheet, traces or a record
     chosen by the detector announce its predictions without drawing one.
     """
-    _case, out = _annotation_bundle(tmp_path)
+    _case, out, _pose = _annotation_bundle(tmp_path)
 
     produced = sorted(path.relative_to(out).as_posix()
                       for path in out.rglob("*") if path.is_file())
@@ -221,7 +229,7 @@ def test_annotation_frames_carry_no_model_layer(tmp_path):
 
     from scripts.overstride_render import render_annotated_frame
 
-    case, out = _annotation_bundle(tmp_path)
+    case, out, _pose = _annotation_bundle(tmp_path)
     plain = PILImage.new("RGB", (case.sequence.width, case.sequence.height), (30, 40, 50))
     with PILImage.open(out / "frames" / "frame-000001.png") as annotation:
         annotated = annotation.convert("RGB").copy()
@@ -255,9 +263,10 @@ def _row_for(case, frame):
 
 
 def test_annotation_manifest_states_coverage_and_that_no_model_layer_was_shown(tmp_path):
+    import hashlib
     import json
 
-    _case, out = _annotation_bundle(tmp_path)
+    _case, out, pose = _annotation_bundle(tmp_path)
     manifest = json.loads((out / "manifest.json").read_text())
 
     assert manifest["coverage"] == "full-sweep"
@@ -265,10 +274,18 @@ def test_annotation_manifest_states_coverage_and_that_no_model_layer_was_shown(t
     assert manifest["model_layers_visible"] is False
     assert manifest["annotation_rule"] == "initial-contact-v1"
     assert manifest["source_video"]["sha256"]
+    # Compared against the actual input's digest, not just checked for presence: a
+    # hard-coded or otherwise wrong hash would still be truthy.
+    assert manifest["pose_input"]["sha256"] == hashlib.sha256(pose.read_bytes()).hexdigest()
+    assert TIMEBASE_NOT_VALIDATED in manifest["does_not_validate"], (
+        "a shifted or stale pose timeline can produce ordered, finite label timestamps "
+        "that refer to the wrong instants; the manifest must name that limitation "
+        "specifically, not just carry some does_not_validate entry"
+    )
 
 
 def test_annotation_frames_cover_every_frame_of_the_clip(tmp_path):
-    case, out = _annotation_bundle(tmp_path)
+    case, out, _pose = _annotation_bundle(tmp_path)
 
     written = sorted(path.name for path in (out / "frames").iterdir())
 
@@ -470,3 +487,18 @@ def test_independent_completion_problems_are_reported_together():
 
     assert "randomized order" in str(caught.value)
     assert "independence_basis" in str(caught.value)
+
+
+@pytest.mark.parametrize("limits", [None, [], ["that the sweep found every contact"]])
+def test_a_record_cannot_be_read_as_timebase_validated(limits):
+    """Labels are the committed evidence; the annotation bundle is disposable. The limitation
+    has to travel with the labels, or they read as validated against a timebase nobody
+    checked."""
+    record = _record()
+    if limits is None:
+        del record["does_not_validate"]
+    else:
+        record["does_not_validate"] = limits
+
+    with pytest.raises(ContactReferenceError, match="does_not_validate"):
+        validate(record)

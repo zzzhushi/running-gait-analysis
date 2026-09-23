@@ -11,9 +11,18 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 import math
+import re
 from typing import Any, Dict, List, Mapping, Optional
 
 SCHEMA = "gaitlab.contact-references/v1"
+
+# Labels carry the pose file's hash and the instants it assigns to each frame, which makes a
+# stale or re-extracted timeline detectable by comparison but not wrong by construction:
+# nothing here checks those instants against the video's own frames. That correspondence is
+# owned by frame/time validation, so every record states it rather than implying it.
+TIMEBASE_NOT_VALIDATED = (
+    "that the pose input's timestamps were extracted from the source video's actual frames"
+)
 
 # Side identity is not always visible from one camera, so a label names the track it can
 # actually see. Mapping a track to a body side is a separate claim, made elsewhere.
@@ -43,6 +52,12 @@ REQUIRED_BLINDED_PASSES = 2
 # does not state the interval it used between passes.
 INDEPENDENCE_BASES = ("different-annotator", "time-separated")
 MIN_SAME_ANNOTATOR_SEPARATION = timedelta(hours=24)
+
+_SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+
+
+def _is_sha256_digest(value: Any) -> bool:
+    return isinstance(value, str) and _SHA256_HEX.fullmatch(value) is not None
 
 
 class ContactReferenceError(ValueError):
@@ -96,8 +111,9 @@ def _check_event(event: Mapping[str, Any], where: str, errs: List[str]) -> None:
 def _check_times(event: Mapping[str, Any], where: str, errs: List[str]) -> None:
     """Frame indices alone cannot be audited against a variable-rate clock.
 
-    A label carries the instants its frames resolved to, so binding it to the wrong
-    timebase is visible in the record rather than only discoverable from a separate one.
+    A label carries the instants its frames resolved to, so a nominated instant outside its
+    own interval is caught here. Whether those instants are the video's real ones is not:
+    see `TIMEBASE_NOT_VALIDATED`.
     """
     times = event.get("contact_interval_timestamps_s")
     central_t = event.get("central_timestamp_s")
@@ -228,9 +244,21 @@ def validate(record: Mapping[str, Any]) -> Mapping[str, Any]:
     errs: List[str] = []
     if record.get("schema") != SCHEMA:
         errs.append(f"schema must be {SCHEMA!r} (got {record.get('schema')!r})")
-    for field in ("clip", "video_sha256", "annotation_rule"):
+    for field in ("clip", "annotation_rule"):
         if not record.get(field):
             errs.append(f"{field} is required")
+    for field in ("video_sha256", "pose_sha256"):
+        value = record.get(field)
+        if not value:
+            errs.append(f"{field} is required")
+        elif not _is_sha256_digest(value):
+            errs.append(f"{field} must be a 64-character hexadecimal SHA-256 digest")
+    limits = record.get("does_not_validate")
+    if not isinstance(limits, list) or TIMEBASE_NOT_VALIDATED not in limits:
+        errs.append(
+            "does_not_validate must state that pose timestamps are not checked against the "
+            "source video's frames; without it a record reads as timebase-validated evidence"
+        )
     if record.get("coverage") not in COVERAGE:
         errs.append(f"coverage must be one of {COVERAGE} (got {record.get('coverage')!r})")
     status = record.get("status")

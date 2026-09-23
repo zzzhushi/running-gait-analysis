@@ -34,6 +34,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from gaitlab.core.schema import PoseSequence
+from gaitlab.debug.contacts import TIMEBASE_NOT_VALIDATED
 from gaitlab.debug.overstride import build_overstride_debug_record, record_by_id
 from scripts.overstride_render import (
     SourceFrames,
@@ -179,10 +180,12 @@ def _write_annotation_bundle(args, seq: PoseSequence) -> int:
         "annotation_rule": "initial-contact-v1",
         "clip": args.video.stem,
         "source_video": _media_identity(args.video),
+        "pose_input": _media_identity(args.pose),
         "coverage": "full-sweep",
         "frame_count": seq.n,
         "window_radius": args.strip_radius,
         "frames": written,
+        "does_not_validate": [TIMEBASE_NOT_VALIDATED],
         "detector_markers_visible": False,
         "model_layers_visible": False,
     })
