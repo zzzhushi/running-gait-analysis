@@ -53,11 +53,12 @@ class _Selenium:
         return out["ok"]
 
 
-# A full extraction of the clips this suite uses takes well under two minutes on real
-# hardware. This bounds every individual browser call so a hang -- GPU init, a network
-# fetch, anything -- fails with a diagnosable timeout instead of consuming an entire CI
-# job's time budget silently.
-DEFAULT_TIMEOUT_S = 300
+# Bounds every individual browser call so a hang -- GPU init, a network fetch, anything --
+# fails with a diagnosable timeout instead of consuming an entire CI job's time budget
+# silently. Generous because a WebKit extraction on a shared CI runner is several times
+# slower than the same work on developer hardware, and a bound close to the real duration
+# turns ordinary runner variance into a failure.
+DEFAULT_TIMEOUT_S = 450
 
 @contextmanager
 def open_browser(engine: str, url: str, script_timeout_s: int = DEFAULT_TIMEOUT_S):
