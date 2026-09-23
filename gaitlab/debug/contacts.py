@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 import math
+import re
 from typing import Any, Dict, List, Mapping, Optional
 
 SCHEMA = "gaitlab.contact-references/v1"
@@ -51,6 +52,12 @@ REQUIRED_BLINDED_PASSES = 2
 # does not state the interval it used between passes.
 INDEPENDENCE_BASES = ("different-annotator", "time-separated")
 MIN_SAME_ANNOTATOR_SEPARATION = timedelta(hours=24)
+
+_SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+
+
+def _is_sha256_digest(value: Any) -> bool:
+    return isinstance(value, str) and _SHA256_HEX.fullmatch(value) is not None
 
 
 class ContactReferenceError(ValueError):
@@ -237,9 +244,15 @@ def validate(record: Mapping[str, Any]) -> Mapping[str, Any]:
     errs: List[str] = []
     if record.get("schema") != SCHEMA:
         errs.append(f"schema must be {SCHEMA!r} (got {record.get('schema')!r})")
-    for field in ("clip", "video_sha256", "pose_sha256", "annotation_rule"):
+    for field in ("clip", "annotation_rule"):
         if not record.get(field):
             errs.append(f"{field} is required")
+    for field in ("video_sha256", "pose_sha256"):
+        value = record.get(field)
+        if not value:
+            errs.append(f"{field} is required")
+        elif not _is_sha256_digest(value):
+            errs.append(f"{field} must be a 64-character hexadecimal SHA-256 digest")
     limits = record.get("does_not_validate")
     if not isinstance(limits, list) or TIMEBASE_NOT_VALIDATED not in limits:
         errs.append(

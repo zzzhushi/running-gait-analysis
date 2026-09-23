@@ -71,7 +71,7 @@ def test_a_well_formed_record_validates():
     (lambda r: r.update(video_sha256="unknown"), "video_sha256 must be"),
     (lambda r: r.update(pose_sha256="0" * 63), "pose_sha256 must be"),
     (lambda r: r.update(pose_sha256="G" * 64), "pose_sha256 must be"),
-    (lambda r: r.update(video_sha256=("0" * 64).upper()), "video_sha256 must be"),
+    (lambda r: r.update(video_sha256="A" * 64), "video_sha256 must be"),
     (lambda r: r.update(annotation_rule=""), "annotation_rule is required"),
     (lambda r: r.update(coverage="detector-seeded"), "coverage"),
     (lambda r: r.update(passes=[]), "non-empty"),
