@@ -6,7 +6,7 @@ the contact detector. The [report](assets/overstride-timebase-report.json) is re
 from the committed pose JSON and MP4 files. For every clip it records input SHA-256 hashes,
 frame counts, first/last times, PTS span, median frame interval, effective and container
 frame rates, container duration, coded and display dimensions, rotation, and explicit
-pass/fail checks. It also lists intervals more than 1.5 times the median frame interval;
+checks. It also lists intervals more than 1.5 times the median frame interval;
 these are timing discontinuities, **not** proof of a decoder drop.
 
 The committed, reviewer-visible anchors are:
@@ -22,10 +22,13 @@ The footer burns in the index, pose time, current container PTS, frame count, ra
 validation limit. PNG metadata carries the same identifiers and the video/pose hashes.
 None of these frames claims to be a validated contact or a correct landmark placement.
 The selected frames are fixed samples for checking index, time, and overlay alignment.
-They were not chosen because a foot appeared to land there. In the `male_side` sequence,
-the forward shoe appears above the treadmill at frame 120. It approaches the belt over
-the next frames. This visual observation is a reason to inspect the interval, not a
-reference contact label.
+The `female_overstride` anchor deliberately reuses frame 262, which was discussed as a
+possible contact frame during the earlier contact-timing investigation on #74/#75. Reusing
+that already-inspected index makes the timebase overlay easy to compare with that discussion;
+it does not confirm the candidate as contact, and this report contains no reference contact
+label. The `male_side` anchor is frame 120, a fixed sample at 4 seconds. In that sequence,
+the forward shoe appears above the treadmill at frame 120 and approaches the belt over the
+next frames. That observation is also not a contact label.
 
 ## Review together
 
@@ -62,6 +65,10 @@ report bytes and PNG metadata exactly, then allows only small visual differences
 decoder/font versions (at most 1 mean channel level and 0.5% strongly changed pixels).
 The CLI `--check` compares pixels exactly on the current host. CI installs `ffmpeg`
 explicitly; the test skips only on a local machine without the video tools.
+
+The generator evaluates each check before writing the report. If any check fails, it raises
+an error and stops; a failed check is not written as `false` in the committed report. The
+report therefore contains passing checks only, while the command output identifies failures.
 
 ## When the pose extractor changes
 
@@ -152,6 +159,15 @@ runs the browser extractor on `female_high_cadence` and checks frame coverage an
 against the measured cadence. Neither path checks landmark placement frame by frame. The
 browser has a separate video decoding path, so passing a Python BlazePose test does not
 establish browser frame alignment.
+
+All six clips currently listed in this report have zero rotation metadata, so their report
+rows do not exercise the report generator's rotated-dimension branch. Rotation behavior is
+already covered separately using the real `rotated_male_side.mp4` derivative: Python tests
+check the transformed overlay and OpenCV/FFmpeg frame agreement in
+`tests/test_overstride_debug.py`, while `tests/browser/test_rotation.py` checks browser
+orientation and transform direction. This PR keeps the report focused on the six canonical
+RTMPose fixtures instead of adding a second representation of `male_side`; if a per-clip
+rotated report is needed later, add a rotated RTMPose pose fixture and manifest entry.
 
 The next useful validation slice is a side-by-side review of the same source frames from
 RTMPose, Python BlazePose, and browser extraction, with visible reference landmarks placed
