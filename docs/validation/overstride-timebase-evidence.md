@@ -63,6 +63,61 @@ decoder/font versions (at most 1 mean channel level and 0.5% strongly changed pi
 The CLI `--check` compares pixels exactly on the current host. CI installs `ffmpeg`
 explicitly; the test skips only on a local machine without the video tools.
 
+## When the pose extractor changes
+
+The evidence generator reads saved pose JSON. It does **not** run RTMPose, and it does not
+notice a change to extractor code by itself. To check a pose-logic change:
+
+1. Change the extractor or model settings.
+2. Re-extract the validation video to a temporary pose file, using the same view and model
+   settings as the committed fixture. For example:
+
+   ```bash
+   python3 extractor/extract_pose.py tests/data/female_high_cadence.mp4 \
+     --view side-right -o /tmp/female_high_cadence.pose.rtmpose.json
+   ```
+
+3. Compare the new pose points with the actual video frames, especially the landmarks the
+   change is meant to improve. For the arm-angle concern, inspect shoulder, elbow, and wrist
+   through the context frames. The overlay only draws the saved model output; it does not
+   know whether a point is anatomically correct or whether an arm is hidden by the body.
+4. After reviewing the new extraction, put the accepted pose JSON at the fixture path in
+   `tests/data/`. Then regenerate the report and images with the command above. The report
+   and PNG metadata include hashes of both the video and pose file, so accepted input changes
+   are visible in the artifacts.
+5. Run `--check` and the evidence test, review the generated diff, and commit the pose fixture
+   and evidence together.
+
+If the change is to a metric formula (for example, the elbow-angle calculation) rather than
+the pose extractor, this generator is not the test for that change. Keep the same pose
+input, run the metric tests, and compare the computed metric with an independently checked
+reference measurement.
+
+## When adding a video
+
+The generator does not scan `tests/data/` for new videos. It processes only clips explicitly
+listed in `overstride-timebase-manifest.json`. For a new validation clip:
+
+1. Add `tests/data/<id>.mp4` and its extracted
+   `tests/data/<id>.pose.rtmpose.json` fixture. `<id>` is the video filename without `.mp4`.
+2. Add an entry to the manifest, choosing a fixed `anchor_frame` for the visible overlay.
+   Use `null` if the clip should appear in the per-clip report without an anchor. To also
+   render neighboring frames, set `context_radius`; `context_after` can override the number
+   of frames shown after the anchor.
+3. Update the evidence test's explicit expectations in
+   `tests/test_overstride_timebase_evidence.py` for any new anchor or context. The test pins
+   the current sample indices, so it cannot silently accept an accidental change to them.
+   New pose files may record a timestamp provider; make the provenance assertion match the
+   new file instead of labeling it as a legacy fixture.
+4. Run the generator, inspect the report and PNGs, then run `--check` and the evidence test.
+   The generator will stop if frame counts, timestamp agreement, duration, or display
+   dimensions fail. Investigate a failed comparison before changing its tolerance.
+
+These checks detect changed contents for clips already in the manifest because their hashes
+and generated outputs change. They do not detect an unlisted video, or a changed extractor
+that has not been run again to produce new pose JSON. CI runs the evidence test on pull
+requests, so it checks that the committed report and images still match the listed inputs.
+
 ## What the checks establish
 
 All six pose sequences have the same number of frames as the current video probe and
