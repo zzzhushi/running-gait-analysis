@@ -60,6 +60,16 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+### Tests must trace to the requirement
+
+For behavior changes and bug fixes, derive test cases from the issue, specification, or
+acceptance criteria—not only from the implementation. Assert the observable contract at the
+boundary the requirement names: a consumer, persisted record, rendered artifact, or public API.
+
+For regressions and high-risk logic, confirm the new test would fail against the prior faulty
+behavior or a targeted mutation. That establishes that the test is sensitive to the intended
+change; it does not by itself prove every requirement is covered.
+
 ## 5. Comments Explain Durable Constraints
 
 Prefer clear names, small functions, and explicit types over explanatory comments.
