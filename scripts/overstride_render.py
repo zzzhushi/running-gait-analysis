@@ -354,6 +354,11 @@ def save_grid(images: Iterable[tuple[Image.Image, Mapping[str, Any]]], destinati
     grid.save(destination, format="PNG", pnginfo=info, compress_level=9)
 
 
+# ffmpeg's expression parser rejects a `select` chain longer than this, so a clip with
+# many contacts is decoded in several passes rather than one oversized filter.
+SELECT_TERMS_PER_PASS = 80
+
+
 class SourceFrames:
     """Decode source frames by exact zero-based index, caching repeated requests."""
 
@@ -368,7 +373,7 @@ class SourceFrames:
         return self._cache[index].copy()
 
     def preload(self, indices: Iterable[int]) -> None:
-        """Decode many exact indices in one forward pass through a video."""
+        """Decode many exact indices, in as few passes through a video as the filter allows."""
         missing = sorted(set(indices) - self._cache.keys())
         if not missing:
             return
@@ -378,6 +383,10 @@ class SourceFrames:
             return
         if not shutil.which("ffmpeg"):
             raise RuntimeError("ffmpeg is required to decode video frames")
+        for start in range(0, len(missing), SELECT_TERMS_PER_PASS):
+            self._preload_batch(missing[start:start + SELECT_TERMS_PER_PASS])
+
+    def _preload_batch(self, missing: list[int]) -> None:
         selection = "+".join(f"eq(n\\,{index})" for index in missing)
         with tempfile.TemporaryDirectory(prefix="gaitlab-frames-") as temp:
             pattern = str(Path(temp) / "%06d.png")
