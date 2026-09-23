@@ -265,6 +265,11 @@ def test_annotation_manifest_states_coverage_and_that_no_model_layer_was_shown(t
     assert manifest["model_layers_visible"] is False
     assert manifest["annotation_rule"] == "initial-contact-v1"
     assert manifest["source_video"]["sha256"]
+    assert manifest["pose_input"]["sha256"]
+    assert manifest["does_not_validate"], (
+        "a shifted or stale pose timeline can produce ordered, finite label timestamps "
+        "that refer to the wrong instants; the manifest must say this is not checked"
+    )
 
 
 def test_annotation_frames_cover_every_frame_of_the_clip(tmp_path):
