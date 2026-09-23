@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import json
 import shutil
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -334,6 +335,47 @@ def test_rotation_tagged_video_aligns_ffmpeg_pixels_and_display_space_pose():
     assert rendered.getpixel((round(nose["x"]), round(nose["y"]))) == (220, 229, 239)
 
 
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="renderer video decoding requires ffmpeg")
+def test_opencv_extraction_and_ffmpeg_rendering_agree_on_a_rotated_frame():
+    """Pose extraction (OpenCV) and debug rendering (ffmpeg) must decode the same
+    index to the same display-space content, or a landmark computed against one
+    decoder's frame is drawn on the other decoder's pixels.
+
+    Same fixture and frame index as the renderer-only rotation test above; this test
+    adds the extractor's actual decode path instead of asserting against a hand-derived
+    transform.
+    """
+    cv2 = pytest.importorskip("cv2")
+    import numpy as np
+
+    root = Path(__file__).resolve().parents[1]
+    video = root / "tests" / "browser" / "rotated_male_side.mp4"
+    frame_index = 10
+
+    cap = cv2.VideoCapture(str(video))
+    assert cap.isOpened()
+    cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)  # matches extractor/rtmpose.py and blazepose.py
+    opencv_frame = None
+    for i in range(frame_index + 1):
+        ok, img = cap.read()
+        assert ok, f"OpenCV could not decode frame {i}"
+        if i == frame_index:
+            opencv_frame = img
+    cap.release()
+    opencv_rgb = cv2.cvtColor(opencv_frame, cv2.COLOR_BGR2RGB)
+
+    ffmpeg_frames = SourceFrames(video, (1280, 720))
+    ffmpeg_frames.preload([frame_index])
+    ffmpeg_rgb = np.asarray(ffmpeg_frames(frame_index))
+
+    assert opencv_rgb.shape == ffmpeg_rgb.shape
+    # Real photographic content, not a synthetic fixture, so decoders can differ by a
+    # few units from colour-conversion rounding. A misaligned frame or a wrong-orientation
+    # decode changes most pixels rather than a handful, and clears this by a wide margin.
+    mean_diff = np.abs(opencv_rgb.astype(int) - ffmpeg_rgb.astype(int)).mean()
+    assert mean_diff < 5.0, f"OpenCV and ffmpeg disagree on frame {frame_index}: mean diff {mean_diff:.2f}"
+
+
 def test_saved_record_refuses_a_same_sized_different_source_video(tmp_path):
     """A filename or dimensions cannot establish that render pixels match the saved record."""
     case = load_authored_reach_fixture()
@@ -374,6 +416,66 @@ def test_saved_record_refuses_a_same_sized_different_source_video(tmp_path):
         export_overstride_debug.main([
             "--record", str(record), "--video", str(source_b), "--output", str(tmp_path / "wrong"),
         ])
+
+
+@pytest.mark.parametrize("timestamp_source,expected", [
+    ("ffprobe (real container PTS)", "ffprobe (real container PTS)"),
+    ("OpenCV POS_MSEC", "OpenCV POS_MSEC"),
+])
+def test_record_carries_the_exact_timestamp_provider(timestamp_source, expected):
+    """Container PTS and the decoder clock are different evidence about a frame's
+    instant, so a record that reduces both to one value cannot answer what its
+    timestamps are worth.
+    """
+    case = load_authored_reach_fixture()
+    sequence = replace(
+        case.sequence,
+        timestamps=[i * 0.02 for i in range(case.sequence.n)],
+        timestamp_source=timestamp_source,
+    ).validate()
+
+    bundle = build_overstride_debug_record(sequence, GaitEvents(), source_id="clip")
+
+    assert bundle["source"]["timestamp_source"] == expected
+
+
+def test_record_distinguishes_an_unrecorded_provider_from_an_assumed_clock():
+    """A sequence extracted before provenance was recorded still has real per-frame
+    timestamps; it must not serialize as though the clock were assumed, nor as though
+    the provider were known.
+    """
+    case = load_authored_reach_fixture()
+    unrecorded = replace(
+        case.sequence, timestamps=[i * 0.02 for i in range(case.sequence.n)], timestamp_source=None
+    ).validate()
+    assumed = replace(case.sequence, timestamps=None, timestamp_source=None).validate()
+
+    unrecorded_value = build_overstride_debug_record(
+        unrecorded, GaitEvents(), source_id="clip")["source"]["timestamp_source"]
+    assumed_value = build_overstride_debug_record(
+        assumed, GaitEvents(), source_id="clip")["source"]["timestamp_source"]
+
+    assert unrecorded_value != assumed_value
+    assert unrecorded_value is not None and assumed_value is not None
+
+
+def test_record_carries_the_decode_frame_count_note():
+    """A tolerated frame deficit is invisible to a reviewer unless the record says so."""
+    case = load_authored_reach_fixture()
+    note = "decoded 119 of 120 container frames (1 dropped)"
+    sequence = replace(case.sequence, frame_count_note=note).validate()
+
+    bundle = build_overstride_debug_record(sequence, GaitEvents(), source_id="clip")
+
+    assert bundle["source"]["frame_count_note"] == note
+
+
+def test_record_states_when_no_frames_were_dropped():
+    case = load_authored_reach_fixture()
+    bundle = build_overstride_debug_record(case.sequence, GaitEvents(), source_id="clip")
+
+    assert "frame_count_note" in bundle["source"]
+    assert bundle["source"]["frame_count_note"] is None
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="renderer video decoding requires ffmpeg")

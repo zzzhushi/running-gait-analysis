@@ -13,7 +13,7 @@ import sys
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 
 from .base import PoseExtractor
-from .timestamps import choose_timestamps, probe_timestamps
+from .timestamps import check_frame_count, choose_timestamps, probe_timestamps
 
 # MediaPipe BlazePose 33-landmark indices -> canonical names. BlazePose has no neck /
 # pelvis / small-toe, so neck & mid_hip are derived and small toes are left absent.
@@ -87,6 +87,7 @@ class MediaPipeExtractor(PoseExtractor):
         kept_idx = []
         read_i = 0
         max_frames = int(max_seconds * fps) if max_seconds else None
+        stopped_by_request = False
         while True:
             t_msec = cap.get(cv2.CAP_PROP_POS_MSEC)
             ok, img = cap.read()
@@ -104,13 +105,26 @@ class MediaPipeExtractor(PoseExtractor):
                     print(f"\r  {len(frames)} frames analyzed…", end="", file=sys.stderr)
             read_i += 1
             if max_frames and read_i >= max_frames:
+                stopped_by_request = True
                 break
         cap.release()
 
         timestamps, ts_src = choose_timestamps(probe_ts, pos_msec, kept_idx, read_i)
         print(f"\n  timestamp source: {ts_src}", file=sys.stderr)
 
+        # A max_seconds request stopping the loop early is not the container losing
+        # frames, so only compare against the full container count when we attempted
+        # to decode all of it.
+        expected_frames = len(probe_ts) if probe_ts is not None and not stopped_by_request else None
+        frame_count_note, frame_count_severe = check_frame_count(expected_frames, read_i)
+        if frame_count_note:
+            print(f"\n  {frame_count_note}", file=sys.stderr)
+        if frame_count_severe:
+            raise RuntimeError(f"{frame_count_note}; refusing a silently truncated pose sequence")
+
         return PoseSequence(
             fps=fps / every, width=width, height=height, view=view, frames=frames,
             source="mediapipe-blazepose", keypoint_names=list(KEYPOINTS), timestamps=timestamps,
+            timestamp_source=ts_src,
+            frame_count_note=frame_count_note,
         )

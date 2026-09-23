@@ -22,7 +22,12 @@ from extractor.rtmpose import HALPE26, WHOLEBODY
 from extractor.rtmpose import RTMPoseExtractor
 from extractor.rtmpose import build_model, pick_person
 from extractor.rtmpose import to_canonical as rtmpose_to_canonical
-from extractor.timestamps import _monotonic_positive, choose_timestamps, probe_timestamps
+from extractor.timestamps import (
+    _monotonic_positive,
+    check_frame_count,
+    choose_timestamps,
+    probe_timestamps,
+)
 from gaitlab.core.schema import KEYPOINTS, PoseSequence
 from pipeline import analyze_video
 
@@ -207,6 +212,23 @@ class TestTimestamps:
     def test_monotonic_positive_accepts_strictly_increasing(self):
         assert _monotonic_positive([0.0, 0.5, 1.0])
 
+    def test_monotonic_positive_rejects_a_repeated_value(self):
+        """Two indices sharing one instant make a frame index ambiguous as a moment."""
+        assert not _monotonic_positive([0.0, 0.033, 0.033, 0.066])
+
+    def test_duplicate_container_pts_falls_back_to_a_usable_clock(self):
+        duplicated = [0.0, 0.033, 0.033, 0.066]
+        ts, src = choose_timestamps(duplicated, pos_msec=[0.0, 0.03, 0.06, 0.09],
+                                    kept_idx=[0, 1, 2, 3], total_read=4)
+        assert ts == [0.0, 0.03, 0.06, 0.09]
+        assert src == "OpenCV POS_MSEC"
+
+    def test_duplicates_in_every_source_fall_back_to_the_assumed_timebase(self):
+        ts, src = choose_timestamps(probe_ts=[0.0, 0.033, 0.033], pos_msec=[0.0, 0.03, 0.03],
+                                    kept_idx=[0, 1, 2], total_read=3)
+        assert ts is None
+        assert "constant frame rate" in src
+
     def test_prefers_ffprobe_when_frame_count_lines_up(self):
         probe_ts = [0.0, 0.1, 0.2, 0.3]
         ts, src = choose_timestamps(probe_ts, pos_msec=[0, 90, 205], kept_idx=[0, 1, 2], total_read=4)
@@ -228,6 +250,45 @@ class TestTimestamps:
         """ffprobe is genuinely not installed here, so this is the real path,
         not a mocked one — probe_timestamps must degrade gracefully."""
         assert probe_timestamps("/nonexistent/video.mp4") is None
+
+
+class TestFrameCount:
+    def test_matching_counts_produce_no_note(self):
+        assert check_frame_count(expected=120, actual=120) == (None, False)
+
+    def test_more_decoded_than_expected_produces_no_note(self):
+        """The container's own count can undercount at the edges; more frames out
+        than the container reported is not evidence of a dropped frame."""
+        assert check_frame_count(expected=120, actual=121) == (None, False)
+
+    def test_unknown_container_count_produces_no_note(self):
+        assert check_frame_count(expected=None, actual=87) == (None, False)
+
+    def test_small_deficit_is_noted_but_not_severe(self):
+        note, severe = check_frame_count(expected=120, actual=119)
+        assert note is not None and "120" in note and "119" in note
+        assert severe is False
+
+    def test_large_deficit_is_severe(self):
+        note, severe = check_frame_count(expected=120, actual=80)
+        assert note is not None
+        assert severe is True
+
+    @pytest.mark.parametrize("expected,actual", [(4, 2), (10, 8), (40, 36)])
+    def test_loss_past_the_trailing_frame_is_judged_proportionally(self, expected, actual):
+        """Beyond the one-frame edge case, a short clip gets no larger proportional
+        allowance than a long one."""
+        _note, severe = check_frame_count(expected=expected, actual=actual)
+        assert severe is True
+
+    @pytest.mark.parametrize("expected", [4, 10, 120, 1160])
+    def test_one_trailing_frame_is_allowed_at_every_clip_length(self, expected):
+        """The flat allowance is intentionally disproportionate on a short clip, where one
+        frame is a large share of the whole. It is recorded either way, so the deficit stays
+        visible rather than being silently accepted."""
+        note, severe = check_frame_count(expected=expected, actual=expected - 1)
+        assert note is not None
+        assert severe is False
 
 
 class _ScoreRow(list):
@@ -324,6 +385,144 @@ class TestOrientation:
         seq = MediaPipeExtractor().extract("clip.mov", "side-right", no_ffprobe=True)
 
         assert (seq.width, seq.height) == (1080, 1920)
+
+
+class _TimedCapture:
+    """An unrotated capture whose POS_MSEC advances by a fixed step each read."""
+
+    def __init__(self, n_frames=4, step_ms=33.333):
+        self._n_frames = n_frames
+        self._step_ms = step_ms
+        self._read = 0
+
+    def isOpened(self):
+        return True
+
+    def get(self, prop):
+        import cv2
+        if prop == cv2.CAP_PROP_FPS:
+            return 30.0
+        if prop == cv2.CAP_PROP_FRAME_WIDTH:
+            return 640.0
+        if prop == cv2.CAP_PROP_FRAME_HEIGHT:
+            return 480.0
+        if prop == cv2.CAP_PROP_POS_MSEC:
+            return self._read * self._step_ms
+        return 0.0
+
+    def set(self, prop, value):
+        return True
+
+    def read(self):
+        if self._read >= self._n_frames:
+            return False, None
+        self._read += 1
+        return True, object()
+
+    def release(self):
+        pass
+
+
+class TestTimestampProvenance:
+    """The extractor must not discard where its timestamps came from.
+
+    Duration, effective FPS, and every timing-dependent metric depend on whether the
+    clock is a real per-frame timestamp or an assumed constant frame rate; that
+    provenance has to survive on the PoseSequence, not just print to stderr.
+    """
+
+    def test_opencv_pos_msec_source_is_recorded_on_the_sequence(self, monkeypatch):
+        capture = _TimedCapture()
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right", no_ffprobe=True)
+
+        assert seq.timestamps == pytest.approx([0.0, 0.033333, 0.066666, 0.099999], abs=1e-4)
+        assert seq.timestamp_source == "OpenCV POS_MSEC"
+
+    def test_no_trustworthy_clock_records_the_assumed_timebase(self, monkeypatch):
+        """Falling back to f/fps is a provenance claim, not an absence of one."""
+        from gaitlab.core.schema import ASSUMED_TIMEBASE
+
+        capture = _TimedCapture(step_ms=0.0)  # a stalled clock carries no elapsed-time information
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right", no_ffprobe=True)
+
+        assert seq.timestamps is None
+        assert seq.timestamp_source == ASSUMED_TIMEBASE
+        seq.validate()
+
+
+class TestFrameCountEnforcement:
+    """The extractor must not silently return a shorter sequence than its source video."""
+
+    def test_matching_container_count_produces_no_note(self, monkeypatch):
+        capture = _TimedCapture(n_frames=4)
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+        monkeypatch.setattr("extractor.rtmpose.probe_timestamps", lambda path: [0.0, 0.1, 0.2, 0.3])
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right")
+
+        assert seq.frame_count_note is None
+
+    def test_small_deficit_is_recorded_without_raising(self, monkeypatch):
+        capture = _TimedCapture(n_frames=4)
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+        # container reports 5 frames; only 4 were decodable.
+        monkeypatch.setattr("extractor.rtmpose.probe_timestamps",
+                            lambda path: [0.0, 0.1, 0.2, 0.3, 0.4])
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right")
+
+        assert seq.frame_count_note is not None
+        assert "4" in seq.frame_count_note and "5" in seq.frame_count_note
+
+    def test_severe_deficit_raises_instead_of_returning_a_truncated_sequence(self, monkeypatch):
+        capture = _TimedCapture(n_frames=4)
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+        # container reports 40 frames; only 4 were decodable — a badly truncated file.
+        monkeypatch.setattr("extractor.rtmpose.probe_timestamps",
+                            lambda path: [i * 0.1 for i in range(40)])
+
+        with pytest.raises(RuntimeError, match="dropped"):
+            RTMPoseExtractor().extract("clip.mov", "side-right")
+
+    def test_a_max_seconds_request_does_not_falsely_report_dropped_frames(self, monkeypatch):
+        """Stopping early because the caller asked for a shorter clip is not the
+        same failure as OpenCV silently losing frames mid-decode."""
+        capture = _TimedCapture(n_frames=40)
+        _install_fake_cv2(monkeypatch, capture)
+        fake_model = lambda img: ([[(0.0, 0.0)] * 26], [_ScoreRow([0.9] * 26)])
+        monkeypatch.setattr(
+            "extractor.rtmpose.build_model", lambda model, mode: (fake_model, HALPE26, "fake")
+        )
+        monkeypatch.setattr("extractor.rtmpose.probe_timestamps",
+                            lambda path: [i * 0.1 for i in range(40)])
+
+        seq = RTMPoseExtractor().extract("clip.mov", "side-right", max_seconds=0.1)
+
+        assert seq.frame_count_note is None
 
 
 class TestResolveVideo:

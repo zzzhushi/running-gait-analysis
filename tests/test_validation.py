@@ -57,6 +57,36 @@ def test_timestamp_clock_controls_duration_and_effective_fps():
     assert s.duration == pytest.approx(0.12)
 
 
+def test_timestamp_source_round_trips_through_pose_dict():
+    s = _valid_base()
+    s.timestamps = [i * 0.02 for i in range(s.n)]
+    s.timestamp_source = "ffprobe (real container PTS)"
+    s.validate()
+    restored = PoseSequence.from_pose_dict(s.to_pose_dict())
+    assert restored.timestamp_source == s.timestamp_source
+
+
+def test_assumed_timebase_is_recorded_without_timestamps():
+    """An assumed clock is evidence in its own right: timing-derived metrics need to
+    know the timebase was synthesised rather than read from the source."""
+    from gaitlab.core.schema import ASSUMED_TIMEBASE
+
+    s = _valid_base()
+    s.timestamp_source = ASSUMED_TIMEBASE
+    s.validate()
+    restored = PoseSequence.from_pose_dict(s.to_pose_dict())
+    assert restored.timestamps is None
+    assert restored.timestamp_source == ASSUMED_TIMEBASE
+
+
+def test_frame_count_note_round_trips_through_pose_dict():
+    s = _valid_base()
+    s.frame_count_note = "decoded 119 of 120 container frames (1 dropped)"
+    s.validate()
+    restored = PoseSequence.from_pose_dict(s.to_pose_dict())
+    assert restored.frame_count_note == s.frame_count_note
+
+
 @pytest.mark.parametrize("mutate,match", [
     (lambda s: setattr(s, "fps", 0), "fps"),
     (lambda s: setattr(s, "fps", -30), "fps"),
@@ -67,8 +97,10 @@ def test_timestamp_clock_controls_duration_and_effective_fps():
     (lambda s: s.frames[0].__setitem__(0, (float("nan"), 2.0, 1.0)), "non-finite"),
     (lambda s: setattr(s, "timestamps", [0.0]), "timestamps has"),
     (lambda s: setattr(s, "timestamps", [0.0, 0.1, float("nan"), 0.3, 0.4, 0.5]), "finite"),
-    (lambda s: setattr(s, "timestamps", [0.0, 0.1, 0.2, 0.15, 0.4, 0.5]), "non-decreasing"),
-    (lambda s: setattr(s, "timestamps", [1.0] * 6), "positive duration"),
+    (lambda s: setattr(s, "timestamps", [0.0, 0.1, 0.2, 0.15, 0.4, 0.5]), "strictly increase"),
+    (lambda s: setattr(s, "timestamps", [1.0] * 6), "strictly increase"),
+    (lambda s: setattr(s, "timestamps", [0.0, 0.1, 0.1, 0.3, 0.4, 0.5]), "strictly increase"),
+    (lambda s: setattr(s, "timestamp_source", "ffprobe"), "timestamp_source"),
 ])
 def test_malformed_pose_rejected(mutate, match):
     s = _valid_base()

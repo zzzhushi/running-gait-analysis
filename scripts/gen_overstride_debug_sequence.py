@@ -64,6 +64,7 @@ def _sequence():
         fps=float(pose["fps"]), width=int(pose["width"]), height=int(pose["height"]),
         view=pose["view"], frames=frames, source="authored:overstride_stage3-render-sequence",
         timestamps=[index / float(pose["fps"]) for index in range(FRAME_COUNT)],
+        timestamp_source="authored (uniform f/fps)",
     ).validate(), names
 
 
