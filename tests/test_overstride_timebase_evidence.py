@@ -19,6 +19,10 @@ def test_committed_timebase_evidence_is_current():
     report = json.loads((ASSETS / evidence.REPORT).read_text())
     manifest = json.loads(evidence.MANIFEST.read_text())
     assert [clip["id"] for clip in report["clips"]] == [case["id"] for case in manifest["clips"]]
+    expected_contexts = {
+        "female_high_cadence": list(range(1401, 1416)),
+        "male_side": list(range(116, 131)),
+    }
     for clip in report["clips"]:
         assert all(clip["checks"].values())
         assert clip["max_pose_pts_delta_s"] <= report["timestamp_tolerance_s"]
@@ -38,15 +42,18 @@ def test_committed_timebase_evidence_is_current():
                 assert image.info["gaitlab.video_sha256"] == clip["video"]["sha256"]
                 assert image.info["gaitlab.pose_sha256"] == clip["pose_input"]["sha256"]
         if clip["context_frame_indices"]:
-            assert clip["context_frame_indices"] == list(range(116, 131))
+            assert clip["context_frame_indices"] == expected_contexts[clip["id"]]
             with Image.open(ASSETS / f"overstride-timebase-{clip['id']}-context.png") as image:
                 assert json.loads(image.info["gaitlab.frame_indices"]) == clip["context_frame_indices"]
                 assert image.info["gaitlab.selected_frame"] == str(clip["anchor_frame"])
                 assert image.info["gaitlab.video_sha256"] == clip["video"]["sha256"]
+                assert image.info["gaitlab.pose_sha256"] == clip["pose_input"]["sha256"]
+    assert {clip["id"] for clip in report["clips"] if clip["context_frame_indices"]} == set(expected_contexts)
 
 
 def test_manifest_anchors_are_fixed_not_detector_selected():
     manifest = json.loads(evidence.MANIFEST.read_text())
     assert {case["id"]: case["anchor_frame"] for case in manifest["clips"]
             if case["anchor_frame"] is not None} == {
-                "female_overstride": 262, "male_side": 120}
+                "female_high_cadence": 1408, "female_overstride": 262,
+                "male_side": 120}

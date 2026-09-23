@@ -1,7 +1,7 @@
 # Overstride stage 1: frame and timebase evidence (issue #81)
 
 The [manifest](assets/overstride-timebase-manifest.json) names all six committed RTMPose
-fixtures and fixes one sample frame at each source rate. The indices are independent of
+fixtures and fixes visual sample frames at 120 and 30 fps. The indices are independent of
 the contact detector. The [report](assets/overstride-timebase-report.json) is regenerated
 from the committed pose JSON and MP4 files. For every clip it records input SHA-256 hashes,
 frame counts, first/last times, PTS span, median frame interval, effective and container
@@ -9,8 +9,10 @@ frame rates, container duration, coded and display dimensions, rotation, and exp
 pass/fail checks. It also lists intervals more than 1.5 times the median frame interval;
 these are timing discontinuities, **not** proof of a decoder drop.
 
-The two committed, reviewer-visible anchors are:
+The committed, reviewer-visible anchors are:
 
+- [120 fps female_high_cadence frame 1408](assets/overstride-timebase-female_high_cadence-frame-1408.png)
+- [female_high_cadence frames 1401–1415, with frame 1408 highlighted](assets/overstride-timebase-female_high_cadence-context.png)
 - [120 fps female_overstride frame 262](assets/overstride-timebase-female_overstride-frame-262.png)
 - [30 fps male_side frame 120](assets/overstride-timebase-male_side-frame-120.png)
 - [male_side frames 116–130, with frame 120 highlighted](assets/overstride-timebase-male_side-context.png)
@@ -18,7 +20,7 @@ The two committed, reviewer-visible anchors are:
 Each is decoded by zero-based frame index and overlaid with that index's pose points.
 The footer burns in the index, pose time, current container PTS, frame count, rate, and
 validation limit. PNG metadata carries the same identifiers and the video/pose hashes.
-Neither frame claims to be a validated contact or a correct landmark placement.
+None of these frames claims to be a validated contact or a correct landmark placement.
 The selected frames are fixed samples for checking index, time, and overlay alignment.
 They were not chosen because a foot appeared to land there. In the `male_side` sequence,
 the forward shoe appears above the treadmill at frame 120. It approaches the belt over
@@ -27,8 +29,8 @@ reference contact label.
 
 ## Review together
 
-The context image shows each neighboring frame's zero-based index, stored pose time,
-and video PTS. Frame 120 has a yellow border. A human reviewer can check whether the
+Each context image shows neighboring frames' zero-based indices, stored pose times,
+and video PTS. The selected frame has a yellow border. A human reviewer can check whether the
 overlaid ankles, heels, and toes follow the shoes and whether the video order matches
 the displayed times. Frames 125–130 include the detector's smoothed left-ankle-height
 peak at frame 126; that peak is a stance landmark, not the initial-contact label.
@@ -36,6 +38,14 @@ For contact annotation, the reviewer should separately mark a
 plausible **interval** around the first visible ground contact, note which foot is in
 question, and flag occlusion or motion blur. Keep that label separate from this report
 so the timebase check cannot be mistaken for detector validation.
+
+The `female_high_cadence` context uses a fixed late-clip window, about 11.68–11.80 s,
+where the feet cross and one shoe is partly occluded. Frame 1408 has a yellow border.
+This is a visual stress sample for pose/video alignment near the end of the clip; it
+does not establish that cadence rises within this window or that the overlaid
+landmarks are anatomically correct. Inspect the visible shoe outlines and leg
+identity across neighboring frames, and record any suspected pose errors separately
+rather than treating this image as a reference landmark label.
 
 ## Regenerate and verify
 
