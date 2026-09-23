@@ -68,7 +68,9 @@ that works in sides, and recorded where it is made. Nothing derives it silently.
    record is `draft` until two passes exist that were both blinded **and** run with the
    detector hidden, and the repeat was presented in randomised order; only a `complete`
    record may be read as agreement evidence. A pass shown the detector is not blinded, and a
-   record claiming both is refused.
+   record claiming both is refused. A complete record names its exact first/repeat pair and
+   records how it is independent: distinct annotators, or the same annotator with timestamped
+   sessions at least 24 hours apart.
 6. **Collect toe-off opportunistically.** It is nearly free once the clip is open and unblocks
    contact time and duty factor, but overstride needs initial contact only, so it never blocks
    this work.
@@ -98,6 +100,12 @@ Each record names the clip, the source video hash, this rule version, and how co
 obtained, then carries one entry per pass. `gaitlab/debug/contacts.py` validates the shape and
 refuses records that contradict themselves — a nominated frame outside its own interval, or an
 unlabelable event that still carries frames.
+
+A pass records its annotator, blinded/detector-hidden state, presentation order and a
+timezone-aware completion time. A completed record also carries an `agreement_pair` naming the
+first pass, randomized repeat pass, and whether their independence comes from different
+annotators or at least 24 hours between sessions. This makes the repeat-pass claim inspectable
+rather than inferred from arbitrary pass order.
 
 Interval width is derived from the interval, never stored beside it, so the two cannot drift
 apart.

@@ -9,6 +9,7 @@ frame would assert precision the method does not have.
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 import math
 from typing import Any, Dict, List, Mapping, Optional
 
@@ -36,6 +37,8 @@ PRESENTATION_ORDERS = ("sequential", "randomized")
 # for evidence.
 STATUSES = ("draft", "complete")
 REQUIRED_BLINDED_PASSES = 2
+INDEPENDENCE_BASES = ("different-annotator", "time-separated")
+MIN_SAME_ANNOTATOR_SEPARATION = timedelta(hours=24)
 
 
 class ContactReferenceError(ValueError):
@@ -114,6 +117,8 @@ def _check_pass(entry: Mapping[str, Any], index: int, errs: List[str]) -> None:
         errs.append(f"{where}: pass_id is required")
     if not entry.get("annotator"):
         errs.append(f"{where}: annotator is required")
+    if _parse_session_time(entry.get("completed_at")) is None:
+        errs.append(f"{where}: completed_at must be a timezone-aware ISO-8601 timestamp")
     for flag in ("blinded", "detector_hidden"):
         if not isinstance(entry.get(flag), bool):
             errs.append(f"{where}: {flag} must be true or false")
@@ -134,6 +139,17 @@ def _check_pass(entry: Mapping[str, Any], index: int, errs: List[str]) -> None:
         _check_event(event, f"{where} event {position}", errs)
 
 
+def _parse_session_time(value: Any) -> Optional[datetime]:
+    """Return an aware annotation-session timestamp, or None when it is not usable."""
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo is not None else None
+
+
 def _qualifies(entry: Mapping[str, Any]) -> bool:
     """Whether a pass may count toward agreement evidence.
 
@@ -143,7 +159,7 @@ def _qualifies(entry: Mapping[str, Any]) -> bool:
     return entry.get("blinded") is True and entry.get("detector_hidden") is True
 
 
-def _completion_gaps(passes: List[Mapping[str, Any]]) -> List[str]:
+def _completion_gaps(record: Mapping[str, Any], passes: List[Mapping[str, Any]]) -> List[str]:
     """Why a record cannot yet be treated as agreement evidence, if anything."""
     errs: List[str] = []
     qualifying = [entry for entry in passes if _qualifies(entry)]
@@ -152,10 +168,39 @@ def _completion_gaps(passes: List[Mapping[str, Any]]) -> List[str]:
             f"status 'complete' needs {REQUIRED_BLINDED_PASSES} blinded passes with the "
             f"detector hidden (got {len(qualifying)})"
         )
-    elif not any(entry.get("presentation_order") == "randomized" for entry in qualifying[1:]):
-        # A repeat shown the same order can be reproduced from memory of the sequence
-        # rather than from the footage.
-        errs.append("status 'complete' needs a repeat pass presented in randomized order")
+        return errs
+
+    pair = record.get("agreement_pair")
+    if not isinstance(pair, Mapping):
+        return ["status 'complete' needs agreement_pair naming the first and repeat passes"]
+    first_id, repeat_id = pair.get("first_pass_id"), pair.get("repeat_pass_id")
+    if not isinstance(first_id, str) or not isinstance(repeat_id, str) or first_id == repeat_id:
+        return ["agreement_pair needs two distinct pass ids"]
+    by_id = {entry.get("pass_id"): entry for entry in passes}
+    first, repeat = by_id.get(first_id), by_id.get(repeat_id)
+    if first is None or repeat is None:
+        return ["agreement_pair names a pass that does not exist"]
+    if not _qualifies(first) or not _qualifies(repeat):
+        return ["agreement_pair passes must both be blinded with the detector hidden"]
+    if repeat.get("presentation_order") != "randomized":
+        return ["agreement_pair repeat pass must be presented in randomized order"]
+
+    basis = pair.get("independence_basis")
+    if basis not in INDEPENDENCE_BASES:
+        return [f"agreement_pair independence_basis must be one of {INDEPENDENCE_BASES}"]
+    if basis == "different-annotator":
+        if first.get("annotator") == repeat.get("annotator"):
+            return ["different-annotator agreement_pair needs distinct annotators"]
+    else:
+        first_at = _parse_session_time(first.get("completed_at"))
+        repeat_at = _parse_session_time(repeat.get("completed_at"))
+        if first_at is None or repeat_at is None:
+            return ["time-separated agreement_pair needs usable session timestamps"]
+        if repeat_at - first_at < MIN_SAME_ANNOTATOR_SEPARATION:
+            return [
+                "time-separated agreement_pair needs at least "
+                f"{int(MIN_SAME_ANNOTATOR_SEPARATION.total_seconds() // 3600)} hours"
+            ]
     return errs
 
 
@@ -188,7 +233,7 @@ def validate(record: Mapping[str, Any]) -> Mapping[str, Any]:
                 errs.append(f"duplicate pass_id {pass_id!r}")
             seen.add(pass_id)
         if status == "complete":
-            errs.extend(_completion_gaps(passes))
+            errs.extend(_completion_gaps(record, passes))
 
     if errs:
         raise ContactReferenceError("; ".join(errs))

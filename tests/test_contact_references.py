@@ -29,6 +29,7 @@ def _record():
         "passes": [{
             "pass_id": "a1",
             "annotator": "annotator-a",
+            "completed_at": "2026-09-20T10:00:00Z",
             "blinded": True,
             "detector_hidden": True,
             "presentation_order": "sequential",
@@ -67,6 +68,7 @@ def test_a_well_formed_record_validates():
     (lambda r: r.update(coverage="detector-seeded"), "coverage"),
     (lambda r: r.update(passes=[]), "non-empty"),
     (lambda r: r["passes"][0].update(annotator=""), "annotator is required"),
+    (lambda r: r["passes"][0].update(completed_at="not-a-time"), "completed_at"),
     (lambda r: r["passes"][0].update(blinded="yes"), "blinded"),
     (lambda r: r["passes"][0]["events"][0].update(track="l"), "track"),
     (lambda r: r["passes"][0]["events"][0].update(visibility="maybe"), "visibility"),
@@ -283,13 +285,27 @@ def test_one_pass_cannot_be_completion_evidence():
         validate(record)
 
 
-def test_a_repeat_shown_in_the_same_order_is_not_completion_evidence():
-    """An annotator can reproduce a remembered sequence rather than re-reading the footage."""
-    record = _record()
+def _complete_with_repeat(record, *, annotator="annotator-a", completed_at="2026-09-21T10:00:00Z",
+                          independence_basis="time-separated"):
     record["status"] = "complete"
     repeat = copy.deepcopy(record["passes"][0])
     repeat["pass_id"] = "a2"
+    repeat["annotator"] = annotator
+    repeat["completed_at"] = completed_at
+    repeat["presentation_order"] = "randomized"
     record["passes"].append(repeat)
+    record["agreement_pair"] = {
+        "first_pass_id": "a1",
+        "repeat_pass_id": "a2",
+        "independence_basis": independence_basis,
+    }
+
+
+def test_a_repeat_shown_in_the_same_order_is_not_completion_evidence():
+    """An annotator can reproduce a remembered sequence rather than re-reading the footage."""
+    record = _record()
+    _complete_with_repeat(record)
+    record["passes"][1]["presentation_order"] = "sequential"
 
     with pytest.raises(ContactReferenceError, match="randomized order"):
         validate(record)
@@ -297,11 +313,25 @@ def test_a_repeat_shown_in_the_same_order_is_not_completion_evidence():
 
 def test_two_blinded_passes_with_a_randomized_repeat_complete_a_record():
     record = _record()
-    record["status"] = "complete"
-    repeat = copy.deepcopy(record["passes"][0])
-    repeat["pass_id"] = "a2"
-    repeat["presentation_order"] = "randomized"
-    record["passes"].append(repeat)
+    _complete_with_repeat(record)
+
+    validate(record)
+
+
+def test_same_annotator_repeat_needs_the_documented_time_separation():
+    record = _record()
+    _complete_with_repeat(record, completed_at="2026-09-20T10:05:00Z")
+
+    with pytest.raises(ContactReferenceError, match="at least 24 hours"):
+        validate(record)
+
+
+def test_different_annotator_repeat_can_complete_without_a_wait():
+    record = _record()
+    _complete_with_repeat(
+        record, annotator="annotator-b", completed_at="2026-09-20T10:05:00Z",
+        independence_basis="different-annotator",
+    )
 
     validate(record)
 
