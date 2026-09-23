@@ -1,0 +1,161 @@
+"""Reference contact annotations: human-marked initial-contact intervals for a clip.
+
+These record agreement with a written annotation rule, not physical contact. Accuracy in a
+criterion sense needs force plates, pressure insoles or marker-based capture; nothing here
+claims it. A label is an interval because visual identification of the initial-contact frame
+carries rater disagreement of the same order as the quantity being measured, so a single
+frame would assert precision the method does not have.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Mapping, Optional, Tuple
+
+SCHEMA = "gaitlab.contact-references/v1"
+
+# Side identity is not always visible from one camera, so a label names the track it can
+# actually see. Mapping a track to a body side is a separate claim, made elsewhere.
+TRACKS = ("near_foot", "far_foot")
+
+VISIBILITY = ("clear", "uncertain", "occluded")
+
+# How the annotator reached the frames they looked at. Detector-seeded windows cannot
+# reveal a contact the detector never found, so coverage that depends on them is not
+# evidence about how many contacts exist.
+COVERAGE = ("full-sweep", "tiled-windows")
+
+EVENTS = ("initial_contact", "toe_off")
+
+
+class ContactReferenceError(ValueError):
+    """Raised when a reference-annotation record is structurally invalid."""
+
+
+def _check_event(event: Mapping[str, Any], where: str, errs: List[str]) -> None:
+    kind = event.get("event")
+    if kind not in EVENTS:
+        errs.append(f"{where}: event must be one of {EVENTS} (got {kind!r})")
+    if event.get("track") not in TRACKS:
+        errs.append(f"{where}: track must be one of {TRACKS} (got {event.get('track')!r})")
+    if event.get("visibility") not in VISIBILITY:
+        errs.append(
+            f"{where}: visibility must be one of {VISIBILITY} (got {event.get('visibility')!r})"
+        )
+
+    unlabelable = event.get("unlabelable", False)
+    if not isinstance(unlabelable, bool):
+        errs.append(f"{where}: unlabelable must be true or false")
+        return
+
+    interval = event.get("contact_interval_frames")
+    central = event.get("central_frame")
+
+    if unlabelable:
+        # An ambiguous event is recorded as ambiguous. Carrying frames as well would let a
+        # reader treat a declined judgement as a made one.
+        if not event.get("unlabelable_reason"):
+            errs.append(f"{where}: unlabelable event needs unlabelable_reason")
+        if interval is not None or central is not None:
+            errs.append(f"{where}: unlabelable event must not carry frames")
+        return
+
+    if not (isinstance(interval, (list, tuple)) and len(interval) == 2
+            and all(isinstance(f, int) for f in interval)):
+        errs.append(f"{where}: contact_interval_frames must be two integer frames")
+        return
+    lo, hi = interval
+    if lo < 0 or hi < lo:
+        errs.append(f"{where}: contact_interval_frames must be non-negative and ordered")
+        return
+    if not isinstance(central, int):
+        errs.append(f"{where}: central_frame must be an integer")
+    elif not lo <= central <= hi:
+        # The interval is the uncertainty; a central frame outside it contradicts the label.
+        errs.append(f"{where}: central_frame {central} outside interval [{lo}, {hi}]")
+
+
+def _check_pass(entry: Mapping[str, Any], index: int, errs: List[str]) -> None:
+    where = f"pass {entry.get('pass_id', index)}"
+    if not entry.get("pass_id"):
+        errs.append(f"{where}: pass_id is required")
+    if not entry.get("annotator"):
+        errs.append(f"{where}: annotator is required")
+    for flag in ("blinded", "detector_hidden"):
+        if not isinstance(entry.get(flag), bool):
+            errs.append(f"{where}: {flag} must be true or false")
+    events = entry.get("events")
+    if not isinstance(events, list):
+        errs.append(f"{where}: events must be a list")
+        return
+    for position, event in enumerate(events):
+        _check_event(event, f"{where} event {position}", errs)
+
+
+def validate(record: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Check a reference-annotation record; raise ContactReferenceError listing every problem.
+
+    Returns the record so it can be chained.
+    """
+    errs: List[str] = []
+    if record.get("schema") != SCHEMA:
+        errs.append(f"schema must be {SCHEMA!r} (got {record.get('schema')!r})")
+    for field in ("clip", "video_sha256", "annotation_rule"):
+        if not record.get(field):
+            errs.append(f"{field} is required")
+    if record.get("coverage") not in COVERAGE:
+        errs.append(f"coverage must be one of {COVERAGE} (got {record.get('coverage')!r})")
+
+    passes = record.get("passes")
+    if not isinstance(passes, list) or not passes:
+        errs.append("passes must be a non-empty list")
+    else:
+        seen = set()
+        for index, entry in enumerate(passes):
+            _check_pass(entry, index, errs)
+            pass_id = entry.get("pass_id")
+            if pass_id in seen:
+                errs.append(f"duplicate pass_id {pass_id!r}")
+            seen.add(pass_id)
+
+    if errs:
+        raise ContactReferenceError("; ".join(errs))
+    return record
+
+
+def uncertainty_frames(event: Mapping[str, Any]) -> Optional[int]:
+    """Width of a label's interval, or None when the event is unlabelable.
+
+    Derived from the interval rather than stored, so the two cannot disagree.
+    """
+    interval = event.get("contact_interval_frames")
+    if not interval:
+        return None
+    return interval[1] - interval[0]
+
+
+def labelled_events(record: Mapping[str, Any], pass_id: str,
+                    event: str = "initial_contact") -> List[Dict[str, Any]]:
+    """Events of one kind from one pass, excluding those the annotator declined to label."""
+    for entry in record["passes"]:
+        if entry["pass_id"] == pass_id:
+            return [dict(item) for item in entry["events"]
+                    if item["event"] == event and not item.get("unlabelable", False)]
+    raise KeyError(f"no pass {pass_id!r} in this record")
+
+
+def as_debug_references(record: Mapping[str, Any], pass_id: str) -> List[Dict[str, Any]]:
+    """Reference layer for the debug record, from one annotation pass.
+
+    Frames come from the interval's central frame; the interval travels with them so a
+    consumer cannot silently turn a range into a point estimate.
+    """
+    out = []
+    for event in labelled_events(record, pass_id):
+        out.append({
+            "track": event["track"],
+            "frame_index": event["central_frame"],
+            "contact_interval_frames": list(event["contact_interval_frames"]),
+            "visibility": event["visibility"],
+            "provenance": f"{record['annotation_rule']}/{pass_id}",
+        })
+    return out

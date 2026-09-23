@@ -281,6 +281,26 @@ def trace_rows(bundle: Mapping[str, Any], center: Mapping[str, Any], radius: int
     ]
 
 
+def sweep_centers(frame_count: int, radius: int) -> list[int]:
+    """Strip centres whose ±radius windows tile `frame_count` frames with no gap.
+
+    Coverage that starts from detector output cannot present a contact the detector never
+    found, so a missed contact and a correct one look identical to an annotator. Tiling the
+    whole clip makes the number of contacts an independent observation.
+    """
+    if frame_count <= 0:
+        return []
+    width = 2 * radius + 1
+    centers = list(range(radius, frame_count, width))
+    last = frame_count - 1
+    if not centers:
+        centers = [min(radius, last)]
+    # The final window is pulled back so the tail is covered rather than half-covered.
+    if centers[-1] + radius < last:
+        centers.append(max(last - radius, 0))
+    return centers
+
+
 def save_reach_trace(bundle: Mapping[str, Any], center: Mapping[str, Any], destination: Path,
                      *, radius: int = 10) -> None:
     """Render an inspectable ±radius reach plot using stored values only."""

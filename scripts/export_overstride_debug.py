@@ -37,6 +37,7 @@ from scripts.overstride_render import (
     save_annotated_frame,
     save_grid,
     save_reach_trace,
+    sweep_centers,
     trace_rows,
     write_strike_table,
 )
@@ -129,6 +130,9 @@ def _parser() -> argparse.ArgumentParser:
                         help="arbitrary strip center SIDE:FRAME; repeatable; defaults to all contacts")
     parser.add_argument("--strip-radius", type=int, default=3)
     parser.add_argument("--trace-radius", type=int, default=10)
+    parser.add_argument("--sweep", action="store_true",
+                        help="tile strips across the whole clip for blinded annotation; "
+                             "implies --hide-detector")
     parser.add_argument("--hide-detector", action="store_true",
                         help="hide detector markers for blinded annotation")
     parser.add_argument("--hide-references", action="store_true")
@@ -174,11 +178,19 @@ def main(argv=None) -> int:
     requested_frames = (
         [find_row(bundle, side, frame) for side, frame in args.frame] if args.frame else contacts
     )
-    strip_centers = (
-        [find_row(bundle, side, frame) for side, frame in args.strip_center]
-        if args.strip_center else contacts
-    )
-    show_detector = not args.hide_detector
+    if args.sweep:
+        strip_centers = [
+            find_row(bundle, side, frame)
+            for side in ("l", "r")
+            for frame in sweep_centers(int(bundle["source"]["frame_count"]), args.strip_radius)
+        ]
+    elif args.strip_center:
+        strip_centers = [find_row(bundle, side, frame) for side, frame in args.strip_center]
+    else:
+        strip_centers = contacts
+    # A sweep exists to make coverage independent of the detector; leaving its markers on
+    # would reintroduce the anchoring the sweep is meant to remove.
+    show_detector = not (args.hide_detector or args.sweep)
     show_references = not args.hide_references
 
     needed_indices = {
@@ -201,6 +213,7 @@ def main(argv=None) -> int:
         "strips": [],
         "contact_sheet": None,
         "detector_markers_visible": show_detector,
+        "coverage": "full-sweep" if args.sweep else "detector-seeded",
     }
 
     rendered_contacts = []
