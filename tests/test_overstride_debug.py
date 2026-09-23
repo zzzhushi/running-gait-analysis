@@ -476,3 +476,22 @@ def test_record_states_when_no_frames_were_dropped():
 
     assert "frame_count_note" in bundle["source"]
     assert bundle["source"]["frame_count_note"] is None
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="renderer video decoding requires ffmpeg")
+def test_preload_decodes_more_frames_than_one_select_expression_holds():
+    """A real clip needs a frame for every contact's strip, which exceeds what ffmpeg's
+    expression parser accepts in a single `select`. The batching is invisible to callers,
+    so every requested index must still decode to its own frame.
+    """
+    root = Path(__file__).resolve().parents[1]
+    source = SourceFrames(root / "tests" / "data" / "male_side.mp4", (720, 1280))
+    wanted = list(range(0, 240, 2))  # more terms than one expression accepts
+
+    source.preload(wanted)
+
+    assert len(wanted) > 100, "fixture must exceed the single-expression limit to be a test"
+    for index in (wanted[0], wanted[len(wanted) // 2], wanted[-1]):
+        assert source(index).size == (720, 1280)
+    # Distinct indices must not collapse onto one decoded frame.
+    assert source(wanted[0]).tobytes() != source(wanted[-1]).tobytes()
