@@ -60,31 +60,15 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
-### Derive tests from the requirement, not from the code
+### Tests must trace to the requirement
 
-Write the test cases from the issue, spec, or acceptance criteria **before** the
-implementation, and land them as their own failing commit.
+For behavior changes and bug fixes, derive test cases from the issue, specification, or
+acceptance criteria—not only from the implementation. Assert the observable contract at the
+boundary the requirement names: a consumer, persisted record, rendered artifact, or public API.
 
-A test written after the code inherits the code's assumptions. It asserts what was built
-rather than what was asked, so it passes by construction and cannot fail:
-
-- asserting a flag that was just set, instead of the property that flag was meant to produce;
-- asserting what a function returns, instead of running it through the consumer that has to
-  accept it;
-- covering the fields that were implemented, instead of the fields the requirement lists.
-
-Read the requirement's own acceptance conditions line by line and turn each into a named
-test. A requirement that is read once and then worked from memory is how a stated field goes
-missing.
-
-For anything producing an artifact someone else reads, assert a property of the whole
-artifact — "this directory contains nothing derived from X" — not of the switch that was
-supposed to produce it.
-
-**Then break the code each new test guards, and confirm the test fails.** That check
-establishes only that the test detects changes to what was built. It cannot tell you whether
-what was built satisfies the requirement; deriving the cases from the requirement first is
-what does that.
+For regressions and high-risk logic, confirm the new test would fail against the prior faulty
+behavior or a targeted mutation. That establishes that the test is sensitive to the intended
+change; it does not by itself prove every requirement is covered.
 
 ## 5. Comments Explain Durable Constraints
 
