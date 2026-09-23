@@ -136,6 +136,30 @@ must remain labeled “provider unrecorded.” The PNGs support visual alignment
 automated pixel equality only guards against renderer drift. A reviewer still needs to
 inspect whether the skeleton is plausibly aligned.
 
+## Which pose paths this validates
+
+This report and its PNGs use only the six committed RTMPose pose files named by the
+manifest. The generator reads `tests/data/<id>.pose.rtmpose.json`; it does not run RTMPose
+again, read the committed BlazePose files, or run the browser extractor. Its automated
+checks establish frame-count, timestamp, and dimension agreement for those saved RTMPose
+outputs. They do not establish that a landmark is anatomically correct, that left/right
+identity stays correct, or that contact and overstride are correct.
+
+There are separate tests for other paths. The real-clip engine tests load committed pose
+fixtures when present, including BlazePose fixtures, and compare the tested metric outputs
+with each clip's independent ground-truth record. The [browser extraction test](../../tests/browser/test_browser_extraction.py)
+runs the browser extractor on `female_high_cadence` and checks frame coverage and cadence
+against the measured cadence. Neither path checks landmark placement frame by frame. The
+browser has a separate video decoding path, so passing a Python BlazePose test does not
+establish browser frame alignment.
+
+The next useful validation slice is a side-by-side review of the same source frames from
+RTMPose, Python BlazePose, and browser extraction, with visible reference landmarks placed
+independently. Compare missing points, left/right swaps, and landmark offsets. Agreement
+between pose systems is useful evidence, but is not ground truth by itself. For a new clip
+intended to expand metric validation, add its independent measured reference record along
+with the video and pose fixtures; the timebase generator alone does not consume that record.
+
 This stage does **not** validate anatomical landmarks, initial-contact timing, the
 leg-length denominator, the overstride value, or a clinical threshold. Those belong to
 later stages of the [overstride validation plan](../metrics/overstride.md).
