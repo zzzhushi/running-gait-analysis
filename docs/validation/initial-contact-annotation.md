@@ -107,6 +107,11 @@ first pass, randomized repeat pass, and whether their independence comes from di
 annotators or at least 24 hours between sessions. This makes the repeat-pass claim inspectable
 rather than inferred from arbitrary pass order.
 
+These fields record what was claimed about a pass; they cannot verify it. A fabricated
+completion time, or one person annotating under two names, satisfies every check. The
+separation is a heuristic aimed at a repeat being re-read rather than recalled, not a
+guarantee of independence, and a record is only as good as the procedure actually followed.
+
 Interval width is derived from the interval, never stored beside it, so the two cannot drift
 apart.
 

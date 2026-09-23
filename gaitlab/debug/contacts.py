@@ -37,6 +37,10 @@ PRESENTATION_ORDERS = ("sequential", "randomized")
 # for evidence.
 STATUSES = ("draft", "complete")
 REQUIRED_BLINDED_PASSES = 2
+# What makes a repeat independent of the pass it is compared against: a different person, or
+# enough elapsed time that the same person re-reads the footage rather than recalling a
+# specific clip. Heuristic separation; the published reliability work this protocol imitates
+# does not state the interval it used between passes.
 INDEPENDENCE_BASES = ("different-annotator", "time-separated")
 MIN_SAME_ANNOTATOR_SEPARATION = timedelta(hours=24)
 
@@ -182,26 +186,38 @@ def _completion_gaps(record: Mapping[str, Any], passes: List[Mapping[str, Any]])
         return ["agreement_pair names a pass that does not exist"]
     if not _qualifies(first) or not _qualifies(repeat):
         return ["agreement_pair passes must both be blinded with the detector hidden"]
+    # The pair now resolves to two usable passes, so the remaining conditions are
+    # independent of each other and are all reported together.
     if repeat.get("presentation_order") != "randomized":
-        return ["agreement_pair repeat pass must be presented in randomized order"]
+        errs.append("agreement_pair repeat pass must be presented in randomized order")
 
     basis = pair.get("independence_basis")
     if basis not in INDEPENDENCE_BASES:
-        return [f"agreement_pair independence_basis must be one of {INDEPENDENCE_BASES}"]
-    if basis == "different-annotator":
+        errs.append(f"agreement_pair independence_basis must be one of {INDEPENDENCE_BASES}")
+    elif basis == "different-annotator":
         if first.get("annotator") == repeat.get("annotator"):
-            return ["different-annotator agreement_pair needs distinct annotators"]
+            errs.append("different-annotator agreement_pair needs distinct annotators")
     else:
-        first_at = _parse_session_time(first.get("completed_at"))
-        repeat_at = _parse_session_time(repeat.get("completed_at"))
-        if first_at is None or repeat_at is None:
-            return ["time-separated agreement_pair needs usable session timestamps"]
-        if repeat_at - first_at < MIN_SAME_ANNOTATOR_SEPARATION:
-            return [
-                "time-separated agreement_pair needs at least "
-                f"{int(MIN_SAME_ANNOTATOR_SEPARATION.total_seconds() // 3600)} hours"
-            ]
+        errs.extend(_separation_gaps(first, repeat))
     return errs
+
+
+def _separation_gaps(first: Mapping[str, Any], repeat: Mapping[str, Any]) -> List[str]:
+    """Whether one annotator's two sessions are far enough apart, and in the right order."""
+    first_at = _parse_session_time(first.get("completed_at"))
+    repeat_at = _parse_session_time(repeat.get("completed_at"))
+    if first_at is None or repeat_at is None:
+        return ["time-separated agreement_pair needs usable session timestamps"]
+    if repeat_at < first_at:
+        # Elapsed time is not the problem here: whichever pass came first is the one the
+        # repeat should be compared against, so the pair names them the wrong way round.
+        return ["agreement_pair repeat pass predates the first pass"]
+    if repeat_at - first_at < MIN_SAME_ANNOTATOR_SEPARATION:
+        return [
+            "time-separated agreement_pair needs at least "
+            f"{int(MIN_SAME_ANNOTATOR_SEPARATION.total_seconds() // 3600)} hours"
+        ]
+    return []
 
 
 def validate(record: Mapping[str, Any]) -> Mapping[str, Any]:
