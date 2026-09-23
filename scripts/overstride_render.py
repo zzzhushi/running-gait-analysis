@@ -301,6 +301,25 @@ def sweep_centers(frame_count: int, radius: int) -> list[int]:
     return centers
 
 
+def render_annotation_frame(background: Image.Image, index: int, timestamp_s: float,
+                            *, clip: str) -> Image.Image:
+    """Source pixels plus frame/time navigation, and nothing a model produced.
+
+    An annotator placing a reference must not see the estimate they are a reference for.
+    Anything drawn from pose, events or metric output — skeleton, landmark markers,
+    measurement lines, reach, inclination, confidences — anchors the judgement toward the
+    value under test, so none of it is drawn here.
+    """
+    image = background.convert("RGB").copy()
+    draw = ImageDraw.Draw(image, "RGBA")
+    lines = [f"{clip}  frame {index}", f"t={timestamp_s:.6f}s"]
+    height = 13 * len(lines) + 8
+    draw.rectangle((0, image.height - height, image.width, image.height), fill=(0, 0, 0, 170))
+    for offset, text in enumerate(lines):
+        draw.text((8, image.height - height + 4 + offset * 13), text, fill="#f1f5f9")
+    return image
+
+
 def save_reach_trace(bundle: Mapping[str, Any], center: Mapping[str, Any], destination: Path,
                      *, radius: int = 10) -> None:
     """Render an inspectable ±radius reach plot using stored values only."""

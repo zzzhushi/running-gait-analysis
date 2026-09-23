@@ -7,7 +7,12 @@ Examples:
     --pose tests/data/female_overstride.pose.rtmpose.json \
     --video tests/data/female_overstride.mp4 --output /tmp/overstride-debug
 
-  # Blinded annotation view: any frame may be the center, and detector markers are hidden.
+  # Blinded annotation bundle: source pixels only, tiling the whole clip, no model layer.
+  python scripts/export_overstride_debug.py --sweep \
+    --pose tests/data/female_overstride.pose.rtmpose.json \
+    --video tests/data/female_overstride.mp4 --output /tmp/annotate
+
+  # Diagnostic view centred anywhere, with the detector marker hidden.
   python scripts/export_overstride_debug.py --record /tmp/overstride-debug/debug-record.json \
     --video tests/data/female_overstride.mp4 --output /tmp/blinded \
     --strip-center l:240 --strip-radius 12 --hide-detector
@@ -34,6 +39,7 @@ from scripts.overstride_render import (
     SourceFrames,
     find_row,
     render_annotated_frame,
+    render_annotation_frame,
     save_annotated_frame,
     save_grid,
     save_reach_trace,
@@ -131,13 +137,57 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--strip-radius", type=int, default=3)
     parser.add_argument("--trace-radius", type=int, default=10)
     parser.add_argument("--sweep", action="store_true",
-                        help="tile strips across the whole clip for blinded annotation; "
-                             "implies --hide-detector")
+                        help="write a blinded annotation bundle instead of a diagnostic one: "
+                             "source pixels tiling the whole clip, no model or detector layer")
     parser.add_argument("--hide-detector", action="store_true",
                         help="hide detector markers for blinded annotation")
     parser.add_argument("--hide-references", action="store_true")
     parser.add_argument("--record-only", action="store_true")
     return parser
+
+
+def _write_annotation_bundle(args, seq: PoseSequence) -> int:
+    """Write a blinded annotation bundle: source pixels, neutral names, nothing else.
+
+    Hiding the detector marker is not enough on its own. A directory whose filenames,
+    contact sheet, traces or record are selected by the detector announces its predictions
+    without drawing one, so this bundle contains none of them and the frames carry no
+    pose, measurement or metric layer.
+    """
+    frames = SourceFrames(args.video, (seq.width, seq.height))
+    centers = sweep_centers(seq.n, args.strip_radius)
+    indices = sorted({
+        index
+        for center in centers
+        for index in range(max(center - args.strip_radius, 0),
+                           min(center + args.strip_radius, seq.n - 1) + 1)
+    })
+    frames.preload(indices)
+
+    directory = args.output / "frames"
+    directory.mkdir(parents=True, exist_ok=True)
+    written = []
+    for index in indices:
+        path = directory / f"frame-{index:06d}.png"
+        render_annotation_frame(
+            frames(index), index, seq.time_at(index), clip=args.video.stem
+        ).save(path, format="PNG")
+        written.append(path.relative_to(args.output).as_posix())
+
+    _write_json(args.output / "manifest.json", {
+        "purpose": "blinded initial-contact annotation",
+        "annotation_rule": "initial-contact-v1",
+        "clip": args.video.stem,
+        "source_video": _media_identity(args.video),
+        "coverage": "full-sweep",
+        "frame_count": seq.n,
+        "window_radius": args.strip_radius,
+        "frames": written,
+        "detector_markers_visible": False,
+        "model_layers_visible": False,
+    })
+    print(args.output)
+    return 0
 
 
 def main(argv=None) -> int:
@@ -146,6 +196,13 @@ def main(argv=None) -> int:
         raise SystemExit("strip and trace radii must be non-negative")
     args.output.mkdir(parents=True, exist_ok=True)
     record_path = args.output / "debug-record.json"
+
+    if args.sweep:
+        if not args.pose:
+            raise SystemExit("--sweep builds an annotation bundle from --pose, not a record")
+        return _write_annotation_bundle(
+            args, PoseSequence.from_pose_dict(_load_json(args.pose)).validate()
+        )
 
     if args.pose:
         seq = PoseSequence.from_pose_dict(_load_json(args.pose)).validate()
@@ -178,19 +235,11 @@ def main(argv=None) -> int:
     requested_frames = (
         [find_row(bundle, side, frame) for side, frame in args.frame] if args.frame else contacts
     )
-    if args.sweep:
-        strip_centers = [
-            find_row(bundle, side, frame)
-            for side in ("l", "r")
-            for frame in sweep_centers(int(bundle["source"]["frame_count"]), args.strip_radius)
-        ]
-    elif args.strip_center:
-        strip_centers = [find_row(bundle, side, frame) for side, frame in args.strip_center]
-    else:
-        strip_centers = contacts
-    # A sweep exists to make coverage independent of the detector; leaving its markers on
-    # would reintroduce the anchoring the sweep is meant to remove.
-    show_detector = not (args.hide_detector or args.sweep)
+    strip_centers = (
+        [find_row(bundle, side, frame) for side, frame in args.strip_center]
+        if args.strip_center else contacts
+    )
+    show_detector = not args.hide_detector
     show_references = not args.hide_references
 
     needed_indices = {
@@ -213,7 +262,7 @@ def main(argv=None) -> int:
         "strips": [],
         "contact_sheet": None,
         "detector_markers_visible": show_detector,
-        "coverage": "full-sweep" if args.sweep else "detector-seeded",
+        "coverage": "detector-seeded",
     }
 
     rendered_contacts = []

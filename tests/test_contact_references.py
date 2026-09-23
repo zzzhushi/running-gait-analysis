@@ -25,17 +25,21 @@ def _record():
         "video_sha256": "0" * 64,
         "annotation_rule": "initial-contact-v1",
         "coverage": "full-sweep",
+        "status": "draft",
         "passes": [{
             "pass_id": "a1",
             "annotator": "annotator-a",
             "blinded": True,
             "detector_hidden": True,
+            "presentation_order": "sequential",
             "events": [
                 {
                     "event": "initial_contact",
                     "track": "near_foot",
                     "contact_interval_frames": [581, 587],
                     "central_frame": 584,
+                    "contact_interval_timestamps_s": [4.8458, 4.8958],
+                    "central_timestamp_s": 4.8708,
                     "visibility": "clear",
                     "unlabelable": False,
                 },
@@ -67,6 +71,15 @@ def test_a_well_formed_record_validates():
     (lambda r: r["passes"][0]["events"][0].update(track="l"), "track"),
     (lambda r: r["passes"][0]["events"][0].update(visibility="maybe"), "visibility"),
     (lambda r: r["passes"][0]["events"][0].update(event="heel_strike"), "event"),
+    (lambda r: r.update(status="final"), "status"),
+    (lambda r: r["passes"][0].update(presentation_order="shuffled"), "presentation_order"),
+    (lambda r: r["passes"][0]["events"][0].update(central_timestamp_s=9.0), "outside its interval"),
+    (lambda r: r["passes"][0]["events"][0].update(contact_interval_timestamps_s=[5.0, 4.0]),
+     "must be ordered"),
+    (lambda r: r["passes"][0]["events"][0].update(contact_interval_timestamps_s=[float("nan"), 5.0]),
+     "finite"),
+    (lambda r: r["passes"][0]["events"][0].pop("contact_interval_timestamps_s"),
+     "two seconds values"),
 ])
 def test_malformed_records_are_rejected(mutate, match):
     record = _record()
@@ -127,12 +140,14 @@ def test_debug_references_carry_the_interval_with_the_frame():
     """A consumer must not be able to take the nominated frame as a point estimate."""
     record = validate(_record())
 
-    references = as_debug_references(record, "a1")
+    references = as_debug_references(record, "a1", {"near_foot": "l"})
 
     assert references == [{
+        "side": "l",
         "track": "near_foot",
         "frame_index": 584,
         "contact_interval_frames": [581, 587],
+        "contact_interval_timestamps_s": [4.8458, 4.8958],
         "visibility": "clear",
         "provenance": "initial-contact-v1/a1",
     }]
@@ -153,10 +168,7 @@ def test_an_empty_clip_sweeps_to_nothing():
     assert sweep_centers(0, 3) == []
 
 
-def test_sweep_export_hides_the_detector_and_records_how_coverage_was_reached(tmp_path):
-    """A sweep that still showed detector markers would reintroduce the anchoring it removes,
-    and a manifest that did not say so would leave a reader unable to tell the passes apart.
-    """
+def _annotation_bundle(tmp_path, radius="1"):
     import json
 
     from scripts import export_overstride_debug
@@ -174,12 +186,157 @@ def test_sweep_export_hides_the_detector_and_records_how_coverage_was_reached(tm
     frames[0].save(clip, save_all=True, append_images=frames[1:], duration=17, loop=0,
                    optimize=False)
 
-    out = tmp_path / "swept"
+    out = tmp_path / "annotate"
     assert export_overstride_debug.main([
         "--pose", str(pose), "--video", str(clip), "--output", str(out),
-        "--sweep", "--strip-radius", "1",
+        "--sweep", "--strip-radius", radius,
     ]) == 0
+    return case, out
 
+
+def test_annotation_bundle_contains_nothing_the_detector_selected(tmp_path):
+    """Hiding the marker is not blinding. Filenames, a contact sheet, traces or a record
+    chosen by the detector announce its predictions without drawing one.
+    """
+    _case, out = _annotation_bundle(tmp_path)
+
+    produced = sorted(path.relative_to(out).as_posix()
+                      for path in out.rglob("*") if path.is_file())
+
+    assert "debug-record.json" not in produced
+    assert "strikes.csv" not in produced
+    assert not [name for name in produced if "contact-sheet" in name]
+    assert not [name for name in produced if name.startswith("traces/")]
+    # Detector-derived artifacts are named by record id; annotation frames are named by index.
+    assert not [name for name in produced if "/os-" in name]
+    assert all(name == "manifest.json" or name.startswith("frames/frame-")
+               for name in produced), produced
+
+
+def test_annotation_frames_carry_no_model_layer(tmp_path):
+    """The pose overlay is the estimate the annotator exists to be independent of."""
+    from PIL import Image as PILImage
+
+    from scripts.overstride_render import render_annotated_frame
+
+    case, out = _annotation_bundle(tmp_path)
+    plain = PILImage.new("RGB", (case.sequence.width, case.sequence.height), (30, 40, 50))
+    with PILImage.open(out / "frames" / "frame-000001.png") as annotation:
+        annotated = annotation.convert("RGB").copy()
+
+    # Above the footer strip, an annotation frame must be untouched source pixels, while the
+    # diagnostic renderer draws plumb line, limb lines and landmark markers over the same area.
+    region = (0, 0, case.sequence.width, case.sequence.height - 40)
+    source = PILImage.new("RGB", (case.sequence.width, case.sequence.height), (30 + 40, 40, 50))
+    assert annotated.crop(region).tobytes() == source.crop(region).tobytes()
+
+    diagnostic, _plan = render_annotated_frame(
+        _bundle_for(case), _row_for(case, 1), plain, show_detector=False
+    )
+    assert diagnostic.crop(region).tobytes() != plain.crop(region).tobytes()
+
+
+def _bundle_for(case):
+    from gaitlab.core.events import GaitEvents
+    from gaitlab.debug.overstride import build_overstride_debug_record
+
+    return build_overstride_debug_record(
+        case.sequence, GaitEvents(strikes=case.forced_strikes), source_id=case.name,
+        denominator=case.denominator, facing=case.facing,
+    )
+
+
+def _row_for(case, frame):
+    from scripts.overstride_render import find_row
+
+    return find_row(_bundle_for(case), "l", frame)
+
+
+def test_annotation_manifest_states_coverage_and_that_no_model_layer_was_shown(tmp_path):
+    import json
+
+    _case, out = _annotation_bundle(tmp_path)
     manifest = json.loads((out / "manifest.json").read_text())
-    assert manifest["detector_markers_visible"] is False
+
     assert manifest["coverage"] == "full-sweep"
+    assert manifest["detector_markers_visible"] is False
+    assert manifest["model_layers_visible"] is False
+    assert manifest["annotation_rule"] == "initial-contact-v1"
+    assert manifest["source_video"]["sha256"]
+
+
+def test_annotation_frames_cover_every_frame_of_the_clip(tmp_path):
+    case, out = _annotation_bundle(tmp_path)
+
+    written = sorted(path.name for path in (out / "frames").iterdir())
+
+    assert written == [f"frame-{index:06d}.png" for index in range(case.sequence.n)]
+
+
+def test_one_pass_cannot_be_completion_evidence():
+    """A single pass measures no agreement; marking it complete would let a labels PR
+    present it as the repeat-pass check this issue requires."""
+    record = _record()
+    record["status"] = "complete"
+
+    with pytest.raises(ContactReferenceError, match="needs 2 blinded passes"):
+        validate(record)
+
+
+def test_a_repeat_shown_in_the_same_order_is_not_completion_evidence():
+    """An annotator can reproduce a remembered sequence rather than re-reading the footage."""
+    record = _record()
+    record["status"] = "complete"
+    repeat = copy.deepcopy(record["passes"][0])
+    repeat["pass_id"] = "a2"
+    record["passes"].append(repeat)
+
+    with pytest.raises(ContactReferenceError, match="randomized order"):
+        validate(record)
+
+
+def test_two_blinded_passes_with_a_randomized_repeat_complete_a_record():
+    record = _record()
+    record["status"] = "complete"
+    repeat = copy.deepcopy(record["passes"][0])
+    repeat["pass_id"] = "a2"
+    repeat["presentation_order"] = "randomized"
+    record["passes"].append(repeat)
+
+    validate(record)
+
+
+def test_an_unmapped_track_cannot_be_turned_into_a_renderer_reference():
+    """The debug record selects references by side, so an unmapped track would render
+    nothing at all rather than failing."""
+    record = validate(_record())
+
+    with pytest.raises(KeyError, match="no side in track_to_side"):
+        as_debug_references(record, "a1", {"far_foot": "r"})
+
+
+def test_a_mapped_reference_is_visible_to_the_debug_record(tmp_path):
+    """The end-to-end claim the intermediate dictionary cannot make."""
+    from gaitlab.core.events import GaitEvents
+    from gaitlab.debug.overstride import build_overstride_debug_record
+    from scripts.overstride_render import find_row
+    from tests.reach_fixture import load_authored_reach_fixture
+
+    case = load_authored_reach_fixture()
+    record = _record()
+    event = record["passes"][0]["events"][0]
+    event["contact_interval_frames"] = [1, 1]
+    event["central_frame"] = 1
+    event["contact_interval_timestamps_s"] = [case.sequence.time_at(1)] * 2
+    event["central_timestamp_s"] = case.sequence.time_at(1)
+    validate(record)
+
+    references = as_debug_references(record, "a1", {"near_foot": "l"})
+    bundle = build_overstride_debug_record(
+        case.sequence, GaitEvents(strikes=case.forced_strikes), source_id=case.name,
+        annotations={"references": references},
+        denominator=case.denominator, facing=case.facing,
+    )
+
+    assert find_row(bundle, "l", 1)["references"], "mapped reference never reached the record"
+    assert bundle["events"]["reference_contacts"][0]["side"] == "l"

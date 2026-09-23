@@ -45,7 +45,8 @@ when scanning, never as the label.
 
 A single side-on camera does not always show which leg is which. Annotators label
 `near_foot` and `far_foot` — what the camera can actually distinguish. Mapping a track to a
-body side is a separate claim made by a separate step.
+body side is a separate claim, supplied explicitly wherever labels are adapted for a consumer
+that works in sides, and recorded where it is made. Nothing derives it silently.
 
 ## Procedure
 
@@ -58,10 +59,14 @@ body side is a separate claim made by a separate step.
 3. **Keep the detector hidden.** The detector layer stays off for the first pass. The detector
    has a known, consistent direction of error, so an annotator who can see it is anchored
    toward confirming it.
-4. **Record per event**: track, contact interval, nominated frame, visibility
-   (`clear` / `uncertain` / `occluded`), and an unlabelable reason where applicable.
+4. **Record per event**: track, contact interval, nominated frame, the instants those frames
+   resolve to, visibility (`clear` / `uncertain` / `occluded`), and an unlabelable reason
+   where applicable. Timestamps travel with the frames so a label cannot be audited against
+   the wrong clock without the record showing it.
 5. **Repeat blind.** A second pass, separated in time or by a different annotator, with event
-   order randomised so the sequence itself carries no information from the first pass.
+   order randomised so the sequence itself carries no information from the first pass. A
+   record is `draft` until two blinded passes exist and the repeat was presented in
+   randomised order; only a `complete` record may be read as agreement evidence.
 6. **Collect toe-off opportunistically.** It is nearly free once the clip is open and unblocks
    contact time and duty factor, but overstride needs initial contact only, so it never blocks
    this work.
@@ -94,3 +99,12 @@ unlabelable event that still carries frames.
 
 Interval width is derived from the interval, never stored beside it, so the two cannot drift
 apart.
+
+## The annotation bundle
+
+`--sweep` writes the view a first pass is done against: source pixels tiling the whole clip,
+frames named by index, and a manifest recording the rule version, coverage and source-video
+hash. It contains no detector record, contact sheet, reach trace or detector-named file, and
+the frames carry no pose, measurement or metric layer. A directory whose filenames were chosen
+by the detector announces its predictions without drawing one, which is why hiding the marker
+alone is not blinding.

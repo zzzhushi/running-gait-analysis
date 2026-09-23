@@ -9,7 +9,8 @@ frame would assert precision the method does not have.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+import math
+from typing import Any, Dict, List, Mapping, Optional
 
 SCHEMA = "gaitlab.contact-references/v1"
 
@@ -25,6 +26,16 @@ VISIBILITY = ("clear", "uncertain", "occluded")
 COVERAGE = ("full-sweep", "tiled-windows")
 
 EVENTS = ("initial_contact", "toe_off")
+
+# The order events were presented in. A repeat pass shown the same sequence carries
+# information from the first pass in the sequence itself.
+PRESENTATION_ORDERS = ("sequential", "randomized")
+
+# A single pass measures nothing about agreement. `complete` is the state a repeat-pass
+# check may consume; `draft` exists so a first pass can be stored without being mistaken
+# for evidence.
+STATUSES = ("draft", "complete")
+REQUIRED_BLINDED_PASSES = 2
 
 
 class ContactReferenceError(ValueError):
@@ -72,6 +83,29 @@ def _check_event(event: Mapping[str, Any], where: str, errs: List[str]) -> None:
     elif not lo <= central <= hi:
         # The interval is the uncertainty; a central frame outside it contradicts the label.
         errs.append(f"{where}: central_frame {central} outside interval [{lo}, {hi}]")
+    _check_times(event, where, errs)
+
+
+def _check_times(event: Mapping[str, Any], where: str, errs: List[str]) -> None:
+    """Frame indices alone cannot be audited against a variable-rate clock.
+
+    A label carries the instants its frames resolved to, so binding it to the wrong
+    timebase is visible in the record rather than only discoverable from a separate one.
+    """
+    times = event.get("contact_interval_timestamps_s")
+    central_t = event.get("central_timestamp_s")
+    values = list(times or []) + [central_t]
+    if not (isinstance(times, (list, tuple)) and len(times) == 2):
+        errs.append(f"{where}: contact_interval_timestamps_s must be two seconds values")
+        return
+    if any(not isinstance(v, (int, float)) or isinstance(v, bool) or not math.isfinite(v)
+           for v in values):
+        errs.append(f"{where}: timestamps must be finite numbers")
+        return
+    if times[1] < times[0]:
+        errs.append(f"{where}: contact_interval_timestamps_s must be ordered")
+    elif not times[0] <= central_t <= times[1]:
+        errs.append(f"{where}: central_timestamp_s outside its interval")
 
 
 def _check_pass(entry: Mapping[str, Any], index: int, errs: List[str]) -> None:
@@ -83,12 +117,33 @@ def _check_pass(entry: Mapping[str, Any], index: int, errs: List[str]) -> None:
     for flag in ("blinded", "detector_hidden"):
         if not isinstance(entry.get(flag), bool):
             errs.append(f"{where}: {flag} must be true or false")
+    if entry.get("presentation_order") not in PRESENTATION_ORDERS:
+        errs.append(
+            f"{where}: presentation_order must be one of {PRESENTATION_ORDERS} "
+            f"(got {entry.get('presentation_order')!r})"
+        )
     events = entry.get("events")
     if not isinstance(events, list):
         errs.append(f"{where}: events must be a list")
         return
     for position, event in enumerate(events):
         _check_event(event, f"{where} event {position}", errs)
+
+
+def _completion_gaps(passes: List[Mapping[str, Any]]) -> List[str]:
+    """Why a record cannot yet be treated as agreement evidence, if anything."""
+    errs: List[str] = []
+    blinded = [entry for entry in passes if entry.get("blinded") is True]
+    if len(blinded) < REQUIRED_BLINDED_PASSES:
+        errs.append(
+            f"status 'complete' needs {REQUIRED_BLINDED_PASSES} blinded passes "
+            f"(got {len(blinded)})"
+        )
+    elif not any(entry.get("presentation_order") == "randomized" for entry in blinded[1:]):
+        # A repeat shown the same order can be reproduced from memory of the sequence
+        # rather than from the footage.
+        errs.append("status 'complete' needs a repeat pass presented in randomized order")
+    return errs
 
 
 def validate(record: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -104,6 +159,9 @@ def validate(record: Mapping[str, Any]) -> Mapping[str, Any]:
             errs.append(f"{field} is required")
     if record.get("coverage") not in COVERAGE:
         errs.append(f"coverage must be one of {COVERAGE} (got {record.get('coverage')!r})")
+    status = record.get("status")
+    if status not in STATUSES:
+        errs.append(f"status must be one of {STATUSES} (got {status!r})")
 
     passes = record.get("passes")
     if not isinstance(passes, list) or not passes:
@@ -116,6 +174,8 @@ def validate(record: Mapping[str, Any]) -> Mapping[str, Any]:
             if pass_id in seen:
                 errs.append(f"duplicate pass_id {pass_id!r}")
             seen.add(pass_id)
+        if status == "complete":
+            errs.extend(_completion_gaps(passes))
 
     if errs:
         raise ContactReferenceError("; ".join(errs))
@@ -143,18 +203,35 @@ def labelled_events(record: Mapping[str, Any], pass_id: str,
     raise KeyError(f"no pass {pass_id!r} in this record")
 
 
-def as_debug_references(record: Mapping[str, Any], pass_id: str) -> List[Dict[str, Any]]:
+def as_debug_references(record: Mapping[str, Any], pass_id: str,
+                        track_to_side: Mapping[str, str]) -> List[Dict[str, Any]]:
     """Reference layer for the debug record, from one annotation pass.
 
-    Frames come from the interval's central frame; the interval travels with them so a
-    consumer cannot silently turn a range into a point estimate.
+    `track_to_side` maps each labelled track to `l` or `r`. That mapping is a claim the
+    annotation does not make — one camera cannot always tell which leg is which — so it is
+    required rather than assumed, and an unmapped track raises instead of producing a
+    reference the renderer would silently discard.
+
+    Frames come from the interval's central frame; the interval and its instants travel
+    with them so a consumer cannot quietly turn a range into a point estimate.
     """
+    unknown = {side for side in track_to_side.values() if side not in ("l", "r")}
+    if unknown:
+        raise KeyError(f"track_to_side must map to 'l' or 'r' (got {sorted(unknown)})")
     out = []
     for event in labelled_events(record, pass_id):
+        track = event["track"]
+        if track not in track_to_side:
+            raise KeyError(
+                f"track {track!r} has no side in track_to_side; the debug record selects "
+                f"references by side, so an unmapped track would render nothing"
+            )
         out.append({
-            "track": event["track"],
+            "side": track_to_side[track],
+            "track": track,
             "frame_index": event["central_frame"],
             "contact_interval_frames": list(event["contact_interval_frames"]),
+            "contact_interval_timestamps_s": list(event["contact_interval_timestamps_s"]),
             "visibility": event["visibility"],
             "provenance": f"{record['annotation_rule']}/{pass_id}",
         })
