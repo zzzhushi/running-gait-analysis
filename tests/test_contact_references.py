@@ -9,6 +9,7 @@ from PIL import Image
 
 from gaitlab.debug.contacts import (
     SCHEMA,
+    TIMEBASE_NOT_VALIDATED,
     ContactReferenceError,
     as_debug_references,
     labelled_events,
@@ -23,6 +24,8 @@ def _record():
         "schema": SCHEMA,
         "clip": "female_overstride",
         "video_sha256": "0" * 64,
+        "pose_sha256": "1" * 64,
+        "does_not_validate": [TIMEBASE_NOT_VALIDATED],
         "annotation_rule": "initial-contact-v1",
         "coverage": "full-sweep",
         "status": "draft",
@@ -64,6 +67,7 @@ def test_a_well_formed_record_validates():
     (lambda r: r.update(schema="gaitlab.contact-references/v0"), "schema"),
     (lambda r: r.update(clip=""), "clip is required"),
     (lambda r: r.update(video_sha256=""), "video_sha256 is required"),
+    (lambda r: r.pop("pose_sha256"), "pose_sha256 is required"),
     (lambda r: r.update(annotation_rule=""), "annotation_rule is required"),
     (lambda r: r.update(coverage="detector-seeded"), "coverage"),
     (lambda r: r.update(passes=[]), "non-empty"),
@@ -269,10 +273,7 @@ def test_annotation_manifest_states_coverage_and_that_no_model_layer_was_shown(t
     # Compared against the actual input's digest, not just checked for presence: a
     # hard-coded or otherwise wrong hash would still be truthy.
     assert manifest["pose_input"]["sha256"] == hashlib.sha256(pose.read_bytes()).hexdigest()
-    assert (
-        "that pose_input's timestamps were extracted from source_video's actual frames"
-        in manifest["does_not_validate"]
-    ), (
+    assert TIMEBASE_NOT_VALIDATED in manifest["does_not_validate"], (
         "a shifted or stale pose timeline can produce ordered, finite label timestamps "
         "that refer to the wrong instants; the manifest must name that limitation "
         "specifically, not just carry some does_not_validate entry"
@@ -482,3 +483,18 @@ def test_independent_completion_problems_are_reported_together():
 
     assert "randomized order" in str(caught.value)
     assert "independence_basis" in str(caught.value)
+
+
+@pytest.mark.parametrize("limits", [None, [], ["that the sweep found every contact"]])
+def test_a_record_cannot_be_read_as_timebase_validated(limits):
+    """Labels are the committed evidence; the annotation bundle is disposable. The limitation
+    has to travel with the labels, or they read as validated against a timebase nobody
+    checked."""
+    record = _record()
+    if limits is None:
+        del record["does_not_validate"]
+    else:
+        record["does_not_validate"] = limits
+
+    with pytest.raises(ContactReferenceError, match="does_not_validate"):
+        validate(record)
