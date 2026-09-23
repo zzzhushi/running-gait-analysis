@@ -1,0 +1,11 @@
+{
+  "schema": "gaitlab.timebase-manifest/v1",
+  "clips": [
+    {"id": "female_bounding", "anchor_frame": null},
+    {"id": "female_high_cadence", "anchor_frame": 1408, "context_radius": 7},
+    {"id": "female_overstride", "anchor_frame": 262},
+    {"id": "female_rear_view", "anchor_frame": null},
+    {"id": "female_side_view", "anchor_frame": null},
+    {"id": "male_side", "anchor_frame": 120, "context_radius": 4, "context_after": 10}
+  ]
+}
