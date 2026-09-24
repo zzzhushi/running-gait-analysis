@@ -6,11 +6,12 @@ import shutil
 from pathlib import Path
 
 import pytest
-from PIL import Image, ImageChops, ImageStat
+from PIL import Image, ImageChops, ImageDraw
 
 from gaitlab.core.schema import PoseSequence
 from gaitlab.debug.landmark_references import RULE, SCHEMA, validate
 from scripts import review_pose_landmarks as review
+from scripts.image_comparison import portable_pixels_match
 from scripts.overstride_render import SourceFrames
 
 DATA = Path(__file__).resolve().parent / "data"
@@ -19,6 +20,21 @@ RTMPOSE = DATA / "female_high_cadence.pose.rtmpose.json"
 BLAZEPOSE = DATA / "female_high_cadence.pose.blazepose.json"
 ASSETS = DATA.parent.parent / "docs" / "validation" / "assets"
 EXAMPLE_FRAMES = [1401, 1408, 1415]
+
+
+@pytest.mark.parametrize("pose_path", [RTMPOSE, BLAZEPOSE])
+@pytest.mark.parametrize("frame", EXAMPLE_FRAMES)
+def test_hip_label_backgrounds_do_not_overlap(pose_path, frame):
+    seq = PoseSequence.from_pose_dict(json.loads(pose_path.read_text())).validate()
+    draw = ImageDraw.Draw(Image.new("RGB", (seq.width, seq.height)))
+    boxes = []
+    for side in ("l", "r"):
+        x, y = review._pose_points(seq, frame, side)["hip"]
+        _, box = review._label_geometry(draw, side, "hip", x, y)
+        boxes.append(box)
+    left, right = boxes
+    assert (left[2] <= right[0] or right[2] <= left[0]
+            or left[3] <= right[1] or right[3] <= left[1])
 
 
 @pytest.mark.skipif(not shutil.which("ffprobe") or not shutil.which("ffmpeg"),
@@ -34,9 +50,7 @@ def test_committed_review_images_are_current(tmp_path):
             assert actual.mode == expected.mode
             assert actual.info == expected.info
             # Fonts and video decoders may differ slightly across CI hosts.
-            diff = ImageChops.difference(expected, actual)
-            assert max(ImageStat.Stat(diff).mean) <= 1.0
-            assert sum(diff.convert("L").histogram()[21:]) <= expected.width * expected.height * 0.005
+            assert portable_pixels_match(expected, actual)
 
 
 @pytest.mark.skipif(not shutil.which("ffprobe") or not shutil.which("ffmpeg"),
@@ -56,9 +70,7 @@ def test_source_only_export_contains_exact_decoded_pixels_and_no_pose(tmp_path):
             with Image.open(ASSETS / path.name) as committed:
                 assert committed.size == actual.size
                 assert committed.info == actual.info
-                diff = ImageChops.difference(committed, actual)
-                assert max(ImageStat.Stat(diff).mean) <= 1.0
-                assert sum(diff.convert("L").histogram()[21:]) <= actual.width * actual.height * 0.005
+                assert portable_pixels_match(committed, actual)
 
 
 @pytest.mark.skipif(not shutil.which("ffprobe") or not shutil.which("ffmpeg"),

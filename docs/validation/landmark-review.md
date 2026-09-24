@@ -85,8 +85,9 @@ the browser and Python BlazePose estimates differ by 28.5 px at the left heel an
 MediaPipe Tasks Pose Landmarker heavy and Python's legacy `mp.solutions.pose` are
 different inference paths, and no independent human landmark labels exist yet. A
 general browser timestamp fix must handle MP4 edit lists rather than subtracting a
-hard-coded two frames; until then, the viewer should continue rejecting uncorrected
-browser exports.
+hard-coded two frames; this is tracked in
+[#99](https://github.com/zzzhushi/running-gait-analysis/issues/99).
+Until then, the viewer should continue rejecting uncorrected browser exports.
 
 ## Reference-label format, before labels are collected
 

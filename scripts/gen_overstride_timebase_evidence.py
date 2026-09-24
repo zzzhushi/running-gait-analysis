@@ -21,10 +21,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from PIL import Image, ImageChops, ImageDraw, ImageStat, PngImagePlugin
+from PIL import Image, ImageDraw, PngImagePlugin
 from extractor.timestamps import probe_timestamps
 from gaitlab.core.schema import PoseSequence
 from scripts.overstride_render import BONES, SourceFrames
+from scripts.image_comparison import portable_pixels_match
 
 ASSETS = ROOT / "docs/validation/assets"
 MANIFEST = ASSETS / "overstride-timebase-manifest.json"
@@ -256,11 +257,7 @@ def stale_artifacts(*, portable_images: bool = False) -> list[str]:
                             or expected.info != actual.info):
                         stale.append(name)
                     elif portable_images:
-                        difference = ImageChops.difference(expected, actual)
-                        mean_channel_error = max(ImageStat.Stat(difference).mean)
-                        strong_pixels = sum(difference.convert("L").histogram()[21:])
-                        if (mean_channel_error > 1.0
-                                or strong_pixels > expected.width * expected.height * 0.005):
+                        if not portable_pixels_match(expected, actual):
                             stale.append(name)
                     elif expected.tobytes() != actual.tobytes():
                         stale.append(name)

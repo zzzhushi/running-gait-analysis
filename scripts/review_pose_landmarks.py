@@ -22,13 +22,14 @@ from PIL import Image, ImageDraw, ImageFont, PngImagePlugin
 
 from gaitlab.core.schema import PoseSequence
 from scripts.gen_overstride_timebase_evidence import TOLERANCE_S, probe
-from scripts.overstride_render import SourceFrames
+from scripts.overstride_render import BONES, SourceFrames
 
 LANDMARKS = ("hip", "knee", "ankle", "heel", "big_toe")
 COLORS = {"l": "#4dabf7", "r": "#f59f00"}
 PANEL_WIDTH = 600
 HEADER_HEIGHT = 64
 FONT = ImageFont.load_default(size=17)
+LABEL_OFFSETS = {"ankle": (9, -27), "heel": (-88, -17), "big_toe": (9, -8)}
 
 
 def sha256(path: Path) -> str:
@@ -70,26 +71,38 @@ def _pose_points(seq: PoseSequence, frame: int, side: str) -> dict[str, tuple[fl
     return points
 
 
+def _label_geometry(draw: ImageDraw.ImageDraw, side: str, landmark: str,
+                    x: float, y: float) -> tuple[tuple[float, float], tuple[float, float, float, float]]:
+    # The two hips nearly coincide in a side view. Put their labels on opposite sides
+    # vertically so neither opaque label background erases the other.
+    if landmark == "hip":
+        dx, dy = (9, -32) if side == "l" else (9, 10)
+    else:
+        dx, dy = LABEL_OFFSETS[landmark]
+    origin = (x + dx, y + dy)
+    left, top, right, bottom = draw.textbbox(origin, f"{side.upper()} {landmark}", font=FONT)
+    return origin, (left - 3, top - 2, right + 3, bottom + 2)
+
+
 def overlay(source: Image.Image, seq: PoseSequence, frame: int) -> Image.Image:
     image = source.copy().convert("RGB")
     draw = ImageDraw.Draw(image)
     for side in ("l", "r"):
         points = _pose_points(seq, frame, side)
         color = COLORS[side]
-        for a, b in (("hip", "knee"), ("knee", "ankle"), ("ankle", "heel"),
-                     ("heel", "big_toe"), ("ankle", "big_toe")):
-            if a in points and b in points:
-                draw.line((*points[a], *points[b]), fill=color, width=4)
+        prefix = f"{side}_"
+        for a, b in BONES:
+            if a.startswith(prefix) and b.startswith(prefix):
+                start, end = a[len(prefix):], b[len(prefix):]
+                if start in points and end in points:
+                    draw.line((*points[start], *points[end]), fill=color, width=4)
         for name, (x, y) in points.items():
             draw.ellipse((x - 6, y - 6, x + 6, y + 6), fill=color, outline="white", width=2)
             if name in ("hip", "ankle", "heel", "big_toe"):
-                dx, dy = {"hip": (9, -24), "ankle": (9, -27),
-                          "heel": (-88, -17), "big_toe": (9, -8)}[name]
                 label = f"{side.upper()} {name}"
-                bounds = draw.textbbox((x + dx, y + dy), label, font=FONT)
-                draw.rectangle((bounds[0] - 3, bounds[1] - 2,
-                                bounds[2] + 3, bounds[3] + 2), fill="black")
-                draw.text((x + dx, y + dy), label, fill=color, font=FONT)
+                origin, background = _label_geometry(draw, side, name, x, y)
+                draw.rectangle(background, fill="black")
+                draw.text(origin, label, fill=color, font=FONT)
     return image
 
 
