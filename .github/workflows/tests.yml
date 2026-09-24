@@ -68,9 +68,9 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ matrix.engine }}-${{ hashFiles('requirements-dev.txt') }}
       - run: playwright install --with-deps ${{ matrix.engine }}
-      # xvfb-run is not guaranteed present on the runner image; installed explicitly
-      # rather than assumed, since tests run headed to match local runs.
-      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      # Browser tests compare decoded timestamps and pixels with FFmpeg/ffprobe, and
+      # run headed to match local runs; install their system tools explicitly.
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg xvfb
       - name: Run browser extraction tests
         run: xvfb-run -a pytest tests/browser -s
         env:

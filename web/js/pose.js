@@ -328,11 +328,60 @@ async function extractViaPlayback(videoUrl, view, onProgress, delegate) {
   };
 }
 
+// Map MP4 media composition time onto the movie presentation timeline. MP4Box's
+// sample.cts is in the media timebase; an elst entry's media_time is in that same
+// timebase, but segment_duration (including a leading empty edit) is in the movie
+// timebase. WebCodecs copies the chunk timestamp to the decoded VideoFrame, so the
+// mapping must happen before VideoDecoder.decode(), not after pose extraction.
+export function mp4PresentationTimeline(samples, mediaTimescale, movieTimescale, entries) {
+  if (!Number.isSafeInteger(mediaTimescale) || mediaTimescale <= 0 ||
+      !Number.isSafeInteger(movieTimescale) || movieTimescale <= 0) {
+    throw new Error("Unsupported MP4 timebase");
+  }
+  if (entries === null) {
+    return {
+      timestampUs: (s) => Math.round(s.cts * 1e6 / mediaTimescale),
+      timestampSource: "decoded MP4 composition PTS (no edit list)",
+    };
+  }
+
+  // A normal-rate media edit may be preceded by one empty edit. Repeated, dwell,
+  // reverse, or non-unit-rate edits need a different decoder/sample selection path;
+  // silently treating them as a constant shift would give a false frame clock.
+  const leadingEmpty = entries.length === 2 && entries[0].media_time === -1
+    ? entries[0] : null;
+  const mediaEdit = entries[leadingEmpty ? 1 : 0];
+  if ((entries.length !== 1 && !leadingEmpty) || !mediaEdit ||
+      !Number.isSafeInteger(mediaEdit.media_time) || mediaEdit.media_time < 0 ||
+      !Number.isSafeInteger(mediaEdit.segment_duration) || mediaEdit.segment_duration <= 0 ||
+      mediaEdit.media_rate_integer !== 1 || mediaEdit.media_rate_fraction !== 0 ||
+      (leadingEmpty && (!Number.isSafeInteger(leadingEmpty.segment_duration) ||
+        leadingEmpty.segment_duration <= 0))) {
+    throw new Error("Unsupported MP4 edit list (expected one normal-rate media edit, optionally after one empty edit)");
+  }
+  const start = mediaEdit.media_time;
+  const duration = mediaEdit.segment_duration;
+  for (const s of samples) {
+    // This path decodes every sample. A trim would require selecting/decoding
+    // preroll separately and keeping pose/frame indices aligned with presentation.
+    if (!Number.isSafeInteger(s.cts) || s.cts < start ||
+        (s.cts - start) * movieTimescale >= duration * mediaTimescale) {
+      throw new Error("Unsupported MP4 edit list (video samples outside the presentation edit)");
+    }
+  }
+  const emptyUs = leadingEmpty
+    ? leadingEmpty.segment_duration * 1e6 / movieTimescale : 0;
+  return {
+    timestampUs: (s) => Math.round((s.cts - start) * 1e6 / mediaTimescale + emptyUs),
+    timestampSource: "decoded MP4 presentation PTS (edit list applied)",
+  };
+}
+
 // Demux the video's track with mp4box.js: raw samples plus the codec's avcC/hvcC
 // description, which VideoDecoder.configure() requires and a <video> element does not
 // expose. Resolves once every sample the container promised has been delivered, since
 // this build's onFlush callback is not reliably invoked after flush().
-async function demuxVideoTrack(videoUrl) {
+export async function demuxVideoTrack(videoUrl) {
   const mod = await import(MP4BOX_URL);
   const MP4Box = mod.default || mod;
   const buf = await (await fetch(videoUrl)).arrayBuffer();
@@ -343,11 +392,18 @@ async function demuxVideoTrack(videoUrl) {
     const collected = [];
     let track = null;
     let description = null;
+    let movieTimescale = null;
+    let editEntries = null;
     file.onError = (e) => reject(new Error(`mp4 demux failed: ${e}`));
     file.onReady = (info) => {
       track = info.videoTracks[0];
       if (!track) { reject(new Error("No video track in file")); return; }
       const trak = file.getTrackById(track.id);
+      movieTimescale = file.moov?.mvhd?.timescale;
+      if (trak.edts) {
+        editEntries = trak.edts.elst?.entries;
+        if (!editEntries) { reject(new Error("Unsupported MP4 edit list (missing elst entries)")); return; }
+      }
       for (const entry of trak.mdia.minf.stbl.stsd.entries) {
         const box = entry.avcC || entry.hvcC;
         if (box) {
@@ -376,6 +432,10 @@ async function demuxVideoTrack(videoUrl) {
           reject(new Error("Unsupported video orientation (non-axis-aligned display transform)"));
           return;
         }
+        let timeline;
+        try {
+          timeline = mp4PresentationTimeline(collected, track.timescale, movieTimescale, editEntries);
+        } catch (e) { reject(e); return; }
         resolve({
           codec: track.codec,
           codedWidth: track.video.width,
@@ -384,6 +444,7 @@ async function demuxVideoTrack(videoUrl) {
           timescale: track.timescale,
           samples: collected,
           description,
+          timeline,
         });
       }
     };
@@ -415,7 +476,7 @@ class ExtractionError extends Error {
 async function extractViaWebCodecs(videoUrl, view, onProgress, delegate) {
   onProgress(0, "Loading pose model…");
   const [landmarker, track] = await Promise.all([getLandmarker(delegate), demuxVideoTrack(videoUrl)]);
-  const { codedWidth, codedHeight, rotation, timescale, samples, description } = track;
+  const { codedWidth, codedHeight, rotation, timescale, samples, description, timeline } = track;
   // The canonical pose is always in display orientation -- toCanonical()'s (w, h) scale
   // and the mapping every downstream metric assumes must match what a person watching
   // the clip actually sees, the same contract the <video>-based path gets for free.
@@ -489,7 +550,7 @@ async function extractViaWebCodecs(videoUrl, view, onProgress, delegate) {
       for (const s of samples) {
         decoder.decode(new EncodedVideoChunk({
           type: s.is_sync ? "key" : "delta",
-          timestamp: Math.round((s.cts * 1e6) / timescale),
+          timestamp: timeline.timestampUs(s),
           duration: Math.round((s.duration * 1e6) / timescale),
           data: s.data,
         }));
@@ -513,7 +574,7 @@ async function extractViaWebCodecs(videoUrl, view, onProgress, delegate) {
     keypoint_names: KEYPOINTS.slice(),
     frames,
     timestamps,
-    timestamp_source: "decoded",
+    timestamp_source: timeline.timestampSource,
     // The container's own declared sample count is the completeness ground truth here,
     // independent of what decoding actually produced -- unlike the playback path, where
     // nothing independent of the collected grid itself was available.

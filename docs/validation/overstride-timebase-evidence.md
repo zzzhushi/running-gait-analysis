@@ -155,10 +155,17 @@ identity stays correct, or that contact and overstride are correct.
 There are separate tests for other paths. The real-clip engine tests load committed pose
 fixtures when present, including BlazePose fixtures, and compare the tested metric outputs
 with each clip's independent ground-truth record. The [browser extraction test](../../tests/browser/test_browser_extraction.py)
-runs the browser extractor on `female_high_cadence` and checks frame coverage and cadence
-against the measured cadence. Neither path checks landmark placement frame by frame. The
-browser has a separate video decoding path, so passing a Python BlazePose test does not
-establish browser frame alignment.
+runs the browser extractor on `female_high_cadence` and checks frame coverage, cadence,
+and every exported timestamp against FFprobe's edit-list-aware presentation PTS.
+Its no-edit-list control verifies that the browser does not apply an invented offset;
+[a separate pixel test](../../tests/browser/test_editlist_frame_identity.py) pairs
+sampled WebCodecs images with the same-index FFmpeg images, independent of their
+timestamp labels. The WebCodecs path supports a single normal-rate MP4 media edit,
+optionally after a leading empty edit; it explicitly rejects trims and more complex
+edit lists until sample selection can preserve frame identity. These checks do not
+establish anatomical landmark accuracy or contact timing. The browser has a separate
+video decoding path, so passing a Python BlazePose test does not establish browser
+frame alignment.
 
 All six clips currently listed in this report have zero rotation metadata, so their report
 rows do not exercise the report generator's rotated-dimension branch. Rotation behavior is
@@ -168,6 +175,8 @@ check the transformed overlay and OpenCV/FFmpeg frame agreement in
 orientation and transform direction. This PR keeps the report focused on the six canonical
 RTMPose fixtures instead of adding a second representation of `male_side`; if a per-clip
 rotated report is needed later, add a rotated RTMPose pose fixture and manifest entry.
+Browser edit-list timestamps and display rotation have separate automated coverage; no
+committed browser test currently combines a rotated video with an edit list.
 
 The next useful validation slice is a side-by-side review of the same source frames from
 RTMPose, Python BlazePose, and browser extraction, with visible reference landmarks placed

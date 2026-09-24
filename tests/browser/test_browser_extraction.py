@@ -19,12 +19,14 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from gaitlab.core.events import detect_events
 from gaitlab.core.schema import PoseSequence
+from extractor.timestamps import probe_timestamps
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 CLIP = "female_high_cadence"
@@ -102,6 +104,57 @@ def test_presents_every_frame_of_the_clip(extractions):
             f"({shortfall:.0f}% never reached the pose model); "
             f"reported fps {pose['fps']:.1f}"
         )
+
+
+def test_exported_timestamps_match_container_presentation_pts(extractions):
+    """Issue #99: decoded-frame clocks must include the MP4 video edit list.
+
+    The committed clip has media_time=256 at a 1/15360 media timebase. Raw
+    MP4Box CTS is therefore 16.667 ms ahead of FFprobe's presentation PTS.
+    This compares every exported pose timestamp, not just the first frame.
+    """
+    expected = probe_timestamps(str(DATA / f"{CLIP}.mp4"))
+    assert expected is not None
+    for pose in extractions:
+        actual = pose["timestamps"]
+        assert len(actual) == len(expected) == len(pose["frames"])
+        assert all(b > a for a, b in zip(actual, actual[1:]))
+        assert max(abs(a - b) for a, b in zip(actual, expected)) <= 0.000051
+        assert "edit list" in pose["timestamp_source"]
+
+
+def test_no_edit_list_control_keeps_original_composition_pts(page, site):
+    """The tiny FFmpeg-generated control deliberately has no elst box."""
+    clip = "browser_no_editlist"
+    traced = subprocess.run(["ffprobe", "-v", "trace", "-i", str(DATA / f"{clip}.mp4")],
+                            capture_output=True, text=True, check=False)
+    assert traced.returncode == 0
+    assert "type:'elst'" not in traced.stderr
+    pose = page.evaluate(_EXTRACT, [f"{site}/tests/data/{clip}.mp4", "side-right"])
+    expected = probe_timestamps(str(DATA / f"{clip}.mp4"))
+    assert expected is not None
+    assert len(pose["frames"]) == len(pose["timestamps"]) == len(expected) == 8
+    assert max(abs(a - b) for a, b in zip(pose["timestamps"], expected)) <= 0.000051
+    assert "no edit list" in pose["timestamp_source"]
+
+
+def test_playback_fallback_still_uses_its_own_timestamps(page, site):
+    """Issue #99's MP4Box mapping must not leak into the <video> fallback."""
+    js = """
+    async (url) => {
+      const original = globalThis.VideoDecoder;
+      globalThis.VideoDecoder = undefined;
+      try {
+        const { extract } = await import('/web/js/pose.js');
+        return await extract(url, 'side-right', () => {}, 'CPU');
+      } finally {
+        globalThis.VideoDecoder = original;
+      }
+    }
+    """
+    pose = page.evaluate(js, f"{site}/tests/data/browser_no_editlist.mp4")
+    assert len(pose["frames"]) == len(pose["timestamps"]) > 0
+    assert pose["timestamp_source"] in ("measured", "assumed")
 
 
 def test_cadence_matches_measured_truth(extractions):

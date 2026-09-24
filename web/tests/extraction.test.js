@@ -5,7 +5,51 @@ import { describe, it, expect, vi } from "vitest";
 import {
   seekTo, collectFrameTimes, EXTRACTION_PLAYBACK_RATE,
   rotationFromMatrix, canvasTransformFor,
+  mp4PresentationTimeline,
 } from "../js/pose.js";
+
+describe("mp4PresentationTimeline (issue #99)", () => {
+  const sample = (cts) => ({ cts });
+  const edit = (mediaTime, duration = 1000) => ({
+    media_time: mediaTime, segment_duration: duration,
+    media_rate_integer: 1, media_rate_fraction: 0,
+  });
+
+  it("keeps composition PTS unchanged when there is no edit list", () => {
+    const clock = mp4PresentationTimeline([sample(256)], 15360, 1000, null);
+    expect(clock.timestampUs(sample(256))).toBe(16667);
+    expect(clock.timestampSource).toContain("no edit list");
+  });
+
+  it("uses the file's media_time and both timebases, not a fixed frame offset", () => {
+    const clock = mp4PresentationTimeline(
+      [sample(256), sample(384), sample(512)], 15360, 1000, [edit(256)]
+    );
+    expect([256, 384, 512].map(cts => clock.timestampUs(sample(cts))))
+      .toEqual([0, 8333, 16667]);
+    expect(clock.timestampSource).toContain("edit list applied");
+  });
+
+  it("accounts for a leading empty edit in movie, not media, time units", () => {
+    const clock = mp4PresentationTimeline(
+      [sample(300), sample(450)], 30000, 1000,
+      [{ media_time: -1, segment_duration: 250 }, edit(300)]
+    );
+    expect(clock.timestampUs(sample(300))).toBe(250000);
+    expect(clock.timestampUs(sample(450))).toBe(255000);
+  });
+
+  it("rejects trims and non-unit or repeated edits rather than mislabeling frames", () => {
+    expect(() => mp4PresentationTimeline([sample(100), sample(200)], 1000, 1000,
+      [edit(200)])).toThrow(/outside the presentation edit/);
+    expect(() => mp4PresentationTimeline([sample(1000)], 1000, 1000,
+      [edit(0, 1000)])).toThrow(/outside the presentation edit/);
+    expect(() => mp4PresentationTimeline([sample(0)], 1000, 1000,
+      [{ ...edit(0), media_rate_integer: 2 }])).toThrow(/Unsupported MP4 edit list/);
+    expect(() => mp4PresentationTimeline([sample(0)], 1000, 1000,
+      [edit(0), edit(0)])).toThrow(/Unsupported MP4 edit list/);
+  });
+});
 
 function fakeVideo(overrides = {}) {
   const listeners = {};
