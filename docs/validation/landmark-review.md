@@ -59,12 +59,34 @@ runs, so a captured export needs its own provenance before becoming a committed 
 
 In one local Chrome/CPU extraction of `female_high_cadence` on 2026-09-23, the browser
 returned all 1,424 frames and its existing cadence test passed, but its timestamps were
-about **16.667 ms (two nominal frames) later** than the current video's ffprobe PTS at
-every index (range 16.633–16.700 ms). At index 1408, browser pose time was 11.7583 s
-versus video PTS 11.741667 s. The viewer correctly refused a fourth panel. This does
-not establish whether only the browser's timestamp labels are offset or its pose pixels
-were paired with different source frames; that needs a separate decode/timebase
-investigation before browser landmark errors can be measured against these frames.
+about **16.667 ms (two nominal frames) later** than the video's presentation PTS at
+every index (range 16.633–16.700 ms after browser rounding). At index 1408, browser
+pose time was 11.7583 s versus presentation PTS 11.741667 s. The viewer correctly
+refuses this unadjusted browser export.
+
+The offset is explained by this MP4's edit list, not two missing/extra decoded images.
+`ffprobe -v trace` reports a video edit-list media start of 256 ticks; the track time
+base is 1/15360 s, so the presentation shift is exactly 256/15360 = 1/60 s. Probing
+with `-ignore_editlist 1` gives raw frame timestamps 0.016667 s at index 0 and
+11.758333 s at index 1408, matching the browser export to its four-decimal rounding.
+The browser WebCodecs path constructs each chunk timestamp from MP4Box's raw sample
+`cts` and does not apply the track edit list. FFmpeg's default probe applies it.
+Both probes and the browser decode reported 1,424 frames. A separate Chrome WebCodecs
+pixel check at indices 0, 1, 1401, 1408 and 1415 matched each image best to the
+**same-index** FFmpeg image, not its neighbors. This supports an offset in the clock
+labels, not a two-frame shift of the image sequence, for this clip and browser run.
+
+For a one-off, non-committed diagnostic comparison, the captured browser timestamps
+were checked against every raw timestamp before converting them to presentation PTS;
+then its landmarks were drawn at the same indices as the other two estimates. This
+did not change production extraction or the committed review artifacts. At frame 1408,
+the browser and Python BlazePose estimates differ by 28.5 px at the left heel and
+14.8 px at the right heel. This is **model disagreement, not measured error**: browser
+MediaPipe Tasks Pose Landmarker heavy and Python's legacy `mp.solutions.pose` are
+different inference paths, and no independent human landmark labels exist yet. A
+general browser timestamp fix must handle MP4 edit lists rather than subtracting a
+hard-coded two frames; until then, the viewer should continue rejecting uncorrected
+browser exports.
 
 ## Reference-label format, before labels are collected
 
