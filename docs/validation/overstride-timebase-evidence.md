@@ -175,6 +175,8 @@ check the transformed overlay and OpenCV/FFmpeg frame agreement in
 orientation and transform direction. This PR keeps the report focused on the six canonical
 RTMPose fixtures instead of adding a second representation of `male_side`; if a per-clip
 rotated report is needed later, add a rotated RTMPose pose fixture and manifest entry.
+Browser edit-list timestamps and display rotation have separate automated coverage; no
+committed browser test currently combines a rotated video with an edit list.
 
 The next useful validation slice is a side-by-side review of the same source frames from
 RTMPose, Python BlazePose, and browser extraction, with visible reference landmarks placed
