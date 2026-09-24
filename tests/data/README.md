@@ -198,3 +198,15 @@ Still missing from every clip here:
 - **A band or contrasting sock on one leg.** When both legs are the same colour they cannot
   be told apart wherever they overlap, which is what makes far-leg angles unmeasurable.
 - **A clip that is not a treadmill**, if overground support is ever in scope.
+
+# Browser timebase control
+
+`browser_no_editlist.mp4` is an eight-frame synthetic color-pattern clip with no
+MP4 edit list. It is the real-browser control for issue #99, independent of the
+committed `female_high_cadence.mp4` edit-list case. Regenerate with:
+
+```sh
+ffmpeg -y -f lavfi -i testsrc2=size=64x64:rate=10:duration=0.8 \
+  -c:v libx264 -pix_fmt yuv420p -bf 0 -movflags +faststart \
+  -use_editlist 0 tests/data/browser_no_editlist.mp4
+```
